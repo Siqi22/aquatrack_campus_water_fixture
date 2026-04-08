@@ -1,6 +1,12 @@
 import { create } from 'zustand';
 
 export type FixtureStatus = 'Good' | 'Warning' | 'Urgent';
+export type FixtureCategory = 'Public' | 'Private';
+
+export interface QualityRating {
+  pressure: number; // 1-5
+  cleanliness: number; // 1-5
+}
 
 export interface Fixture {
   id: string;
@@ -16,6 +22,11 @@ export interface Fixture {
   lastMaintenanceDate: string;
   filterType: string;
   installationDate: string;
+  category: FixtureCategory;
+  qualityRating: QualityRating;
+  // Position on floor plan (percentage-based)
+  posX?: number;
+  posY?: number;
 }
 
 export interface Building {
@@ -46,11 +57,11 @@ const mockBuildings: Building[] = [
 ];
 
 const mockFixtures: Fixture[] = [
-  { id: 'f1', buildingId: 'b1', buildingName: 'Engineering Hall', floor: 1, roomNumber: '101', brand: 'Elkay', model: 'EZH2O', serialNumber: 'ELK-2024-001', photoURL: '', modelPlatePhotoURL: '', lastMaintenanceDate: '2025-11-01', filterType: 'WaterSentry Plus', installationDate: '2023-06-15' },
-  { id: 'f2', buildingId: 'b1', buildingName: 'Engineering Hall', floor: 2, roomNumber: '205', brand: 'Elkay', model: 'LZS8WSLK', serialNumber: 'ELK-2024-002', photoURL: '', modelPlatePhotoURL: '', lastMaintenanceDate: '2026-03-15', filterType: 'WaterSentry Plus', installationDate: '2024-01-10' },
-  { id: 'f3', buildingId: 'b2', buildingName: 'Science Center', floor: 1, roomNumber: '110', brand: 'Halsey Taylor', model: 'HydroBoost', serialNumber: 'HT-2024-001', photoURL: '', modelPlatePhotoURL: '', lastMaintenanceDate: '2025-08-20', filterType: 'HydroBoost Filter', installationDate: '2022-09-01' },
-  { id: 'f4', buildingId: 'b2', buildingName: 'Science Center', floor: 3, roomNumber: '310', brand: 'Oasis', model: 'PWEBF', serialNumber: 'OAS-2024-001', photoURL: '', modelPlatePhotoURL: '', lastMaintenanceDate: '2025-06-01', filterType: 'Oasis Standard', installationDate: '2023-03-20' },
-  { id: 'f5', buildingId: 'b3', buildingName: 'Student Union', floor: 1, roomNumber: '102', brand: 'Elkay', model: 'LZWSRK', serialNumber: 'ELK-2024-003', photoURL: '', modelPlatePhotoURL: '', lastMaintenanceDate: '2026-04-01', filterType: 'WaterSentry VII', installationDate: '2024-08-01' },
+  { id: 'f1', buildingId: 'b1', buildingName: 'Engineering Hall', floor: 1, roomNumber: '101', brand: 'Elkay', model: 'EZH2O', serialNumber: 'ELK-2024-001', photoURL: '', modelPlatePhotoURL: '', lastMaintenanceDate: '2025-11-01', filterType: 'WaterSentry Plus', installationDate: '2023-06-15', category: 'Public', qualityRating: { pressure: 4, cleanliness: 5 }, posX: 20, posY: 30 },
+  { id: 'f2', buildingId: 'b1', buildingName: 'Engineering Hall', floor: 2, roomNumber: '205', brand: 'Elkay', model: 'LZS8WSLK', serialNumber: 'ELK-2024-002', photoURL: '', modelPlatePhotoURL: '', lastMaintenanceDate: '2026-03-15', filterType: 'WaterSentry Plus', installationDate: '2024-01-10', category: 'Public', qualityRating: { pressure: 3, cleanliness: 4 }, posX: 65, posY: 45 },
+  { id: 'f3', buildingId: 'b2', buildingName: 'Science Center', floor: 1, roomNumber: '110', brand: 'Halsey Taylor', model: 'HydroBoost', serialNumber: 'HT-2024-001', photoURL: '', modelPlatePhotoURL: '', lastMaintenanceDate: '2025-08-20', filterType: 'HydroBoost Filter', installationDate: '2022-09-01', category: 'Public', qualityRating: { pressure: 2, cleanliness: 3 }, posX: 40, posY: 60 },
+  { id: 'f4', buildingId: 'b2', buildingName: 'Science Center', floor: 3, roomNumber: '310', brand: 'Oasis', model: 'PWEBF', serialNumber: 'OAS-2024-001', photoURL: '', modelPlatePhotoURL: '', lastMaintenanceDate: '2025-06-01', filterType: 'Oasis Standard', installationDate: '2023-03-20', category: 'Private', qualityRating: { pressure: 4, cleanliness: 2 }, posX: 75, posY: 25 },
+  { id: 'f5', buildingId: 'b3', buildingName: 'Student Union', floor: 1, roomNumber: '102', brand: 'Elkay', model: 'LZWSRK', serialNumber: 'ELK-2024-003', photoURL: '', modelPlatePhotoURL: '', lastMaintenanceDate: '2026-04-01', filterType: 'WaterSentry VII', installationDate: '2024-08-01', category: 'Public', qualityRating: { pressure: 5, cleanliness: 5 }, posX: 50, posY: 50 },
 ];
 
 interface FixtureStore {
@@ -58,11 +69,13 @@ interface FixtureStore {
   fixtures: Fixture[];
   addBuilding: (building: Building) => void;
   addFixture: (fixture: Fixture) => void;
+  updateFixture: (fixture: Fixture) => void;
   completeService: (fixtureId: string) => void;
   searchFixtures: (query: string) => Fixture[];
   getFixturesByBuilding: (buildingId: string) => Fixture[];
   getFixturesByBuildingAndFloor: (buildingId: string, floor: number) => Fixture[];
   getMaintenanceTasks: () => Fixture[];
+  getFixtureById: (id: string) => Fixture | undefined;
 }
 
 export const useFixtureStore = create<FixtureStore>((set, get) => ({
@@ -70,6 +83,10 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
   fixtures: mockFixtures,
   addBuilding: (building) => set((s) => ({ buildings: [...s.buildings, building] })),
   addFixture: (fixture) => set((s) => ({ fixtures: [...s.fixtures, fixture] })),
+  updateFixture: (fixture) =>
+    set((s) => ({
+      fixtures: s.fixtures.map((f) => (f.id === fixture.id ? fixture : f)),
+    })),
   completeService: (fixtureId) =>
     set((s) => ({
       fixtures: s.fixtures.map((f) =>
@@ -90,4 +107,5 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
   getFixturesByBuildingAndFloor: (buildingId, floor) =>
     get().fixtures.filter((f) => f.buildingId === buildingId && f.floor === floor),
   getMaintenanceTasks: () => get().fixtures.filter((f) => getDaysSinceMaintenance(f.lastMaintenanceDate) > 150),
+  getFixtureById: (id) => get().fixtures.find((f) => f.id === id),
 }));
