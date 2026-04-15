@@ -1,12 +1,11 @@
 import { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Building2, PlusCircle, Wrench, ListChecks } from 'lucide-react';
+import { LayoutDashboard, Building2, PlusCircle, Wrench } from 'lucide-react';
 
 const tabs = [
-  { to: '/', icon: Home, label: 'Home' },
+  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/campus', icon: Building2, label: 'Campus' },
-  { to: '/add', icon: PlusCircle, label: 'Onboard' },
-  { to: '/manage', icon: ListChecks, label: 'Assets' },
+  { to: '/add', icon: PlusCircle, label: 'Assets' },
   { to: '/maintenance', icon: Wrench, label: 'Service' },
 ];
 
