@@ -6,7 +6,7 @@ import { Search, Droplets, AlertTriangle, CheckCircle2, Download, Wrench, ArrowR
 import { exportToCSV } from '@/lib/exportCSV';
 
 export default function Dashboard() {
-  const { fixtures, campuses, searchFixtures, getMaintenanceTasks, getFixturesByCampus } = useFixtureStore();
+  const { fixtures, campuses, buildings, userRole, searchFixtures, getMaintenanceTasks, getFixturesByCampus, getBuildingsByCampus, getFloorsByBuilding } = useFixtureStore();
   const [query, setQuery] = useState('');
   const [selectedCampus, setSelectedCampus] = useState<string>('all');
 
@@ -16,6 +16,22 @@ export default function Dashboard() {
   const goodCount = filteredFixtures.filter((f) => getFixtureStatus(f.lastMaintenanceDate) === 'Good').length;
   const warningCount = filteredFixtures.filter((f) => getFixtureStatus(f.lastMaintenanceDate) === 'Warning').length;
   const urgentCount = filteredFixtures.filter((f) => getFixtureStatus(f.lastMaintenanceDate) === 'Urgent').length;
+  const isFacilities = userRole === 'Facilities';
+
+  const scopedBuildings =
+    selectedCampus === 'all' ? buildings : getBuildingsByCampus(selectedCampus);
+
+  const progressRows = scopedBuildings.map((b) => {
+    const floors = getFloorsByBuilding(b.id);
+    const counts = floors.reduce(
+      (acc, f) => {
+        acc[f.status] += 1;
+        return acc;
+      },
+      { NotStarted: 0, InProgress: 0, Done: 0, Restricted: 0 } as Record<'NotStarted' | 'InProgress' | 'Done' | 'Restricted', number>,
+    );
+    return { building: b, floors, counts };
+  });
 
   return (
     <div className="px-4 pt-6">
@@ -29,7 +45,7 @@ export default function Dashboard() {
         </div>
         <button
           onClick={() => exportToCSV(filteredFixtures)}
-          className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground"
+          className="flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-xs font-semibold text-background shadow-sm"
         >
           <Download className="h-3.5 w-3.5" />
           Export
@@ -106,16 +122,70 @@ export default function Dashboard() {
 
       {/* Summary cards */}
       <div className="mt-4 grid grid-cols-2 gap-3">
-        <div className="rounded-xl border bg-card p-4">
+        <div className="card-soft p-4">
           <Droplets className="h-5 w-5 text-accent" />
           <p className="mt-2 text-2xl font-bold text-foreground">{filteredFixtures.length}</p>
           <p className="text-xs text-muted-foreground">Total Fixtures</p>
         </div>
-        <div className="rounded-xl border bg-card p-4">
+        <div className="card-soft p-4">
           <AlertTriangle className="h-5 w-5 text-status-warning" />
           <p className="mt-2 text-2xl font-bold text-foreground">{tasks.length}</p>
           <p className="text-xs text-muted-foreground">Due for Service</p>
         </div>
+      </div>
+
+      {/* Collection progress (by floor status) */}
+      <div className="mt-4 card-soft p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">Collection progress</h2>
+            <p className="text-xs text-muted-foreground">
+              Status by floor {isFacilities ? '(Facilities view)' : ''}
+            </p>
+          </div>
+          <div className="text-[10px] text-muted-foreground">{progressRows.length} buildings</div>
+        </div>
+
+        {progressRows.length === 0 ? (
+          <p className="mt-3 text-sm text-muted-foreground">No buildings available.</p>
+        ) : (
+          <div className="mt-3 space-y-3">
+            {progressRows.map(({ building, floors, counts }) => {
+              const total = floors.length || 1;
+              const doneRatio = (counts.Done + counts.Restricted) / total;
+              const inProgRatio = counts.InProgress / total;
+
+              return (
+                <div key={building.id} className="rounded-2xl bg-secondary/30 p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{building.name}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        Floors: {floors.length} • Done {counts.Done} • InProgress {counts.InProgress} • NotStarted {counts.NotStarted}
+                        {counts.Restricted ? ` • Restricted ${counts.Restricted}` : ''}
+                      </p>
+                    </div>
+                    <Link to="/campus" className="text-[11px] font-semibold text-foreground">
+                      View
+                    </Link>
+                  </div>
+
+                  <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-secondary">
+                    <div className="h-full bg-status-good/70" style={{ width: `${Math.round(doneRatio * 100)}%` }} />
+                    <div className="h-full bg-status-warning/70" style={{ width: `${Math.round(inProgRatio * 100)}%` }} />
+                  </div>
+
+                  <div className="mt-2 flex flex-wrap gap-2 text-[10px] font-semibold">
+                    <span className="rounded-full bg-status-good/15 px-2 py-0.5 text-status-good">Done/Restricted</span>
+                    <span className="rounded-full bg-status-warning/15 px-2 py-0.5 text-status-warning">InProgress</span>
+                    <span className="rounded-full bg-secondary px-2 py-0.5 text-secondary-foreground">NotStarted</span>
+                    <span className="rounded-full bg-status-urgent/15 px-2 py-0.5 text-status-urgent">Restricted</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Maintenance Tasks */}

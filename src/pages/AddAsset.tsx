@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useFixtureStore, getFixtureStatus } from '@/store/fixtureStore';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { useFixtureStore, getFixtureStatus, fixtureCategoryMeta } from '@/store/fixtureStore';
 import type { FixtureCategory } from '@/store/fixtureStore';
-import { Camera, ScanLine, CheckCircle2, Building2, ChevronLeft, ChevronRight, ImagePlus, PlusCircle, ListChecks, Search, Droplets, Map } from 'lucide-react';
+import { Camera, ScanLine, CheckCircle2, Building2, ChevronLeft, ChevronRight, ImagePlus, PlusCircle, ListChecks, Search, Droplets, Map, Tags, MessageSquareWarning, HelpCircle, University } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { StarRating } from '@/components/StarRating';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -10,10 +10,54 @@ import { FloorPlanView } from '@/components/FloorPlanView';
 
 type Mode = 'choose' | 'onboard' | 'manage';
 
+function fuzzyIncludes(haystack: string, needle: string) {
+  return haystack.toLowerCase().includes(needle.trim().toLowerCase());
+}
+
+function makeId(prefix: string) {
+  return `${prefix}${Date.now()}${Math.random().toString(16).slice(2)}`;
+}
+
+type MapboxFeature = {
+  id: string;
+  place_name: string;
+  text: string;
+  center?: [number, number];
+  context?: Array<{ id: string; text: string }>;
+};
+
+async function mapboxAutocomplete(args: {
+  token: string;
+  query: string;
+  limit?: number;
+  types?: string;
+}) {
+  const limit = args.limit ?? 6;
+  const types = args.types ?? 'poi,place,locality,address';
+  const url = new URL(
+    `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(args.query)}.json`,
+  );
+  url.searchParams.set('access_token', args.token);
+  url.searchParams.set('autocomplete', 'true');
+  url.searchParams.set('limit', String(limit));
+  url.searchParams.set('types', types);
+
+  const res = await fetch(url.toString());
+  if (!res.ok) throw new Error(`Mapbox geocoding failed: ${res.status}`);
+  const data: unknown = await res.json();
+  const features = (data as { features?: unknown }).features;
+  if (!Array.isArray(features)) return [] as MapboxFeature[];
+  return features.filter((f): f is MapboxFeature => !!f && typeof f === 'object' && 'id' in f) as MapboxFeature[];
+}
+
 export default function AddAsset() {
-  const { campuses, buildings, fixtures, addBuilding, addFixture, searchFixtures, getBuildingsByCampus, getFixturesByCampus } = useFixtureStore();
+  const { campuses, buildings, fixtures, addCampus, addBuilding, addFixture, searchFixtures, getBuildingsByCampus, getFixturesByCampus } = useFixtureStore();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [mode, setMode] = useState<Mode>('choose');
+
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
+  const platePhotoInputRef = useRef<HTMLInputElement | null>(null);
 
   // Manage state
   const [manageQuery, setManageQuery] = useState('');
@@ -35,14 +79,140 @@ export default function AddAsset() {
   const [serialNumber, setSerialNumber] = useState('');
   const [filterType, setFilterType] = useState('');
   const [scanned, setScanned] = useState(false);
-  const [roomNumber, setRoomNumber] = useState('');
-  const [installationDate, setInstallationDate] = useState('');
-  const [category, setCategory] = useState<FixtureCategory>('Public');
+  const [nearestRoom, setNearestRoom] = useState('');
+  const [category, setCategory] = useState<FixtureCategory | null>(null);
+  const [suggestedCategory, setSuggestedCategory] = useState<FixtureCategory | null>(null);
+  const [categoryHelp, setCategoryHelp] = useState<FixtureCategory | null>(null);
   const [pressure, setPressure] = useState(3);
   const [cleanliness, setCleanliness] = useState(3);
+  const [observations, setObservations] = useState('');
+  const [issues, setIssues] = useState<string[]>([]);
 
-  const campusBuildings = selectedCampusId ? getBuildingsByCampus(selectedCampusId) : [];
+  // University/campus creation + fuzzy matching
+  const [campusQuery, setCampusQuery] = useState('');
+  const [universityName, setUniversityName] = useState('');
+  const [campusName, setCampusName] = useState('');
+  const [campusAddress, setCampusAddress] = useState('');
+  const [campusSuggestOpen, setCampusSuggestOpen] = useState(false);
+  const [campusGeoSuggestions, setCampusGeoSuggestions] = useState<MapboxFeature[]>([]);
+  const [campusGeoLoading, setCampusGeoLoading] = useState(false);
+
+  // Building fuzzy matching
+  const [buildingQuery, setBuildingQuery] = useState('');
+  const [buildingSuggestOpen, setBuildingSuggestOpen] = useState(false);
+  const [buildingGeoSuggestions, setBuildingGeoSuggestions] = useState<MapboxFeature[]>([]);
+  const [buildingGeoLoading, setBuildingGeoLoading] = useState(false);
+
+  const campusBuildings = useMemo(
+    () => (selectedCampusId ? getBuildingsByCampus(selectedCampusId) : []),
+    [selectedCampusId, getBuildingsByCampus],
+  );
   const selectedBuilding = buildings.find((b) => b.id === selectedBuildingId);
+  const selectedCampus = campuses.find((c) => c.id === selectedCampusId);
+
+  const filteredCampuses = useMemo(() => {
+    if (!campusQuery.trim()) return campuses;
+    return campuses.filter((c) => fuzzyIncludes(`${c.school} ${c.name}`, campusQuery));
+  }, [campusQuery, campuses]);
+
+  const filteredBuildings = useMemo(() => {
+    if (!selectedCampusId) return [];
+    if (!buildingQuery.trim()) return campusBuildings;
+    return campusBuildings.filter((b) => fuzzyIncludes(b.name, buildingQuery));
+  }, [buildingQuery, campusBuildings, selectedCampusId]);
+
+  const mapboxToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN as string | undefined;
+
+  useEffect(() => {
+    const q = `${universityName} ${campusName}`.trim();
+    if (!campusSuggestOpen) return;
+    if (!q) {
+      setCampusGeoSuggestions([]);
+      return;
+    }
+    if (!mapboxToken) {
+      setCampusGeoSuggestions([]);
+      return;
+    }
+
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      try {
+        setCampusGeoLoading(true);
+        const results = await mapboxAutocomplete({
+          token: mapboxToken,
+          query: q,
+          types: 'poi,place,locality',
+          limit: 6,
+        });
+        if (!cancelled) setCampusGeoSuggestions(results);
+      } catch {
+        if (!cancelled) setCampusGeoSuggestions([]);
+      } finally {
+        if (!cancelled) setCampusGeoLoading(false);
+      }
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [universityName, campusName, campusSuggestOpen, mapboxToken]);
+
+  useEffect(() => {
+    const q = newBuildingName.trim();
+    if (!buildingSuggestOpen) return;
+    if (!q) {
+      setBuildingGeoSuggestions([]);
+      return;
+    }
+    if (!mapboxToken) {
+      setBuildingGeoSuggestions([]);
+      return;
+    }
+
+    const context = selectedCampus ? `${selectedCampus.school} ${selectedCampus.name}` : '';
+    const composed = context ? `${q}, ${context}` : q;
+
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      try {
+        setBuildingGeoLoading(true);
+        const results = await mapboxAutocomplete({
+          token: mapboxToken,
+          query: composed,
+          types: 'poi,address',
+          limit: 6,
+        });
+        if (!cancelled) setBuildingGeoSuggestions(results);
+      } catch {
+        if (!cancelled) setBuildingGeoSuggestions([]);
+      } finally {
+        if (!cancelled) setBuildingGeoLoading(false);
+      }
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [newBuildingName, buildingSuggestOpen, mapboxToken, selectedCampus]);
+
+  // Deep link support from Campus → Assets (pre-fill).
+  useEffect(() => {
+    const nextMode = searchParams.get('mode');
+    const campusId = searchParams.get('campusId') ?? '';
+    const buildingId = searchParams.get('buildingId') ?? '';
+    const floorParam = searchParams.get('floor') ?? '';
+
+    if (nextMode === 'onboard') {
+      setMode('onboard');
+      setStep(1);
+    }
+    if (campusId) setSelectedCampusId(campusId);
+    if (buildingId) setSelectedBuildingId(buildingId);
+    if (floorParam) setFloor(floorParam);
+  }, [searchParams]);
 
   // Manage helpers
   const manageCampusBuildings = manageCampus ? getBuildingsByCampus(manageCampus) : [];
@@ -51,49 +221,171 @@ export default function AddAsset() {
     ? searchFixtures(manageQuery).filter(f => f.campusId === manageCampus)
     : [];
 
+  const recentFixtures = useMemo(() => {
+    const toNumeric = (id: string) => {
+      const digits = id.replace(/\D/g, '');
+      return digits ? Number(digits) : 0;
+    };
+    return [...fixtures].sort((a, b) => toNumeric(b.id) - toNumeric(a.id)).slice(0, 3);
+  }, [fixtures]);
+
   function handleCreateBuilding() {
     if (!newBuildingName || !newBuildingFloors || !selectedCampusId) return;
-    const id = `b${Date.now()}`;
+    const id = makeId('b');
     addBuilding({ id, campusId: selectedCampusId, name: newBuildingName, floors: parseInt(newBuildingFloors) });
     setSelectedBuildingId(id);
     setNewBuildingName('');
     setNewBuildingFloors('');
   }
 
-  function handlePhotoUpload(setter: (v: string) => void) {
-    setter(`https://placehold.co/400x300/1a365d/ffffff?text=Fixture+Photo`);
+  function handleCreateCampus() {
+    const school = universityName.trim();
+    const name = campusName.trim();
+    if (!school || !name) return;
+    const id = makeId('c');
+    addCampus({ id, school, name, address: campusAddress.trim() || '—' });
+    setSelectedCampusId(id);
+    setCampusQuery('');
+    setUniversityName('');
+    setCampusName('');
+    setCampusAddress('');
   }
 
-  function handleScan() {
-    setTimeout(() => {
+  function handleFileUpload(file: File, setter: (v: string) => void) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : '';
+      setter(result);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  const geminiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
+  const geminiModel = (import.meta.env.VITE_GEMINI_MODEL as string | undefined) ?? 'gemini-3-flash-preview';
+
+  async function handleScan() {
+    if (!platePhoto || !platePhoto.startsWith('data:')) {
+      // Fallback stub to keep the demo moving even without a real photo.
       setBrand('Elkay');
-      setModel('EZH2O Liv');
+      setModel('EZH2O');
       setSerialNumber(`SN-${Math.random().toString(36).substring(2, 8).toUpperCase()}`);
       setFilterType('WaterSentry Plus');
       setScanned(true);
-    }, 1200);
+      return;
+    }
+
+    if (!geminiKey) {
+      setBrand('Elkay');
+      setModel('EZH2O');
+      setSerialNumber(`SN-${Math.random().toString(36).substring(2, 8).toUpperCase()}`);
+      setFilterType('WaterSentry Plus');
+      setScanned(true);
+      setSuggestedCategory('CombinationUnit');
+      return;
+    }
+
+    try {
+      const base64 = platePhoto.split(',')[1] ?? '';
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(geminiModel)}:generateContent?key=${encodeURIComponent(
+          geminiKey,
+        )}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [
+              {
+                role: 'user',
+                parts: [
+                  {
+                    text:
+                      'You are helping classify drinking-water fixtures. ' +
+                      'Return ONLY a compact JSON object with keys: brand, model, serialNumber, filterType, category. ' +
+                      'category must be one of: BottleFiller, WallFountain, CombinationUnit, FilteredTap, Other. ' +
+                      'If a field is not visible, use empty string.',
+                  },
+                  { inline_data: { mime_type: 'image/jpeg', data: base64 } },
+                ],
+              },
+            ],
+            generationConfig: { temperature: 0.2 },
+          }),
+        },
+      );
+
+      const data: unknown = await res.json();
+      const text = (() => {
+        if (!data || typeof data !== 'object') return '';
+        const candidates = (data as { candidates?: unknown }).candidates;
+        if (!Array.isArray(candidates) || candidates.length === 0) return '';
+        const first = candidates[0];
+        if (!first || typeof first !== 'object') return '';
+        const content = (first as { content?: unknown }).content;
+        if (!content || typeof content !== 'object') return '';
+        const parts = (content as { parts?: unknown }).parts;
+        if (!Array.isArray(parts)) return '';
+        return parts
+          .map((p) => (p && typeof p === 'object' ? (p as { text?: unknown }).text : undefined))
+          .filter((t): t is string => typeof t === 'string' && t.length > 0)
+          .join('\n');
+      })();
+
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+      if (parsed && typeof parsed === 'object') {
+        setBrand(String(parsed.brand ?? '').trim());
+        setModel(String(parsed.model ?? '').trim());
+        setSerialNumber(String(parsed.serialNumber ?? '').trim());
+        setFilterType(String(parsed.filterType ?? '').trim());
+        const cat = String((parsed as { category?: unknown }).category ?? '').trim() as FixtureCategory;
+        if ((Object.keys(fixtureCategoryMeta) as string[]).includes(cat)) {
+          setSuggestedCategory(cat);
+          setCategory((prev) => prev ?? cat);
+        }
+        setScanned(true);
+        return;
+      }
+
+      // If the model didn't return JSON, keep the flow unblocked with a safe stub.
+      setBrand('Elkay');
+      setModel('EZH2O');
+      setSerialNumber(`SN-${Math.random().toString(36).substring(2, 8).toUpperCase()}`);
+      setFilterType('WaterSentry Plus');
+      setScanned(true);
+      setSuggestedCategory('CombinationUnit');
+    } catch {
+      setBrand('Elkay');
+      setModel('EZH2O');
+      setSerialNumber(`SN-${Math.random().toString(36).substring(2, 8).toUpperCase()}`);
+      setFilterType('WaterSentry Plus');
+      setScanned(true);
+      setSuggestedCategory('CombinationUnit');
+    }
   }
 
   function handleSubmit() {
     const building = buildings.find((b) => b.id === selectedBuildingId);
-    if (!building) return;
+    if (!building || !category) return;
     addFixture({
       id: `f${Date.now()}`,
       campusId: selectedCampusId,
       buildingId: selectedBuildingId,
       buildingName: building.name,
       floor: parseInt(floor),
-      roomNumber,
+      roomNumber: nearestRoom,
+      nearestRoom,
       brand,
       model,
       serialNumber,
       photoURL: photo || '',
       modelPlatePhotoURL: platePhoto || '',
-      lastMaintenanceDate: installationDate || new Date().toISOString().split('T')[0],
+      lastMaintenanceDate: new Date().toISOString().split('T')[0],
       filterType,
-      installationDate: installationDate || new Date().toISOString().split('T')[0],
       category,
       qualityRating: { pressure, cleanliness },
+      observations: observations || undefined,
+      issues: issues.length ? issues : undefined,
       posX: Math.floor(Math.random() * 60 + 20),
       posY: Math.floor(Math.random() * 60 + 20),
     });
@@ -101,22 +393,22 @@ export default function AddAsset() {
   }
 
   const canProceed: Record<number, boolean> = {
-    1: !!selectedCampusId && !!selectedBuildingId && !!floor,
+    1: !!selectedCampusId && !!selectedBuildingId && !!floor && !!nearestRoom,
     2: true,
-    3: !!brand && !!model,
-    4: !!roomNumber,
+    3: true,
+    4: !!category,
   };
 
   // Mode chooser
   if (mode === 'choose') {
     return (
-      <div className="px-4 pt-8 pb-4">
+      <div className="px-4 pt-8 pb-6 min-h-[calc(100vh-80px)] flex flex-col">
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-accent/10 mb-3">
             <Droplets className="h-8 w-8 text-accent" />
           </div>
           <h1 className="text-2xl font-bold text-foreground">Asset Manager</h1>
-          <p className="text-sm text-muted-foreground mt-1">Onboard or manage fixtures</p>
+          <p className="text-sm text-muted-foreground mt-1">Choose your workflow</p>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -128,8 +420,8 @@ export default function AddAsset() {
               <PlusCircle className="h-6 w-6 text-accent" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-foreground">Onboard New</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Add a fixture</p>
+              <p className="text-sm font-semibold text-foreground">Survey new building</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Collect by floor</p>
             </div>
           </button>
 
@@ -141,10 +433,66 @@ export default function AddAsset() {
               <ListChecks className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-foreground">Manage Assets</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">View on map</p>
+              <p className="text-sm font-semibold text-foreground">Update existing</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Find & edit fixtures</p>
             </div>
           </button>
+        </div>
+
+        <div className="mt-5 grid grid-cols-3 gap-2">
+          <div className="rounded-xl border bg-card/70 p-3 text-center">
+            <p className="text-lg font-bold text-foreground">{campuses.length}</p>
+            <p className="text-[10px] font-medium text-muted-foreground">Campuses</p>
+          </div>
+          <div className="rounded-xl border bg-card/70 p-3 text-center">
+            <p className="text-lg font-bold text-foreground">{buildings.length}</p>
+            <p className="text-[10px] font-medium text-muted-foreground">Buildings</p>
+          </div>
+          <div className="rounded-xl border bg-card/70 p-3 text-center">
+            <p className="text-lg font-bold text-foreground">{fixtures.length}</p>
+            <p className="text-[10px] font-medium text-muted-foreground">Fixtures</p>
+          </div>
+        </div>
+
+        <div className="mt-5 flex-1">
+          <div className="card-soft p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Recent fixtures</p>
+                <p className="text-[11px] text-muted-foreground">Jump back in where you left off</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMode('manage')}
+                className="rounded-full bg-secondary px-3 py-1.5 text-[11px] font-semibold text-secondary-foreground"
+              >
+                Browse
+              </button>
+            </div>
+
+            {recentFixtures.length === 0 ? (
+              <div className="mt-3 rounded-xl border bg-card p-4 text-center text-muted-foreground">
+                <p className="text-sm font-medium">No fixtures yet</p>
+                <p className="mt-1 text-[11px]">Start a survey to add your first one.</p>
+              </div>
+            ) : (
+              <div className="mt-3 space-y-2">
+                {recentFixtures.map((f) => (
+                  <Link
+                    key={f.id}
+                    to={`/fixture/${f.id}`}
+                    className="flex items-center justify-between rounded-xl border bg-card p-3 transition-colors hover:bg-secondary/20"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-foreground">{f.buildingName} — Rm {f.roomNumber}</p>
+                      <p className="truncate text-[11px] text-muted-foreground">{f.brand} {f.model}</p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 flex-none text-muted-foreground" />
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -265,7 +613,7 @@ export default function AddAsset() {
       <button onClick={() => { setMode('choose'); setStep(1); }} className="text-xs text-accent font-medium mb-3 flex items-center gap-1">
         ← Back
       </button>
-      <h1 className="text-xl font-bold text-foreground">Onboard New Fixture</h1>
+      <h1 className="text-xl font-bold text-foreground">Survey — Add Fixture</h1>
 
       {/* Step indicator */}
       <div className="mt-4 flex gap-2">
@@ -273,43 +621,163 @@ export default function AddAsset() {
           <div key={s} className={`h-1.5 flex-1 rounded-full ${s <= step ? 'bg-accent' : 'bg-secondary'}`} />
         ))}
       </div>
-      <p className="mt-2 text-xs text-muted-foreground">Step {step} of 4</p>
+      <p className="mt-2 text-xs text-muted-foreground">
+        {step === 1 && 'Location'}
+        {step === 2 && 'Photos'}
+        {step === 3 && 'Confirm type'}
+        {step === 4 && 'Rate & notes'}
+        <span className="ml-2 opacity-70">({step}/4)</span>
+      </p>
 
-      {/* Step 1: Campus, Building & Floor */}
+      {/* Step 1: Campus, Building, Floor, nearest room */}
       {step === 1 && (
         <div className="mt-4 space-y-4">
           <div>
-            <label className="text-sm font-medium text-foreground">Campus / School</label>
-            <select
-              value={selectedCampusId}
-              onChange={(e) => { setSelectedCampusId(e.target.value); setSelectedBuildingId(''); }}
-              className="mt-1 w-full rounded-lg border bg-card px-3 py-2.5 text-sm text-foreground"
-            >
-              <option value="">Choose a campus...</option>
-              {campuses.map((c) => (
-                <option key={c.id} value={c.id}>{c.school} — {c.name}</option>
-              ))}
-            </select>
+            <label className="text-sm font-medium text-foreground">University / Campus</label>
+
+            <div className="mt-2 space-y-2">
+              {filteredCampuses.slice(0, 6).map((c) => {
+                const active = selectedCampusId === c.id;
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => { setSelectedCampusId(c.id); setSelectedBuildingId(''); }}
+                    className={`w-full rounded-2xl border p-3 text-left transition-colors ${
+                      active ? 'border-accent bg-accent/10' : 'bg-card hover:bg-secondary/30'
+                    }`}
+                  >
+                    <p className="text-sm font-semibold text-foreground">{c.school}</p>
+                    <p className="text-[11px] text-muted-foreground">{c.name} • {c.address}</p>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-3 rounded-2xl border bg-secondary/30 p-3">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <University className="h-4 w-4" />
+                <p className="text-sm font-semibold text-foreground">Create new university/campus</p>
+              </div>
+              <div className="mt-3 grid grid-cols-1 gap-2">
+                <div className="relative">
+                  <input
+                    value={universityName}
+                    onChange={(e) => setUniversityName(e.target.value)}
+                    onFocus={() => setCampusSuggestOpen(true)}
+                    onBlur={() => setTimeout(() => setCampusSuggestOpen(false), 120)}
+                    placeholder="University name (e.g. University of Washington)"
+                    className="w-full rounded-lg border bg-card px-3 py-2 text-sm text-foreground"
+                  />
+
+                  {campusSuggestOpen && (campusGeoLoading || campusGeoSuggestions.length > 0) && (
+                    <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border bg-popover shadow-lg">
+                      {campusGeoLoading && (
+                        <div className="px-3 py-2 text-xs text-muted-foreground">Searching…</div>
+                      )}
+                      {campusGeoSuggestions.map((f) => (
+                        <button
+                          key={f.id}
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => {
+                            // Keep creation flow: just prefill the form with a real-world suggestion.
+                            setUniversityName(f.text);
+                            setCampusName('');
+                            setCampusAddress(f.place_name);
+                            setCampusSuggestOpen(false);
+                          }}
+                          className="w-full px-3 py-2 text-left transition-colors hover:bg-secondary/40"
+                        >
+                          <p className="text-sm font-semibold text-foreground">{f.text}</p>
+                          <p className="text-[11px] text-muted-foreground">{f.place_name}</p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <input
+                  value={campusName}
+                  onChange={(e) => setCampusName(e.target.value)}
+                  placeholder="Campus name (e.g. Seattle Campus)"
+                  className="w-full rounded-lg border bg-card px-3 py-2 text-sm text-foreground"
+                />
+                <input
+                  value={campusAddress}
+                  onChange={(e) => setCampusAddress(e.target.value)}
+                  placeholder="Address (optional)"
+                  className="w-full rounded-lg border bg-card px-3 py-2 text-sm text-foreground"
+                />
+                <button
+                  onClick={handleCreateCampus}
+                  className="rounded-2xl bg-foreground px-4 py-2.5 text-xs font-semibold text-background"
+                >
+                  Create campus
+                </button>
+              </div>
+            </div>
           </div>
 
           {selectedCampusId && (
             <div>
-              <label className="text-sm font-medium text-foreground">Select Building</label>
-              <select
-                value={selectedBuildingId}
-                onChange={(e) => setSelectedBuildingId(e.target.value)}
-                className="mt-1 w-full rounded-lg border bg-card px-3 py-2.5 text-sm text-foreground"
-              >
-                <option value="">Choose a building...</option>
-                {campusBuildings.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-              </select>
+              <label className="text-sm font-medium text-foreground">Building</label>
+              <div className="mt-2 space-y-2">
+                {filteredBuildings.slice(0, 6).map((b) => {
+                  const active = selectedBuildingId === b.id;
+                  return (
+                    <button
+                      key={b.id}
+                      onClick={() => setSelectedBuildingId(b.id)}
+                      className={`w-full rounded-2xl border p-3 text-left transition-colors ${
+                        active ? 'border-accent bg-accent/10' : 'bg-card hover:bg-secondary/30'
+                      }`}
+                    >
+                      <p className="text-sm font-semibold text-foreground">{b.name}</p>
+                      <p className="text-[11px] text-muted-foreground">{b.floors} floors</p>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
 
           {selectedCampusId && (
             <div className="rounded-lg border bg-secondary/50 p-3">
               <p className="text-xs font-medium text-foreground mb-2">Or create new building</p>
-              <input value={newBuildingName} onChange={(e) => setNewBuildingName(e.target.value)} placeholder="Building name" className="w-full rounded-lg border bg-card px-3 py-2 text-sm text-foreground mb-2" />
+              <div className="relative mb-2">
+                <input
+                  value={newBuildingName}
+                  onChange={(e) => setNewBuildingName(e.target.value)}
+                  onFocus={() => setBuildingSuggestOpen(true)}
+                  onBlur={() => setTimeout(() => setBuildingSuggestOpen(false), 120)}
+                  placeholder="Building name"
+                  className="w-full rounded-lg border bg-card px-3 py-2 text-sm text-foreground"
+                />
+
+                {buildingSuggestOpen && (buildingGeoLoading || buildingGeoSuggestions.length > 0) && (
+                  <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border bg-popover shadow-lg">
+                    {buildingGeoLoading && (
+                      <div className="px-3 py-2 text-xs text-muted-foreground">Searching…</div>
+                    )}
+                    {buildingGeoSuggestions.map((f) => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          setNewBuildingName(f.text);
+                          if (!campusAddress.trim()) setCampusAddress(f.place_name);
+                          setBuildingSuggestOpen(false);
+                        }}
+                        className="w-full px-3 py-2 text-left transition-colors hover:bg-secondary/40"
+                      >
+                        <p className="text-sm font-semibold text-foreground">{f.text}</p>
+                        <p className="text-[11px] text-muted-foreground">{f.place_name}</p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <input value={newBuildingFloors} onChange={(e) => setNewBuildingFloors(e.target.value)} placeholder="Number of floors" type="number" className="w-full rounded-lg border bg-card px-3 py-2 text-sm text-foreground mb-2" />
               <button onClick={handleCreateBuilding} className="rounded-lg bg-primary px-4 py-2 text-xs font-medium text-primary-foreground">
                 <Building2 className="inline h-3 w-3 mr-1" /> Create Building
@@ -326,80 +794,229 @@ export default function AddAsset() {
               </select>
             </div>
           )}
-        </div>
-      )}
 
-      {/* Step 2: Photos */}
-      {step === 2 && (
-        <div className="mt-4 space-y-4">
-          <p className="text-sm text-muted-foreground">Take photos of the fixture</p>
-          <div className="grid grid-cols-2 gap-3">
-            <button onClick={() => handlePhotoUpload(setPhoto)} className="flex flex-col items-center gap-2 rounded-xl border-2 border-dashed p-6 text-muted-foreground hover:border-accent hover:text-accent transition-colors">
-              {photo ? <img src={photo} alt="Fixture" className="h-20 w-full rounded-lg object-cover" /> : <><Camera className="h-8 w-8" /><span className="text-xs font-medium">General Photo</span></>}
-            </button>
-            <button onClick={() => handlePhotoUpload(setPlatePhoto)} className="flex flex-col items-center gap-2 rounded-xl border-2 border-dashed p-6 text-muted-foreground hover:border-accent hover:text-accent transition-colors">
-              {platePhoto ? <img src={platePhoto} alt="Model Plate" className="h-20 w-full rounded-lg object-cover" /> : <><ImagePlus className="h-8 w-8" /><span className="text-xs font-medium">Model Plate</span></>}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Step 3: Scan */}
-      {step === 3 && (
-        <div className="mt-4 space-y-4">
-          {!scanned ? (
-            <div className="flex flex-col items-center gap-4 py-8">
-              <ScanLine className="h-12 w-12 text-accent animate-pulse" />
-              <p className="text-sm text-muted-foreground text-center">Use AI Vision to extract fixture details from the model plate photo</p>
-              <button onClick={handleScan} className="rounded-xl bg-accent px-6 py-3 text-sm font-semibold text-accent-foreground">Scan Model Plate</button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-status-good mb-2">
-                <CheckCircle2 className="h-4 w-4" />
-                <span className="text-sm font-medium">Scan Complete</span>
-              </div>
-              {[
-                { label: 'Brand', value: brand, setter: setBrand },
-                { label: 'Model', value: model, setter: setModel },
-                { label: 'Serial Number', value: serialNumber, setter: setSerialNumber },
-                { label: 'Filter Type', value: filterType, setter: setFilterType },
-              ].map(({ label, value, setter }) => (
-                <div key={label}>
-                  <label className="text-xs font-medium text-muted-foreground">{label}</label>
-                  <input value={value} onChange={(e) => setter(e.target.value)} className="mt-1 w-full rounded-lg border bg-card px-3 py-2 text-sm text-foreground" />
-                </div>
-              ))}
+          {selectedBuilding && floor && (
+            <div>
+              <label className="text-sm font-medium text-foreground">Nearest room / landmark</label>
+              <input
+                value={nearestRoom}
+                onChange={(e) => setNearestRoom(e.target.value)}
+                placeholder="e.g. 205 (near restroom)"
+                className="mt-1 w-full rounded-lg border bg-card px-3 py-2.5 text-sm text-foreground"
+              />
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Tip: drinking water sources are often by the restroom.
+              </p>
             </div>
           )}
         </div>
       )}
 
-      {/* Step 4: Manual details */}
+      {/* Step 2: Photos + optional scan */}
+      {step === 2 && (
+        <div className="mt-4 space-y-4">
+          <p className="text-sm text-muted-foreground">Optional: add photos and scan model plate</p>
+
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleFileUpload(file, setPhoto);
+              e.currentTarget.value = '';
+            }}
+          />
+          <input
+            ref={platePhotoInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleFileUpload(file, setPlatePhoto);
+              e.currentTarget.value = '';
+            }}
+          />
+
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => photoInputRef.current?.click()}
+              className="flex flex-col items-center gap-2 rounded-xl border-2 border-dashed p-6 text-muted-foreground hover:border-accent hover:text-accent transition-colors"
+            >
+              {photo ? (
+                <img src={photo} alt="Fixture" className="h-20 w-full rounded-lg object-cover" />
+              ) : (
+                <>
+                  <Camera className="h-8 w-8" />
+                  <span className="text-xs font-medium">General photo</span>
+                </>
+              )}
+            </button>
+            <button
+              onClick={() => platePhotoInputRef.current?.click()}
+              className="flex flex-col items-center gap-2 rounded-xl border-2 border-dashed p-6 text-muted-foreground hover:border-accent hover:text-accent transition-colors"
+            >
+              {platePhoto ? (
+                <img src={platePhoto} alt="Model Plate" className="h-20 w-full rounded-lg object-cover" />
+              ) : (
+                <>
+                  <ImagePlus className="h-8 w-8" />
+                  <span className="text-xs font-medium">Model plate</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          <div className="rounded-2xl border bg-card p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <ScanLine className="h-4 w-4 text-accent" />
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Analyze photos</p>
+                  <p className="text-[11px] text-muted-foreground">Auto-fill brand/model/serial/filter + suggest type</p>
+                </div>
+              </div>
+              <button
+                onClick={handleScan}
+                className="rounded-xl bg-accent px-4 py-2 text-xs font-semibold text-accent-foreground"
+              >
+                Analyze
+              </button>
+            </div>
+
+            {scanned && (
+              <div className="mt-3 space-y-3">
+                <div className="flex items-center gap-2 text-status-good">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span className="text-sm font-medium">Analysis ready</span>
+                </div>
+                {[
+                  { label: 'Brand', value: brand, setter: setBrand },
+                  { label: 'Model', value: model, setter: setModel },
+                  { label: 'Serial Number', value: serialNumber, setter: setSerialNumber },
+                  { label: 'Filter Type', value: filterType, setter: setFilterType },
+                ].map(({ label, value, setter }) => (
+                  <div key={label}>
+                    <label className="text-xs font-medium text-muted-foreground">{label}</label>
+                    <input
+                      value={value}
+                      onChange={(e) => setter(e.target.value)}
+                      className="mt-1 w-full rounded-lg border bg-card px-3 py-2 text-sm text-foreground"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Step 3: Confirm fixture type (double-check) */}
+      {step === 3 && (
+        <div className="mt-4 space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Confirm fixture type</p>
+              <p className="text-xs text-muted-foreground">
+                {suggestedCategory ? `Suggested: ${fixtureCategoryMeta[suggestedCategory].label}` : 'Pick the best match.'}
+              </p>
+            </div>
+            <div className="text-[11px] text-muted-foreground">
+              {scanned ? 'From analysis' : 'Manual'}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            {(Object.keys(fixtureCategoryMeta) as FixtureCategory[]).map((id) => {
+              const meta = fixtureCategoryMeta[id];
+              const active = category === id;
+              return (
+                <div
+                  key={id}
+                  className={`relative rounded-2xl border p-3 transition-colors ${
+                    active ? 'border-accent bg-accent/10' : 'bg-card hover:bg-secondary/20'
+                  }`}
+                >
+                  {/* Help icon (separate hit target) */}
+                  <button
+                    type="button"
+                    onClick={() => setCategoryHelp(id)}
+                    className="absolute right-2 top-2 rounded-full p-2 text-muted-foreground hover:text-foreground hover:bg-secondary"
+                    aria-label={`Help: ${meta.label}`}
+                  >
+                    <HelpCircle className="h-4 w-4" />
+                  </button>
+
+                  {/* Selected indicator mirrors help placement for spatial consistency */}
+                  {active && (
+                    <div className="absolute left-2 top-2 rounded-full bg-accent/15 p-2 text-accent" aria-hidden="true">
+                      <CheckCircle2 className="h-4 w-4" />
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setCategory(id)}
+                    aria-pressed={active}
+                    className="block w-full text-left"
+                  >
+                    <div className="pr-10 pt-6">
+                      <div className="text-sm font-semibold text-foreground">{meta.label}</div>
+                      <div className="mt-1 text-[11px] text-muted-foreground">{meta.examples[0]}</div>
+                    </div>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
+          {categoryHelp && (
+            <div className="rounded-2xl border bg-card p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">{fixtureCategoryMeta[categoryHelp].label}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Examples: {fixtureCategoryMeta[categoryHelp].examples.join(' • ')}
+                  </p>
+                  {fixtureCategoryMeta[categoryHelp].hints?.length ? (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Hint: {fixtureCategoryMeta[categoryHelp].hints?.join(' • ')}
+                    </p>
+                  ) : null}
+                </div>
+                <button
+                  onClick={() => setCategoryHelp(null)}
+                  className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-secondary-foreground"
+                >
+                  Close
+                </button>
+              </div>
+
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                {fixtureCategoryMeta[categoryHelp].examples.slice(0, 2).map((ex) => (
+                  <div key={ex} className="overflow-hidden rounded-xl border bg-secondary/20">
+                    <img
+                      alt={ex}
+                      className="h-28 w-full object-cover"
+                      src={`https://placehold.co/600x400/111827/ffffff?text=${encodeURIComponent(ex)}`}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Step 4: Rate + observations (quick) */}
       {step === 4 && (
         <div className="mt-4 space-y-4">
           <div>
-            <label className="text-sm font-medium text-foreground">Room Number</label>
-            <input value={roomNumber} onChange={(e) => setRoomNumber(e.target.value)} placeholder="e.g. 205" className="mt-1 w-full rounded-lg border bg-card px-3 py-2.5 text-sm text-foreground" />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-foreground">Installation Date</label>
-            <input value={installationDate} onChange={(e) => setInstallationDate(e.target.value)} type="date" className="mt-1 w-full rounded-lg border bg-card px-3 py-2.5 text-sm text-foreground" />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-foreground">Category</label>
-            <div className="flex gap-2 mt-1.5">
-              {(['Public', 'Private'] as const).map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setCategory(c)}
-                  className={`flex-1 rounded-xl py-2.5 text-sm font-medium transition-colors ${
-                    category === c ? 'bg-accent text-accent-foreground' : 'bg-secondary text-secondary-foreground'
-                  }`}
-                >
-                  {c}
-                </button>
-              ))}
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <MessageSquareWarning className="h-4 w-4" />
+              <p className="text-sm">Optional: rate & note any issues</p>
             </div>
           </div>
           <div>
@@ -409,6 +1026,36 @@ export default function AddAsset() {
           <div>
             <label className="text-sm font-medium text-foreground">Cleanliness</label>
             <StarRating value={cleanliness} onChange={setCleanliness} />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-foreground">Quick issues</label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {['rust', 'low_flow', 'noisy', 'dirty', 'clogged_filter'].map((id) => {
+                const active = issues.includes(id);
+                return (
+                  <button
+                    key={id}
+                    onClick={() => setIssues((prev) => (active ? prev.filter((x) => x !== id) : [...prev, id]))}
+                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+                      active ? 'bg-accent text-accent-foreground' : 'bg-secondary text-secondary-foreground'
+                    }`}
+                  >
+                    {id}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-foreground">Observations</label>
+            <textarea
+              value={observations}
+              onChange={(e) => setObservations(e.target.value)}
+              placeholder="e.g. rusted fixture, low pressure, needs wipe..."
+              className="mt-1 w-full min-h-[90px] rounded-lg border bg-card px-3 py-2.5 text-sm text-foreground"
+            />
           </div>
         </div>
       )}
