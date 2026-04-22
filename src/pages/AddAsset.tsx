@@ -14,9 +14,9 @@ function fuzzyIncludes(haystack: string, needle: string) {
   return haystack.toLowerCase().includes(needle.trim().toLowerCase());
 }
 
-function makeId(prefix: string) {
-  return `${prefix}${Date.now()}${Math.random().toString(16).slice(2)}`;
-}
+import { supabase } from '@/integrations/supabase/client';
+import { uploadFixturePhoto } from '@/lib/uploadPhoto';
+import { toast } from 'sonner';
 
 type MapboxFeature = {
   id: string;
@@ -229,22 +229,24 @@ export default function AddAsset() {
     return [...fixtures].sort((a, b) => toNumeric(b.id) - toNumeric(a.id)).slice(0, 3);
   }, [fixtures]);
 
-  function handleCreateBuilding() {
+  async function handleCreateBuilding() {
     if (!newBuildingName || !newBuildingFloors || !selectedCampusId) return;
-    const id = makeId('b');
-    addBuilding({ id, campusId: selectedCampusId, name: newBuildingName, floors: parseInt(newBuildingFloors) });
-    setSelectedBuildingId(id);
+    const created = await addBuilding({
+      campusId: selectedCampusId,
+      name: newBuildingName,
+      floors: parseInt(newBuildingFloors),
+    });
+    if (created) setSelectedBuildingId(created.id);
     setNewBuildingName('');
     setNewBuildingFloors('');
   }
 
-  function handleCreateCampus() {
+  async function handleCreateCampus() {
     const school = universityName.trim();
     const name = campusName.trim();
     if (!school || !name) return;
-    const id = makeId('c');
-    addCampus({ id, school, name, address: campusAddress.trim() || '—' });
-    setSelectedCampusId(id);
+    const created = await addCampus({ school, name, address: campusAddress.trim() || '—' });
+    if (created) setSelectedCampusId(created.id);
     setCampusQuery('');
     setUniversityName('');
     setCampusName('');
@@ -260,136 +262,85 @@ export default function AddAsset() {
     reader.readAsDataURL(file);
   }
 
-  const geminiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
-  const geminiModel = (import.meta.env.VITE_GEMINI_MODEL as string | undefined) ?? 'gemini-3-flash-preview';
-
   async function handleScan() {
     if (!platePhoto || !platePhoto.startsWith('data:')) {
-      // Fallback stub to keep the demo moving even without a real photo.
       setBrand('Elkay');
       setModel('EZH2O');
       setSerialNumber(`SN-${Math.random().toString(36).substring(2, 8).toUpperCase()}`);
       setFilterType('WaterSentry Plus');
-      setScanned(true);
-      return;
-    }
-
-    if (!geminiKey) {
-      setBrand('Elkay');
-      setModel('EZH2O');
-      setSerialNumber(`SN-${Math.random().toString(36).substring(2, 8).toUpperCase()}`);
-      setFilterType('WaterSentry Plus');
-      setScanned(true);
       setSuggestedCategory('CombinationUnit');
+      setCategory((prev) => prev ?? 'CombinationUnit');
+      setScanned(true);
+      toast.message('Scanned with placeholder (no photo provided).');
       return;
     }
 
     try {
       const base64 = platePhoto.split(',')[1] ?? '';
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(geminiModel)}:generateContent?key=${encodeURIComponent(
-          geminiKey,
-        )}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [
-              {
-                role: 'user',
-                parts: [
-                  {
-                    text:
-                      'You are helping classify drinking-water fixtures. ' +
-                      'Return ONLY a compact JSON object with keys: brand, model, serialNumber, filterType, category. ' +
-                      'category must be one of: BottleFiller, WallFountain, CombinationUnit, FilteredTap, Other. ' +
-                      'If a field is not visible, use empty string.',
-                  },
-                  { inline_data: { mime_type: 'image/jpeg', data: base64 } },
-                ],
-              },
-            ],
-            generationConfig: { temperature: 0.2 },
-          }),
-        },
-      );
-
-      const data: unknown = await res.json();
-      const text = (() => {
-        if (!data || typeof data !== 'object') return '';
-        const candidates = (data as { candidates?: unknown }).candidates;
-        if (!Array.isArray(candidates) || candidates.length === 0) return '';
-        const first = candidates[0];
-        if (!first || typeof first !== 'object') return '';
-        const content = (first as { content?: unknown }).content;
-        if (!content || typeof content !== 'object') return '';
-        const parts = (content as { parts?: unknown }).parts;
-        if (!Array.isArray(parts)) return '';
-        return parts
-          .map((p) => (p && typeof p === 'object' ? (p as { text?: unknown }).text : undefined))
-          .filter((t): t is string => typeof t === 'string' && t.length > 0)
-          .join('\n');
-      })();
-
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
-      if (parsed && typeof parsed === 'object') {
-        setBrand(String(parsed.brand ?? '').trim());
-        setModel(String(parsed.model ?? '').trim());
-        setSerialNumber(String(parsed.serialNumber ?? '').trim());
-        setFilterType(String(parsed.filterType ?? '').trim());
-        const cat = String((parsed as { category?: unknown }).category ?? '').trim() as FixtureCategory;
+      const { data, error } = await supabase.functions.invoke('scan-fixture-label', {
+        body: { imageBase64: base64 },
+      });
+      if (error) throw error;
+      if (data && typeof data === 'object') {
+        setBrand(String(data.brand ?? '').trim());
+        setModel(String(data.model ?? '').trim());
+        setSerialNumber(String(data.serialNumber ?? '').trim());
+        setFilterType(String(data.filterType ?? '').trim());
+        const cat = String(data.category ?? '').trim() as FixtureCategory;
         if ((Object.keys(fixtureCategoryMeta) as string[]).includes(cat)) {
           setSuggestedCategory(cat);
           setCategory((prev) => prev ?? cat);
         }
         setScanned(true);
+        toast.success('Label scanned');
         return;
       }
-
-      // If the model didn't return JSON, keep the flow unblocked with a safe stub.
-      setBrand('Elkay');
-      setModel('EZH2O');
-      setSerialNumber(`SN-${Math.random().toString(36).substring(2, 8).toUpperCase()}`);
-      setFilterType('WaterSentry Plus');
+      throw new Error('No structured response');
+    } catch (e) {
+      console.error(e);
+      toast.error('AI scan failed — fill manually');
       setScanned(true);
-      setSuggestedCategory('CombinationUnit');
-    } catch {
-      setBrand('Elkay');
-      setModel('EZH2O');
-      setSerialNumber(`SN-${Math.random().toString(36).substring(2, 8).toUpperCase()}`);
-      setFilterType('WaterSentry Plus');
-      setScanned(true);
-      setSuggestedCategory('CombinationUnit');
     }
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     const building = buildings.find((b) => b.id === selectedBuildingId);
     if (!building || !category) return;
-    addFixture({
-      id: `f${Date.now()}`,
-      campusId: selectedCampusId,
-      buildingId: selectedBuildingId,
-      buildingName: building.name,
-      floor: parseInt(floor),
-      roomNumber: nearestRoom,
-      nearestRoom,
-      brand,
-      model,
-      serialNumber,
-      photoURL: photo || '',
-      modelPlatePhotoURL: platePhoto || '',
-      lastMaintenanceDate: new Date().toISOString().split('T')[0],
-      filterType,
-      category,
-      qualityRating: { pressure, cleanliness },
-      observations: observations || undefined,
-      issues: issues.length ? issues : undefined,
-      posX: Math.floor(Math.random() * 60 + 20),
-      posY: Math.floor(Math.random() * 60 + 20),
-    });
-    navigate('/');
+    try {
+      // Upload photos to storage if they're data URLs
+      const [photoUrl, plateUrl] = await Promise.all([
+        photo ? uploadFixturePhoto(photo, 'general').catch(() => '') : Promise.resolve(''),
+        platePhoto ? uploadFixturePhoto(platePhoto, 'plate').catch(() => '') : Promise.resolve(''),
+      ]);
+      const created = await addFixture({
+        campusId: selectedCampusId,
+        buildingId: selectedBuildingId,
+        buildingName: building.name,
+        floor: parseInt(floor),
+        roomNumber: nearestRoom,
+        nearestRoom,
+        brand,
+        model,
+        serialNumber,
+        photoURL: photoUrl,
+        modelPlatePhotoURL: plateUrl,
+        lastMaintenanceDate: new Date().toISOString().split('T')[0],
+        filterType,
+        category,
+        qualityRating: { pressure, cleanliness },
+        observations: observations || undefined,
+        issues: issues.length ? issues : undefined,
+        posX: Math.floor(Math.random() * 60 + 20),
+        posY: Math.floor(Math.random() * 60 + 20),
+      });
+      if (created) {
+        toast.success('Fixture added');
+        navigate('/');
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error('Could not save fixture');
+    }
   }
 
   const canProceed: Record<number, boolean> = {

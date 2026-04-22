@@ -5,13 +5,14 @@ import { useFixtureStore } from '@/store/fixtureStore';
 
 type BuildingCoord = { lng: number; lat: number };
 
-// Demo defaults: rough coordinates, editable later via UI/API.
-const fallbackCoords: Record<string, BuildingCoord> = {
-  b1: { lng: -122.2585, lat: 37.8719 },
-  b2: { lng: -122.2596, lat: 37.8724 },
-  b3: { lng: -122.2572, lat: 37.8708 },
-  b4: { lng: -122.2612, lat: 37.8732 },
-};
+// Pseudo-random but deterministic offset around Berkeley campus for buildings without DB coords.
+function fallbackCoordFor(id: string): BuildingCoord {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  const dx = ((h & 0xff) / 255 - 0.5) * 0.01;
+  const dy = (((h >> 8) & 0xff) / 255 - 0.5) * 0.01;
+  return { lng: -122.2585 + dx, lat: 37.8719 + dy };
+}
 
 export function CampusMap({ campusId }: { campusId: string | 'all' }) {
   const { buildings, getBuildingsByCampus, getFloorsByBuilding, userRole } = useFixtureStore();
@@ -71,7 +72,7 @@ export function CampusMap({ campusId }: { campusId: string | 'all' }) {
       const restricted = floors.some((f) => f.status === 'Restricted');
       const status = restricted ? 'Restricted' : done === floors.length && floors.length > 0 ? 'Done' : started ? 'InProgress' : 'NotStarted';
 
-      const coord = fallbackCoords[b.id] ?? { lng: -122.2585, lat: 37.8719 };
+      const coord = fallbackCoordFor(b.id);
       const el = document.createElement('div');
       el.style.width = '14px';
       el.style.height = '14px';

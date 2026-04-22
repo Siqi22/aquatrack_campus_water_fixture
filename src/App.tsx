@@ -4,6 +4,9 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppShell } from "@/components/AppShell";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
+import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import CampusNavigator from "./pages/CampusNavigator";
 import AddAsset from "./pages/AddAsset";
@@ -18,15 +21,27 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <AppShell>
+        <AuthProvider>
           <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/campus" element={<CampusNavigator />} />
-            <Route path="/add" element={<AddAsset />} />
-            <Route path="/fixture/:id" element={<FixtureDetail />} />
-            <Route path="*" element={<NotFound />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route
+              path="/*"
+              element={
+                <ProtectedRoute>
+                  <AppShell>
+                    <Routes>
+                      <Route path="/" element={<Dashboard />} />
+                      <Route path="/campus" element={<CampusNavigator />} />
+                      <Route path="/add" element={<AddAsset />} />
+                      <Route path="/fixture/:id" element={<FixtureDetail />} />
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </AppShell>
+                </ProtectedRoute>
+              }
+            />
           </Routes>
-        </AppShell>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
