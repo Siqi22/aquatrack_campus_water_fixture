@@ -490,7 +490,7 @@ export const useFixtureStore = create<FixtureStore>((set, get) => {
           if (p.buildingId !== fixture.buildingId || p.floor !== fixture.floor) return p;
           if (p.status !== 'NotStarted') return p;
           const now = new Date().toISOString().split('T')[0];
-          return { ...p, status: 'InProgress', startedAt: p.startedAt ?? now };
+          return { ...p, status: 'InProgress' as FloorStatus, startedAt: p.startedAt ?? now };
         });
         const buildings = deriveBuildingCollection(s.buildings, floorProgress);
         queueMicrotask(() => persist({ fixtures, buildings, floorProgress }));
