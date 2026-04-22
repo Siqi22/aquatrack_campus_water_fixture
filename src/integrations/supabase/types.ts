@@ -14,16 +14,308 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      buildings: {
+        Row: {
+          campus_id: string
+          collection_ended_at: string | null
+          collection_started_at: string | null
+          created_at: string
+          created_by: string | null
+          floors: number
+          id: string
+          latitude: number | null
+          longitude: number | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          campus_id: string
+          collection_ended_at?: string | null
+          collection_started_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          floors?: number
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          campus_id?: string
+          collection_ended_at?: string | null
+          collection_started_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          floors?: number
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "buildings_campus_id_fkey"
+            columns: ["campus_id"]
+            isOneToOne: false
+            referencedRelation: "campuses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campuses: {
+        Row: {
+          address: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          name: string
+          school: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          name: string
+          school: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          name?: string
+          school?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      fixtures: {
+        Row: {
+          brand: string | null
+          building_id: string
+          campus_id: string
+          category: Database["public"]["Enums"]["fixture_category"]
+          cleanliness_rating: number
+          created_at: string
+          created_by: string | null
+          filter_type: string | null
+          floor: number
+          id: string
+          installation_date: string | null
+          issues: string[] | null
+          last_maintenance_date: string
+          model: string | null
+          model_plate_photo_url: string | null
+          nearest_room: string | null
+          observations: string | null
+          photo_url: string | null
+          pos_x: number | null
+          pos_y: number | null
+          pressure_rating: number
+          room_number: string
+          serial_number: string | null
+          updated_at: string
+        }
+        Insert: {
+          brand?: string | null
+          building_id: string
+          campus_id: string
+          category?: Database["public"]["Enums"]["fixture_category"]
+          cleanliness_rating?: number
+          created_at?: string
+          created_by?: string | null
+          filter_type?: string | null
+          floor: number
+          id?: string
+          installation_date?: string | null
+          issues?: string[] | null
+          last_maintenance_date?: string
+          model?: string | null
+          model_plate_photo_url?: string | null
+          nearest_room?: string | null
+          observations?: string | null
+          photo_url?: string | null
+          pos_x?: number | null
+          pos_y?: number | null
+          pressure_rating?: number
+          room_number: string
+          serial_number?: string | null
+          updated_at?: string
+        }
+        Update: {
+          brand?: string | null
+          building_id?: string
+          campus_id?: string
+          category?: Database["public"]["Enums"]["fixture_category"]
+          cleanliness_rating?: number
+          created_at?: string
+          created_by?: string | null
+          filter_type?: string | null
+          floor?: number
+          id?: string
+          installation_date?: string | null
+          issues?: string[] | null
+          last_maintenance_date?: string
+          model?: string | null
+          model_plate_photo_url?: string | null
+          nearest_room?: string | null
+          observations?: string | null
+          photo_url?: string | null
+          pos_x?: number | null
+          pos_y?: number | null
+          pressure_rating?: number
+          room_number?: string
+          serial_number?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fixtures_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "buildings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fixtures_campus_id_fkey"
+            columns: ["campus_id"]
+            isOneToOne: false
+            referencedRelation: "campuses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      floor_progress: {
+        Row: {
+          building_id: string
+          created_at: string
+          ended_at: string | null
+          floor: number
+          id: string
+          notes: string | null
+          restricted_reason: string | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["floor_status"]
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          building_id: string
+          created_at?: string
+          ended_at?: string | null
+          floor: number
+          id?: string
+          notes?: string | null
+          restricted_reason?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["floor_status"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          building_id?: string
+          created_at?: string
+          ended_at?: string | null
+          floor?: number
+          id?: string
+          notes?: string | null
+          restricted_reason?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["floor_status"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "floor_progress_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "buildings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "Surveyor" | "Facilities" | "Admin"
+      fixture_category:
+        | "BottleFiller"
+        | "WallFountain"
+        | "CombinationUnit"
+        | "FilteredTap"
+        | "Other"
+      floor_status: "NotStarted" | "InProgress" | "Done" | "Restricted"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +442,16 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["Surveyor", "Facilities", "Admin"],
+      fixture_category: [
+        "BottleFiller",
+        "WallFountain",
+        "CombinationUnit",
+        "FilteredTap",
+        "Other",
+      ],
+      floor_status: ["NotStarted", "InProgress", "Done", "Restricted"],
+    },
   },
 } as const
