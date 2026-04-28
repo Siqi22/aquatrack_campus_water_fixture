@@ -1116,6 +1116,52 @@ export default function AddAsset() {
           </button>
         )}
       </div>
+
+      {/* Post-save: Are you done with this floor? */}
+      {postSaveOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4" onClick={() => { setPostSaveOpen(false); navigate('/'); }}>
+          <div className="w-full max-w-sm rounded-2xl bg-card p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <p className="text-base font-semibold text-foreground">Fixture saved ✓</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Are you done collecting fixtures on Floor {floor}?
+            </p>
+            <div className="mt-4 grid grid-cols-1 gap-2">
+              <button
+                onClick={() => {
+                  // Stay in onboard mode for another fixture on the same floor
+                  setPhoto(null); setPlatePhoto(null); setBrand(''); setModel(''); setSerialNumber('');
+                  setFilterType(''); setScanned(false); setScanError(null); setCategory(null); setSuggestedCategory(null);
+                  setObservations(''); setIssues([]); setNearestRoom('');
+                  setStep(1);
+                  setPostSaveOpen(false);
+                }}
+                className="rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground"
+              >
+                Add another on Floor {floor}
+              </button>
+              <button
+                onClick={async () => {
+                  if (selectedBuildingId && floor) {
+                    await setFloorStatus(selectedBuildingId, parseInt(floor), 'Done');
+                    toast.success(`Floor ${floor} marked as Done`);
+                  }
+                  setPostSaveOpen(false);
+                  navigate('/campus');
+                }}
+                className="rounded-xl bg-foreground px-4 py-2.5 text-sm font-semibold text-background"
+              >
+                Yes — mark Floor {floor} done
+              </button>
+              <button
+                onClick={() => { setPostSaveOpen(false); navigate('/'); }}
+                className="rounded-xl bg-secondary px-4 py-2.5 text-sm font-semibold text-secondary-foreground"
+              >
+                Back to dashboard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
