@@ -222,31 +222,9 @@ export default function FixtureDetail() {
 
           <div className="p-4">
             {fixture.photoURL || fixture.modelPlatePhotoURL ? (
-              <div className="grid grid-cols-2 gap-2">
-                {fixture.photoURL ? (
-                  <img
-                    src={fixture.photoURL}
-                    alt="Fixture"
-                    className="h-36 w-full rounded-xl object-cover border"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="h-36 rounded-xl border bg-secondary/30 flex items-center justify-center text-muted-foreground text-xs">
-                    No general photo
-                  </div>
-                )}
-                {fixture.modelPlatePhotoURL ? (
-                  <img
-                    src={fixture.modelPlatePhotoURL}
-                    alt="Model plate"
-                    className="h-36 w-full rounded-xl object-cover border"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="h-36 rounded-xl border bg-secondary/30 flex items-center justify-center text-muted-foreground text-xs">
-                    No model plate
-                  </div>
-                )}
+              <div className="grid grid-cols-2 gap-3">
+                <PhotoCard label="General" url={fixture.photoURL} filename={`${fixture.id}-general.jpg`} />
+                <PhotoCard label="Model plate" url={fixture.modelPlatePhotoURL} filename={`${fixture.id}-plate.jpg`} />
               </div>
             ) : (
               <div className="rounded-xl border bg-secondary/30 p-4 text-center text-muted-foreground">
