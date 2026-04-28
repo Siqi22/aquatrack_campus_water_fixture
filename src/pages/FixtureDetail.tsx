@@ -426,3 +426,46 @@ function InfoTile({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
+function PhotoCard({ label, url, filename }: { label: string; url: string; filename: string }) {
+  if (!url) {
+    return (
+      <div className="h-40 rounded-xl border bg-secondary/30 flex flex-col items-center justify-center text-muted-foreground text-xs gap-1">
+        <ImageIcon className="h-5 w-5 opacity-50" />
+        <span>No {label.toLowerCase()}</span>
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-xl border overflow-hidden bg-card">
+      <a href={url} target="_blank" rel="noreferrer" className="block">
+        <img src={url} alt={label} className="h-32 w-full object-cover" loading="lazy" />
+      </a>
+      <div className="flex items-center justify-between gap-2 p-2 border-t">
+        <span className="text-[11px] font-medium text-foreground truncate">{label}</span>
+        <div className="flex gap-1">
+          <a
+            href={url}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-1 text-[10px] font-semibold text-secondary-foreground"
+            title="Open"
+          >
+            <ExternalLink className="h-3 w-3" />
+          </a>
+          <a
+            href={url}
+            download={filename}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 rounded-full bg-foreground px-2 py-1 text-[10px] font-semibold text-background"
+            title="Download"
+          >
+            <Download className="h-3 w-3" />
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
