@@ -4,7 +4,7 @@ import { useFixtureStore, getFixtureStatus, getDaysSinceMaintenance, fixtureCate
 import type { FixtureCategory } from '@/store/fixtureStore';
 import { StatusBadge } from '@/components/StatusBadge';
 import { StarRating } from '@/components/StarRating';
-import { ChevronLeft, MapPin, Wrench, Clock, CheckCircle2, Edit3, Save, X, ExternalLink, Image as ImageIcon, Hash, Tag } from 'lucide-react';
+import { ChevronLeft, MapPin, Wrench, Clock, CheckCircle2, Edit3, Save, X, ExternalLink, Image as ImageIcon, Hash, Tag, Download } from 'lucide-react';
 import { toast } from 'sonner';
 
 type MapboxFeature = {
