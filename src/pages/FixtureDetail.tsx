@@ -4,7 +4,7 @@ import { useFixtureStore, getFixtureStatus, getDaysSinceMaintenance, fixtureCate
 import type { FixtureCategory } from '@/store/fixtureStore';
 import { StatusBadge } from '@/components/StatusBadge';
 import { StarRating } from '@/components/StarRating';
-import { ChevronLeft, MapPin, Wrench, Clock, CheckCircle2, Edit3, Save, X, ExternalLink, Image as ImageIcon, Hash, Tag } from 'lucide-react';
+import { ChevronLeft, MapPin, Wrench, Clock, CheckCircle2, Edit3, Save, X, ExternalLink, Image as ImageIcon, Hash, Tag, Download } from 'lucide-react';
 import { toast } from 'sonner';
 
 type MapboxFeature = {
@@ -222,31 +222,9 @@ export default function FixtureDetail() {
 
           <div className="p-4">
             {fixture.photoURL || fixture.modelPlatePhotoURL ? (
-              <div className="grid grid-cols-2 gap-2">
-                {fixture.photoURL ? (
-                  <img
-                    src={fixture.photoURL}
-                    alt="Fixture"
-                    className="h-36 w-full rounded-xl object-cover border"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="h-36 rounded-xl border bg-secondary/30 flex items-center justify-center text-muted-foreground text-xs">
-                    No general photo
-                  </div>
-                )}
-                {fixture.modelPlatePhotoURL ? (
-                  <img
-                    src={fixture.modelPlatePhotoURL}
-                    alt="Model plate"
-                    className="h-36 w-full rounded-xl object-cover border"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="h-36 rounded-xl border bg-secondary/30 flex items-center justify-center text-muted-foreground text-xs">
-                    No model plate
-                  </div>
-                )}
+              <div className="grid grid-cols-2 gap-3">
+                <PhotoCard label="General" url={fixture.photoURL} filename={`${fixture.id}-general.jpg`} />
+                <PhotoCard label="Model plate" url={fixture.modelPlatePhotoURL} filename={`${fixture.id}-plate.jpg`} />
               </div>
             ) : (
               <div className="rounded-xl border bg-secondary/30 p-4 text-center text-muted-foreground">
@@ -448,3 +426,46 @@ function InfoTile({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
+function PhotoCard({ label, url, filename }: { label: string; url: string; filename: string }) {
+  if (!url) {
+    return (
+      <div className="h-40 rounded-xl border bg-secondary/30 flex flex-col items-center justify-center text-muted-foreground text-xs gap-1">
+        <ImageIcon className="h-5 w-5 opacity-50" />
+        <span>No {label.toLowerCase()}</span>
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-xl border overflow-hidden bg-card">
+      <a href={url} target="_blank" rel="noreferrer" className="block">
+        <img src={url} alt={label} className="h-32 w-full object-cover" loading="lazy" />
+      </a>
+      <div className="flex items-center justify-between gap-2 p-2 border-t">
+        <span className="text-[11px] font-medium text-foreground truncate">{label}</span>
+        <div className="flex gap-1">
+          <a
+            href={url}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-1 text-[10px] font-semibold text-secondary-foreground"
+            title="Open"
+          >
+            <ExternalLink className="h-3 w-3" />
+          </a>
+          <a
+            href={url}
+            download={filename}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 rounded-full bg-foreground px-2 py-1 text-[10px] font-semibold text-background"
+            title="Download"
+          >
+            <Download className="h-3 w-3" />
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+

@@ -11,6 +11,7 @@ import Dashboard from "./pages/Dashboard";
 import CampusNavigator from "./pages/CampusNavigator";
 import AddAsset from "./pages/AddAsset";
 import FixtureDetail from "./pages/FixtureDetail";
+import Maintenance from "./pages/Maintenance";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
                       <Route path="/campus" element={<CampusNavigator />} />
                       <Route path="/add" element={<AddAsset />} />
                       <Route path="/fixture/:id" element={<FixtureDetail />} />
+                      <Route path="/maintenance" element={<Maintenance />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </AppShell>

@@ -51,7 +51,7 @@ async function mapboxAutocomplete(args: {
 }
 
 export default function AddAsset() {
-  const { campuses, buildings, fixtures, addCampus, addBuilding, addFixture, searchFixtures, getBuildingsByCampus, getFixturesByCampus } = useFixtureStore();
+  const { campuses, buildings, fixtures, addCampus, addBuilding, addFixture, searchFixtures, getBuildingsByCampus, getFixturesByCampus, setFloorStatus } = useFixtureStore();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [mode, setMode] = useState<Mode>('choose');
@@ -79,6 +79,8 @@ export default function AddAsset() {
   const [serialNumber, setSerialNumber] = useState('');
   const [filterType, setFilterType] = useState('');
   const [scanned, setScanned] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
   const [nearestRoom, setNearestRoom] = useState('');
   const [category, setCategory] = useState<FixtureCategory | null>(null);
   const [suggestedCategory, setSuggestedCategory] = useState<FixtureCategory | null>(null);
@@ -87,6 +89,7 @@ export default function AddAsset() {
   const [cleanliness, setCleanliness] = useState(3);
   const [observations, setObservations] = useState('');
   const [issues, setIssues] = useState<string[]>([]);
+  const [postSaveOpen, setPostSaveOpen] = useState(false);
 
   // University/campus creation + fuzzy matching
   const [campusQuery, setCampusQuery] = useState('');
@@ -263,25 +266,24 @@ export default function AddAsset() {
   }
 
   async function handleScan() {
+    setScanError(null);
     if (!platePhoto || !platePhoto.startsWith('data:')) {
-      setBrand('Elkay');
-      setModel('EZH2O');
-      setSerialNumber(`SN-${Math.random().toString(36).substring(2, 8).toUpperCase()}`);
-      setFilterType('WaterSentry Plus');
-      setSuggestedCategory('CombinationUnit');
-      setCategory((prev) => prev ?? 'CombinationUnit');
+      setScanError('No model-plate photo provided. Take or upload a photo of the label, or fill the fields manually below.');
       setScanned(true);
-      toast.message('Scanned with placeholder (no photo provided).');
       return;
     }
 
+    setScanning(true);
     try {
       const base64 = platePhoto.split(',')[1] ?? '';
       const { data, error } = await supabase.functions.invoke('scan-fixture-label', {
         body: { imageBase64: base64 },
       });
-      if (error) throw error;
-      if (data && typeof data === 'object') {
+      if (error) {
+        const msg = (error as { message?: string }).message || 'Edge function error';
+        throw new Error(msg);
+      }
+      if (data && typeof data === 'object' && !('error' in data)) {
         setBrand(String(data.brand ?? '').trim());
         setModel(String(data.model ?? '').trim());
         setSerialNumber(String(data.serialNumber ?? '').trim());
@@ -295,11 +297,16 @@ export default function AddAsset() {
         toast.success('Label scanned');
         return;
       }
-      throw new Error('No structured response');
+      const errMsg = (data as { error?: string })?.error ?? 'No structured response from AI';
+      throw new Error(errMsg);
     } catch (e) {
-      console.error(e);
-      toast.error('AI scan failed — fill manually');
+      console.error('scan failed', e);
+      const msg = e instanceof Error ? e.message : 'Unknown error';
+      setScanError(msg);
       setScanned(true);
+      toast.error(`AI scan failed: ${msg}`);
+    } finally {
+      setScanning(false);
     }
   }
 
@@ -335,7 +342,7 @@ export default function AddAsset() {
       });
       if (created) {
         toast.success('Fixture added');
-        navigate('/');
+        setPostSaveOpen(true);
       }
     } catch (e) {
       console.error(e);
@@ -738,7 +745,7 @@ export default function AddAsset() {
 
           {selectedBuilding && (
             <div>
-              <label className="text-sm font-medium text-foreground">Floor</label>
+              <label className="text-sm font-medium text-foreground">📍 What floor are you on?</label>
               <select value={floor} onChange={(e) => setFloor(e.target.value)} className="mt-1 w-full rounded-lg border bg-card px-3 py-2.5 text-sm text-foreground">
                 <option value="">Select floor...</option>
                 {Array.from({ length: selectedBuilding.floors }, (_, i) => <option key={i + 1} value={i + 1}>Floor {i + 1}</option>)}
@@ -748,15 +755,15 @@ export default function AddAsset() {
 
           {selectedBuilding && floor && (
             <div>
-              <label className="text-sm font-medium text-foreground">Nearest room / landmark</label>
+              <label className="text-sm font-medium text-foreground">🚪 Room number (or nearest landmark)</label>
               <input
                 value={nearestRoom}
                 onChange={(e) => setNearestRoom(e.target.value)}
-                placeholder="e.g. 205 (near restroom)"
+                placeholder="e.g. 205, or 'hallway near restroom'"
                 className="mt-1 w-full rounded-lg border bg-card px-3 py-2.5 text-sm text-foreground"
               />
               <p className="mt-1 text-[11px] text-muted-foreground">
-                Tip: drinking water sources are often by the restroom.
+                Tip: drinking water sources are often by the restroom. Confirm the exact location before taking photos.
               </p>
             </div>
           )}
@@ -766,12 +773,22 @@ export default function AddAsset() {
       {/* Step 2: Photos + optional scan */}
       {step === 2 && (
         <div className="mt-4 space-y-4">
-          <p className="text-sm text-muted-foreground">Optional: add photos and scan model plate</p>
+          <div className="rounded-2xl border bg-accent/5 p-3">
+            <p className="text-sm font-semibold text-foreground">📸 What to photograph</p>
+            <ul className="mt-1.5 text-[11px] text-muted-foreground space-y-1 list-disc pl-4">
+              <li><strong>General photo:</strong> the whole fixture so it can be identified.</li>
+              <li><strong>Model plate:</strong> the brand/model sticker — usually on the side, back, or under the basin.</li>
+            </ul>
+            <p className="mt-1.5 text-[11px] text-muted-foreground">
+              Note: some older fixtures don't have a model sticker. If so, skip the plate photo and fill the fields manually.
+            </p>
+          </div>
 
           <input
             ref={photoInputRef}
             type="file"
             accept="image/*"
+            capture="environment"
             className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0];
@@ -783,41 +800,77 @@ export default function AddAsset() {
             ref={platePhotoInputRef}
             type="file"
             accept="image/*"
+            capture="environment"
             className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0];
-              if (file) handleFileUpload(file, setPlatePhoto);
+              if (file) {
+                handleFileUpload(file, setPlatePhoto);
+                setScanned(false);
+                setScanError(null);
+              }
               e.currentTarget.value = '';
             }}
           />
 
           <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => photoInputRef.current?.click()}
-              className="flex flex-col items-center gap-2 rounded-xl border-2 border-dashed p-6 text-muted-foreground hover:border-accent hover:text-accent transition-colors"
-            >
+            <div className="rounded-xl border-2 border-dashed p-3">
               {photo ? (
-                <img src={photo} alt="Fixture" className="h-20 w-full rounded-lg object-cover" />
-              ) : (
                 <>
-                  <Camera className="h-8 w-8" />
+                  <img src={photo} alt="Fixture" className="h-24 w-full rounded-lg object-cover" />
+                  <div className="mt-2 flex gap-2">
+                    <button onClick={() => photoInputRef.current?.click()} className="flex-1 rounded-md bg-secondary px-2 py-1 text-[11px] font-semibold text-secondary-foreground">Retake</button>
+                    <button onClick={() => setPhoto(null)} className="rounded-md bg-secondary px-2 py-1 text-[11px] font-semibold text-secondary-foreground">✕</button>
+                  </div>
+                </>
+              ) : (
+                <button onClick={() => photoInputRef.current?.click()} className="flex w-full flex-col items-center gap-1.5 py-3 text-muted-foreground">
+                  <Camera className="h-6 w-6" />
                   <span className="text-xs font-medium">General photo</span>
-                </>
+                  <span className="text-[10px] text-muted-foreground">Whole fixture</span>
+                </button>
               )}
-            </button>
-            <button
-              onClick={() => platePhotoInputRef.current?.click()}
-              className="flex flex-col items-center gap-2 rounded-xl border-2 border-dashed p-6 text-muted-foreground hover:border-accent hover:text-accent transition-colors"
-            >
+            </div>
+            <div className="rounded-xl border-2 border-dashed p-3">
               {platePhoto ? (
-                <img src={platePhoto} alt="Model Plate" className="h-20 w-full rounded-lg object-cover" />
-              ) : (
                 <>
-                  <ImagePlus className="h-8 w-8" />
-                  <span className="text-xs font-medium">Model plate</span>
+                  <img src={platePhoto} alt="Model Plate" className="h-24 w-full rounded-lg object-cover" />
+                  <div className="mt-2 flex gap-2">
+                    <button onClick={() => platePhotoInputRef.current?.click()} className="flex-1 rounded-md bg-secondary px-2 py-1 text-[11px] font-semibold text-secondary-foreground">Retake</button>
+                    <button onClick={() => { setPlatePhoto(null); setScanned(false); setScanError(null); }} className="rounded-md bg-secondary px-2 py-1 text-[11px] font-semibold text-secondary-foreground">✕</button>
+                  </div>
                 </>
+              ) : (
+                <button onClick={() => platePhotoInputRef.current?.click()} className="flex w-full flex-col items-center gap-1.5 py-3 text-muted-foreground">
+                  <ImagePlus className="h-6 w-6" />
+                  <span className="text-xs font-medium">Model plate</span>
+                  <span className="text-[10px] text-muted-foreground">Brand/model sticker</span>
+                </button>
               )}
-            </button>
+            </div>
+          </div>
+
+          {/* Quick fixture-type pick after taking photos */}
+          <div className="rounded-2xl border bg-card p-4">
+            <p className="text-sm font-semibold text-foreground">What type of fixture is this?</p>
+            <p className="text-[11px] text-muted-foreground">You can change this on the next step.</p>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              {(Object.keys(fixtureCategoryMeta) as FixtureCategory[]).map((id) => {
+                const active = category === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setCategory(id)}
+                    className={`rounded-lg border px-2 py-2 text-left text-xs ${
+                      active ? 'border-accent bg-accent/10 text-foreground' : 'bg-card text-muted-foreground'
+                    }`}
+                  >
+                    {fixtureCategoryMeta[id].label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <div className="rounded-2xl border bg-card p-4">
@@ -825,41 +878,75 @@ export default function AddAsset() {
               <div className="flex items-center gap-2">
                 <ScanLine className="h-4 w-4 text-accent" />
                 <div>
-                  <p className="text-sm font-semibold text-foreground">Analyze photos</p>
-                  <p className="text-[11px] text-muted-foreground">Auto-fill brand/model/serial/filter + suggest type</p>
+                  <p className="text-sm font-semibold text-foreground">Auto-scan label</p>
+                  <p className="text-[11px] text-muted-foreground">Reads brand/model/serial from the plate photo</p>
                 </div>
               </div>
               <button
                 onClick={handleScan}
-                className="rounded-xl bg-accent px-4 py-2 text-xs font-semibold text-accent-foreground"
+                disabled={scanning}
+                className="rounded-xl bg-accent px-4 py-2 text-xs font-semibold text-accent-foreground disabled:opacity-50"
               >
-                Analyze
+                {scanning ? 'Scanning…' : scanned ? 'Re-scan' : 'Scan'}
               </button>
             </div>
 
-            {scanned && (
-              <div className="mt-3 space-y-3">
-                <div className="flex items-center gap-2 text-status-good">
-                  <CheckCircle2 className="h-4 w-4" />
-                  <span className="text-sm font-medium">Analysis ready</span>
-                </div>
-                {[
-                  { label: 'Brand', value: brand, setter: setBrand },
-                  { label: 'Model', value: model, setter: setModel },
-                  { label: 'Serial Number', value: serialNumber, setter: setSerialNumber },
-                  { label: 'Filter Type', value: filterType, setter: setFilterType },
-                ].map(({ label, value, setter }) => (
-                  <div key={label}>
-                    <label className="text-xs font-medium text-muted-foreground">{label}</label>
-                    <input
-                      value={value}
-                      onChange={(e) => setter(e.target.value)}
-                      className="mt-1 w-full rounded-lg border bg-card px-3 py-2 text-sm text-foreground"
-                    />
+            {scanError && (
+              <div className="mt-3 rounded-xl border border-status-urgent/40 bg-status-urgent/10 p-3">
+                <div className="flex items-start gap-2">
+                  <MessageSquareWarning className="h-4 w-4 text-status-urgent flex-none mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-status-urgent">Scan failed</p>
+                    <p className="mt-0.5 text-[11px] text-status-urgent/80 break-words">{scanError}</p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      Try retaking the photo with the label centered and well-lit, or fill the fields manually below.
+                    </p>
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        onClick={() => platePhotoInputRef.current?.click()}
+                        className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold text-secondary-foreground"
+                      >
+                        Retake photo
+                      </button>
+                      <button
+                        onClick={handleScan}
+                        disabled={scanning}
+                        className="rounded-full bg-foreground px-3 py-1 text-[11px] font-semibold text-background disabled:opacity-50"
+                      >
+                        {scanning ? 'Retrying…' : 'Try again'}
+                      </button>
+                    </div>
                   </div>
-                ))}
+                </div>
               </div>
             )}
+
+            {scanned && !scanError && (
+              <div className="mt-3 flex items-center gap-2 text-status-good">
+                <CheckCircle2 className="h-4 w-4" />
+                <span className="text-sm font-medium">Scan ready — confirm or edit below</span>
+              </div>
+            )}
+
+            {/* Always-editable fields so older / unlabeled fixtures still work */}
+            <div className="mt-3 space-y-3">
+              {[
+                { label: 'Brand', value: brand, setter: setBrand },
+                { label: 'Model', value: model, setter: setModel },
+                { label: 'Serial Number', value: serialNumber, setter: setSerialNumber },
+                { label: 'Filter Type', value: filterType, setter: setFilterType },
+              ].map(({ label, value, setter }) => (
+                <div key={label}>
+                  <label className="text-xs font-medium text-muted-foreground">{label}</label>
+                  <input
+                    value={value}
+                    onChange={(e) => setter(e.target.value)}
+                    placeholder={label === 'Serial Number' ? 'Leave blank if no label' : ''}
+                    className="mt-1 w-full rounded-lg border bg-card px-3 py-2 text-sm text-foreground"
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -1029,6 +1116,52 @@ export default function AddAsset() {
           </button>
         )}
       </div>
+
+      {/* Post-save: Are you done with this floor? */}
+      {postSaveOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4" onClick={() => { setPostSaveOpen(false); navigate('/'); }}>
+          <div className="w-full max-w-sm rounded-2xl bg-card p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <p className="text-base font-semibold text-foreground">Fixture saved ✓</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Are you done collecting fixtures on Floor {floor}?
+            </p>
+            <div className="mt-4 grid grid-cols-1 gap-2">
+              <button
+                onClick={() => {
+                  // Stay in onboard mode for another fixture on the same floor
+                  setPhoto(null); setPlatePhoto(null); setBrand(''); setModel(''); setSerialNumber('');
+                  setFilterType(''); setScanned(false); setScanError(null); setCategory(null); setSuggestedCategory(null);
+                  setObservations(''); setIssues([]); setNearestRoom('');
+                  setStep(1);
+                  setPostSaveOpen(false);
+                }}
+                className="rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground"
+              >
+                Add another on Floor {floor}
+              </button>
+              <button
+                onClick={async () => {
+                  if (selectedBuildingId && floor) {
+                    await setFloorStatus(selectedBuildingId, parseInt(floor), 'Done');
+                    toast.success(`Floor ${floor} marked as Done`);
+                  }
+                  setPostSaveOpen(false);
+                  navigate('/campus');
+                }}
+                className="rounded-xl bg-foreground px-4 py-2.5 text-sm font-semibold text-background"
+              >
+                Yes — mark Floor {floor} done
+              </button>
+              <button
+                onClick={() => { setPostSaveOpen(false); navigate('/'); }}
+                className="rounded-xl bg-secondary px-4 py-2.5 text-sm font-semibold text-secondary-foreground"
+              >
+                Back to dashboard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

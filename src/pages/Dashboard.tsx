@@ -3,12 +3,13 @@ import { Link } from 'react-router-dom';
 import { useFixtureStore, getFixtureStatus, getDaysSinceMaintenance } from '@/store/fixtureStore';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Search, Droplets, AlertTriangle, CheckCircle2, Download, Wrench, ArrowRight } from 'lucide-react';
-import { exportToCSV } from '@/lib/exportCSV';
+import { ExportDialog } from '@/components/ExportDialog';
 
 export default function Dashboard() {
   const { fixtures, campuses, buildings, userRole, searchFixtures, getMaintenanceTasks, getFixturesByCampus, getBuildingsByCampus, getFloorsByBuilding } = useFixtureStore();
   const [query, setQuery] = useState('');
   const [selectedCampus, setSelectedCampus] = useState<string>('all');
+  const [exportOpen, setExportOpen] = useState(false);
 
   const filteredFixtures = selectedCampus === 'all' ? fixtures : getFixturesByCampus(selectedCampus);
   const results = query ? searchFixtures(query).filter(f => selectedCampus === 'all' || f.campusId === selectedCampus) : [];
@@ -44,13 +45,14 @@ export default function Dashboard() {
           <p className="text-sm text-muted-foreground">Campus Fixture Dashboard</p>
         </div>
         <button
-          onClick={() => exportToCSV(filteredFixtures)}
+          onClick={() => setExportOpen(true)}
           className="flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-xs font-semibold text-background shadow-sm"
         >
           <Download className="h-3.5 w-3.5" />
           Export
         </button>
       </div>
+      <ExportDialog open={exportOpen} onOpenChange={setExportOpen} fixtures={filteredFixtures} campuses={campuses} />
 
       {/* Campus filter */}
       <div className="flex gap-2 mt-4 overflow-x-auto pb-1">
