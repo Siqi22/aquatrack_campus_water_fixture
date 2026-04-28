@@ -51,7 +51,7 @@ async function mapboxAutocomplete(args: {
 }
 
 export default function AddAsset() {
-  const { campuses, buildings, fixtures, addCampus, addBuilding, addFixture, searchFixtures, getBuildingsByCampus, getFixturesByCampus } = useFixtureStore();
+  const { campuses, buildings, fixtures, addCampus, addBuilding, addFixture, searchFixtures, getBuildingsByCampus, getFixturesByCampus, setFloorStatus } = useFixtureStore();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [mode, setMode] = useState<Mode>('choose');
@@ -89,6 +89,7 @@ export default function AddAsset() {
   const [cleanliness, setCleanliness] = useState(3);
   const [observations, setObservations] = useState('');
   const [issues, setIssues] = useState<string[]>([]);
+  const [postSaveOpen, setPostSaveOpen] = useState(false);
 
   // University/campus creation + fuzzy matching
   const [campusQuery, setCampusQuery] = useState('');
@@ -341,7 +342,7 @@ export default function AddAsset() {
       });
       if (created) {
         toast.success('Fixture added');
-        navigate('/');
+        setPostSaveOpen(true);
       }
     } catch (e) {
       console.error(e);
