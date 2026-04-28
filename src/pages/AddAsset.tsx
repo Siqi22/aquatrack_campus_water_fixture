@@ -79,6 +79,8 @@ export default function AddAsset() {
   const [serialNumber, setSerialNumber] = useState('');
   const [filterType, setFilterType] = useState('');
   const [scanned, setScanned] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
   const [nearestRoom, setNearestRoom] = useState('');
   const [category, setCategory] = useState<FixtureCategory | null>(null);
   const [suggestedCategory, setSuggestedCategory] = useState<FixtureCategory | null>(null);
@@ -263,25 +265,24 @@ export default function AddAsset() {
   }
 
   async function handleScan() {
+    setScanError(null);
     if (!platePhoto || !platePhoto.startsWith('data:')) {
-      setBrand('Elkay');
-      setModel('EZH2O');
-      setSerialNumber(`SN-${Math.random().toString(36).substring(2, 8).toUpperCase()}`);
-      setFilterType('WaterSentry Plus');
-      setSuggestedCategory('CombinationUnit');
-      setCategory((prev) => prev ?? 'CombinationUnit');
+      setScanError('No model-plate photo provided. Take or upload a photo of the label, or fill the fields manually below.');
       setScanned(true);
-      toast.message('Scanned with placeholder (no photo provided).');
       return;
     }
 
+    setScanning(true);
     try {
       const base64 = platePhoto.split(',')[1] ?? '';
       const { data, error } = await supabase.functions.invoke('scan-fixture-label', {
         body: { imageBase64: base64 },
       });
-      if (error) throw error;
-      if (data && typeof data === 'object') {
+      if (error) {
+        const msg = (error as { message?: string }).message || 'Edge function error';
+        throw new Error(msg);
+      }
+      if (data && typeof data === 'object' && !('error' in data)) {
         setBrand(String(data.brand ?? '').trim());
         setModel(String(data.model ?? '').trim());
         setSerialNumber(String(data.serialNumber ?? '').trim());
@@ -295,11 +296,16 @@ export default function AddAsset() {
         toast.success('Label scanned');
         return;
       }
-      throw new Error('No structured response');
+      const errMsg = (data as { error?: string })?.error ?? 'No structured response from AI';
+      throw new Error(errMsg);
     } catch (e) {
-      console.error(e);
-      toast.error('AI scan failed — fill manually');
+      console.error('scan failed', e);
+      const msg = e instanceof Error ? e.message : 'Unknown error';
+      setScanError(msg);
       setScanned(true);
+      toast.error(`AI scan failed: ${msg}`);
+    } finally {
+      setScanning(false);
     }
   }
 
