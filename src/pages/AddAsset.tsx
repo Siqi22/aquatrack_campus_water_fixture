@@ -744,7 +744,7 @@ export default function AddAsset() {
 
           {selectedBuilding && (
             <div>
-              <label className="text-sm font-medium text-foreground">Floor</label>
+              <label className="text-sm font-medium text-foreground">📍 What floor are you on?</label>
               <select value={floor} onChange={(e) => setFloor(e.target.value)} className="mt-1 w-full rounded-lg border bg-card px-3 py-2.5 text-sm text-foreground">
                 <option value="">Select floor...</option>
                 {Array.from({ length: selectedBuilding.floors }, (_, i) => <option key={i + 1} value={i + 1}>Floor {i + 1}</option>)}
@@ -754,15 +754,15 @@ export default function AddAsset() {
 
           {selectedBuilding && floor && (
             <div>
-              <label className="text-sm font-medium text-foreground">Nearest room / landmark</label>
+              <label className="text-sm font-medium text-foreground">🚪 Room number (or nearest landmark)</label>
               <input
                 value={nearestRoom}
                 onChange={(e) => setNearestRoom(e.target.value)}
-                placeholder="e.g. 205 (near restroom)"
+                placeholder="e.g. 205, or 'hallway near restroom'"
                 className="mt-1 w-full rounded-lg border bg-card px-3 py-2.5 text-sm text-foreground"
               />
               <p className="mt-1 text-[11px] text-muted-foreground">
-                Tip: drinking water sources are often by the restroom.
+                Tip: drinking water sources are often by the restroom. Confirm the exact location before taking photos.
               </p>
             </div>
           )}
