@@ -438,7 +438,7 @@ export default function AddAsset() {
     2: true,
     3: true,
     4: !!category,
-    5: locationConfirmed,
+    5: locationConfirmed && step5Ready,
   };
 
   // Mode chooser
