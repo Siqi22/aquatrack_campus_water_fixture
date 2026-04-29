@@ -272,8 +272,14 @@ export default function AddAsset() {
 
   async function handleScan() {
     setScanError(null);
+    setScanResult(null);
+    if (!photo || !photo.startsWith('data:')) {
+      setScanError('Missing the GENERAL photo of the fixture. Take or upload it so we know what kind of unit this is.');
+      setScanned(true);
+      return;
+    }
     if (!platePhoto || !platePhoto.startsWith('data:')) {
-      setScanError('No model-plate photo provided. Take or upload a photo of the label, or fill the fields manually below.');
+      setScanError('Missing the MODEL-PLATE photo. Either take a photo of the brand/model sticker, or use “No model label” below.');
       setScanned(true);
       return;
     }
@@ -289,17 +295,33 @@ export default function AddAsset() {
         throw new Error(msg);
       }
       if (data && typeof data === 'object' && !('error' in data)) {
-        setBrand(String(data.brand ?? '').trim());
-        setModel(String(data.model ?? '').trim());
-        setSerialNumber(String(data.serialNumber ?? '').trim());
-        setFilterType(String(data.filterType ?? '').trim());
-        const cat = String(data.category ?? '').trim() as FixtureCategory;
+        const result = {
+          brand: String(data.brand ?? '').trim(),
+          model: String(data.model ?? '').trim(),
+          serialNumber: String(data.serialNumber ?? '').trim(),
+          filterType: String(data.filterType ?? '').trim(),
+          category: String(data.category ?? '').trim(),
+          confidence: typeof data.confidence === 'number' ? data.confidence : 0,
+        };
+        setScanResult(result);
+        setBrand(result.brand);
+        setModel(result.model);
+        setSerialNumber(result.serialNumber);
+        setFilterType(result.filterType);
+        const cat = result.category as FixtureCategory;
         if ((Object.keys(fixtureCategoryMeta) as string[]).includes(cat)) {
           setSuggestedCategory(cat);
           setCategory((prev) => prev ?? cat);
         }
         setScanned(true);
-        toast.success('Label scanned');
+        const missing: string[] = [];
+        if (!result.brand) missing.push('brand');
+        if (!result.model) missing.push('model');
+        if (missing.length) {
+          toast.warning(`Scan partial — couldn't read: ${missing.join(', ')}`);
+        } else {
+          toast.success('Label scanned');
+        }
         return;
       }
       const errMsg = (data as { error?: string })?.error ?? 'No structured response from AI';
