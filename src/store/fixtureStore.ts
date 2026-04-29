@@ -69,6 +69,12 @@ export interface Fixture {
   issues?: string[];
   posX?: number;
   posY?: number;
+  // Audit + no-label tracking
+  noLabelReason?: string;
+  noLabelReasonOther?: string;
+  photosProvided?: string[];
+  locationConfirmed?: boolean;
+  savedByName?: string;
 }
 
 export interface Building {
@@ -156,6 +162,11 @@ function mapFixture(r: FixtureRow, buildingName: string): Fixture {
     issues: r.issues ?? undefined,
     posX: r.pos_x != null ? Number(r.pos_x) : undefined,
     posY: r.pos_y != null ? Number(r.pos_y) : undefined,
+    noLabelReason: (r as { no_label_reason?: string | null }).no_label_reason ?? undefined,
+    noLabelReasonOther: (r as { no_label_reason_other?: string | null }).no_label_reason_other ?? undefined,
+    photosProvided: (r as { photos_provided?: string[] | null }).photos_provided ?? undefined,
+    locationConfirmed: (r as { location_confirmed?: boolean | null }).location_confirmed ?? undefined,
+    savedByName: (r as { saved_by_name?: string | null }).saved_by_name ?? undefined,
   };
 }
 function mapFloorProgress(r: FloorProgressRow): BuildingFloorProgress {
@@ -324,6 +335,12 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
 
   addFixture: async (f) => {
     const { data: userResp } = await supabase.auth.getUser();
+    const userId = userResp?.user?.id ?? null;
+    let savedByName: string | null = f.savedByName ?? null;
+    if (!savedByName && userId) {
+      const { data: profile } = await supabase.from('profiles').select('display_name').eq('user_id', userId).maybeSingle();
+      savedByName = profile?.display_name ?? userResp?.user?.email ?? null;
+    }
     const { data, error } = await supabase
       .from('fixtures')
       .insert({
@@ -347,8 +364,13 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
         model_plate_photo_url: f.modelPlatePhotoURL || null,
         installation_date: f.installationDate ?? null,
         last_maintenance_date: f.lastMaintenanceDate,
-        created_by: userResp?.user?.id ?? null,
-      })
+        created_by: userId,
+        no_label_reason: f.noLabelReason ?? null,
+        no_label_reason_other: f.noLabelReasonOther ?? null,
+        photos_provided: f.photosProvided ?? null,
+        location_confirmed: f.locationConfirmed ?? false,
+        saved_by_name: savedByName,
+      } as never)
       .select('*')
       .single();
     if (error || !data) { console.error(error); return null; }
