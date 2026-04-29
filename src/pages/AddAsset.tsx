@@ -1406,7 +1406,7 @@ export default function AddAsset() {
                   setPhoto(null); setPlatePhoto(null); setBrand(''); setModel(''); setSerialNumber('');
                   setFilterType(''); setScanned(false); setScanError(null); setScanResult(null); setCategory(null); setSuggestedCategory(null);
                   setObservations(''); setIssues([]); setNearestRoom('');
-                  setNoLabel(false); setNoLabelReason(''); setNearestFixtureId(''); setLocationConfirmed(false);
+                  setNoLabel(false); setNoLabelReason(''); setNoLabelReasonOther(''); setNearestFixtureId(''); setLocationConfirmed(false);
                   setStep(1);
                   setStep(1);
                   setPostSaveOpen(false);
