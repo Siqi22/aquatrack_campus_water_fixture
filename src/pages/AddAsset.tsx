@@ -1067,12 +1067,40 @@ export default function AddAsset() {
                 </div>
               </label>
               {noLabel && (
-                <textarea
-                  value={noLabelReason}
-                  onChange={(e) => setNoLabelReason(e.target.value)}
-                  placeholder="Why? e.g. 'sticker worn off', 'older model with no plate', 'plate behind wall'"
-                  className="mt-2 w-full min-h-[60px] rounded-lg border bg-card px-3 py-2 text-xs text-foreground"
-                />
+                <div className="mt-2 space-y-2">
+                  <div>
+                    <label className="text-[11px] font-medium text-muted-foreground">
+                      Reason <span className="text-status-urgent">*</span>
+                    </label>
+                    <select
+                      value={noLabelReason}
+                      onChange={(e) => setNoLabelReason(e.target.value)}
+                      className="mt-1 w-full rounded-lg border bg-card px-3 py-2 text-xs text-foreground"
+                    >
+                      <option value="">Select a reason…</option>
+                      {NO_LABEL_REASONS.map((r) => (
+                        <option key={r} value={r}>{r}</option>
+                      ))}
+                    </select>
+                    {!noLabelReason && (
+                      <p className="mt-1 text-[10px] text-status-urgent">Required when no plate photo is provided.</p>
+                    )}
+                  </div>
+                  {noLabelReason === 'Other' && (
+                    <div>
+                      <label className="text-[11px] font-medium text-muted-foreground">Describe</label>
+                      <textarea
+                        value={noLabelReasonOther}
+                        onChange={(e) => setNoLabelReasonOther(e.target.value)}
+                        placeholder="Explain why the model label can't be captured"
+                        className="mt-1 w-full min-h-[50px] rounded-lg border bg-card px-3 py-2 text-xs text-foreground"
+                      />
+                      {!noLabelReasonOther.trim() && (
+                        <p className="mt-1 text-[10px] text-status-urgent">Please describe the reason.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 
