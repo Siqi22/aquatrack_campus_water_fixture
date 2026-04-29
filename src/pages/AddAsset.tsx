@@ -1283,8 +1283,10 @@ export default function AddAsset() {
                 onClick={() => {
                   // Stay in onboard mode for another fixture on the same floor
                   setPhoto(null); setPlatePhoto(null); setBrand(''); setModel(''); setSerialNumber('');
-                  setFilterType(''); setScanned(false); setScanError(null); setCategory(null); setSuggestedCategory(null);
+                  setFilterType(''); setScanned(false); setScanError(null); setScanResult(null); setCategory(null); setSuggestedCategory(null);
                   setObservations(''); setIssues([]); setNearestRoom('');
+                  setNoLabel(false); setNoLabelReason(''); setNearestFixtureId(''); setLocationConfirmed(false);
+                  setStep(1);
                   setStep(1);
                   setPostSaveOpen(false);
                 }}
