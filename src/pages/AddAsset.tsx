@@ -1344,10 +1344,20 @@ export default function AddAsset() {
             <p className="mt-1 text-[11px] text-muted-foreground">Helps audit the position relative to known assets. Leave blank if none nearby.</p>
           </div>
 
-          <label className="flex items-start gap-2 rounded-xl border bg-card p-3 cursor-pointer">
+          {!step5Ready && (
+            <div className="rounded-xl border border-status-warning/40 bg-status-warning/10 p-3">
+              <p className="text-xs font-semibold text-status-warning">Complete these before confirming:</p>
+              <ul className="mt-1 list-disc pl-4 text-[11px] text-status-warning/90">
+                {step5Missing.map((m) => <li key={m}>{m}</li>)}
+              </ul>
+            </div>
+          )}
+
+          <label className={`flex items-start gap-2 rounded-xl border p-3 ${step5Ready ? 'bg-card cursor-pointer' : 'bg-muted/30 cursor-not-allowed opacity-60'}`}>
             <input
               type="checkbox"
               checked={locationConfirmed}
+              disabled={!step5Ready}
               onChange={(e) => setLocationConfirmed(e.target.checked)}
               className="mt-0.5"
             />
