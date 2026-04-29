@@ -340,12 +340,28 @@ export default function AddAsset() {
   async function handleSubmit() {
     const building = buildings.find((b) => b.id === selectedBuildingId);
     if (!building || !category) return;
+    if (!locationConfirmed) {
+      toast.error('Please confirm the fixture location before saving.');
+      return;
+    }
     try {
-      // Upload photos to storage if they're data URLs
       const [photoUrl, plateUrl] = await Promise.all([
         photo ? uploadFixturePhoto(photo, 'general').catch(() => '') : Promise.resolve(''),
         platePhoto ? uploadFixturePhoto(platePhoto, 'plate').catch(() => '') : Promise.resolve(''),
       ]);
+
+      // Compose observations: include no-label note + nearest fixture id reference
+      const noteParts: string[] = [];
+      if (observations.trim()) noteParts.push(observations.trim());
+      if (noLabel) {
+        const reason = noLabelReason.trim() || 'no model label visible';
+        noteParts.push(`[No model label] ${reason}`);
+      }
+      if (nearestFixtureId.trim()) {
+        noteParts.push(`Nearest fixture ID: ${nearestFixtureId.trim()}`);
+      }
+      const finalObs = noteParts.join(' | ') || undefined;
+
       const created = await addFixture({
         campusId: selectedCampusId,
         buildingId: selectedBuildingId,
@@ -362,7 +378,7 @@ export default function AddAsset() {
         filterType,
         category,
         qualityRating: { pressure, cleanliness },
-        observations: observations || undefined,
+        observations: finalObs,
         issues: issues.length ? issues : undefined,
         posX: Math.floor(Math.random() * 60 + 20),
         posY: Math.floor(Math.random() * 60 + 20),
@@ -382,6 +398,7 @@ export default function AddAsset() {
     2: true,
     3: true,
     4: !!category,
+    5: locationConfirmed,
   };
 
   // Mode chooser
