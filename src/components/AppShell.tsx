@@ -6,8 +6,8 @@ import { toast } from 'sonner';
 
 const tabs = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/campus', icon: Building2, label: 'Campus' },
   { to: '/add', icon: PlusCircle, label: 'Assets' },
+  { to: '/campus', icon: Building2, label: 'Campus' },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -30,21 +30,24 @@ export function AppShell({ children }: { children: ReactNode }) {
           <LogOut className="h-3.5 w-3.5" /> Sign out
         </button>
       </header>
-      <div className="flex-1 overflow-y-scroll pb-28 scroll-gutter-stable">{children}</div>
-      <nav className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-4">
-        <div className="mx-auto flex max-w-lg rounded-[1.75rem] border bg-card/90 p-2 shadow-[0_16px_45px_rgba(0,0,0,0.12)] backdrop-blur-xl">
+      <div className="flex-1 overflow-y-scroll pb-24 scroll-gutter-stable">{children}</div>
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-t from-card via-card/95 to-card/80 shadow-[0_-5px_15px_rgba(147,147,147,0.14)] backdrop-blur-xl">
+        <div className="mx-auto flex h-20 max-w-lg items-center justify-center gap-[50px] px-6">
           {tabs.map(({ to, icon: Icon, label }) => {
             const active = pathname === to;
             return (
               <Link
                 key={to}
                 to={to}
-                className={`flex flex-1 flex-col items-center gap-1 rounded-[1.25rem] py-2.5 text-[10px] font-semibold transition-all ${
-                  active ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-secondary/40 hover:text-foreground'
+                aria-label={label}
+                className={`flex h-9 items-center justify-center transition-colors ${
+                  active
+                    ? 'gap-1 rounded-[20px] bg-[#C8C8F4]/15 px-3 py-1 text-[#4C4DDC]'
+                    : 'w-8 text-[#939393] hover:text-foreground'
                 }`}
               >
-                <Icon className="h-5 w-5" strokeWidth={active ? 2.3 : 1.7} />
-                {label}
+                <Icon className="h-6 w-6" strokeWidth={active ? 2.4 : 1.8} />
+                {active ? <span className="text-xs font-semibold leading-none">{label}</span> : null}
               </Link>
             );
           })}
