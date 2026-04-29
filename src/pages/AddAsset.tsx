@@ -84,10 +84,12 @@ export default function AddAsset() {
   const [scanResult, setScanResult] = useState<{ brand: string; model: string; serialNumber: string; filterType: string; category: string; confidence: number } | null>(null);
   const [noLabel, setNoLabel] = useState(false);
   const [noLabelReason, setNoLabelReason] = useState('');
+  const [noLabelReasonOther, setNoLabelReasonOther] = useState('');
   const [nearestRoom, setNearestRoom] = useState('');
   const [category, setCategory] = useState<FixtureCategory | null>(null);
   const [suggestedCategory, setSuggestedCategory] = useState<FixtureCategory | null>(null);
   const [categoryHelp, setCategoryHelp] = useState<FixtureCategory | null>(null);
+  const [categoryRefHelp, setCategoryRefHelp] = useState<FixtureCategory | null>(null);
   const [pressure, setPressure] = useState(3);
   const [cleanliness, setCleanliness] = useState(3);
   const [observations, setObservations] = useState('');
