@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useFixtureStore, getFixtureStatus, fixtureCategoryMeta } from '@/store/fixtureStore';
 import type { FixtureCategory } from '@/store/fixtureStore';
-import { Camera, ScanLine, CheckCircle2, Building2, ChevronLeft, ChevronRight, ImagePlus, PlusCircle, ListChecks, Search, Droplets, Map, Tags, MessageSquareWarning, HelpCircle, University } from 'lucide-react';
+import { Camera, ScanLine, CheckCircle2, Building2, ChevronLeft, ChevronRight, ImagePlus, PlusCircle, ListChecks, Search, Droplets, Map, Tags, MessageSquareWarning, HelpCircle, University, Info, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { StarRating } from '@/components/StarRating';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -362,23 +362,28 @@ export default function AddAsset() {
       toast.error('Please confirm the fixture location before saving.');
       return;
     }
+    if (noLabel && !noLabelReason) {
+      toast.error('Pick a reason for the missing model label.');
+      return;
+    }
+    if (noLabel && noLabelReason === 'Other' && !noLabelReasonOther.trim()) {
+      toast.error('Describe the "Other" reason for the missing label.');
+      return;
+    }
     try {
       const [photoUrl, plateUrl] = await Promise.all([
         photo ? uploadFixturePhoto(photo, 'general').catch(() => '') : Promise.resolve(''),
         platePhoto ? uploadFixturePhoto(platePhoto, 'plate').catch(() => '') : Promise.resolve(''),
       ]);
 
-      // Compose observations: include no-label note + nearest fixture id reference
       const noteParts: string[] = [];
       if (observations.trim()) noteParts.push(observations.trim());
-      if (noLabel) {
-        const reason = noLabelReason.trim() || 'no model label visible';
-        noteParts.push(`[No model label] ${reason}`);
-      }
-      if (nearestFixtureId.trim()) {
-        noteParts.push(`Nearest fixture ID: ${nearestFixtureId.trim()}`);
-      }
+      if (nearestFixtureId.trim()) noteParts.push(`Nearest fixture ID: ${nearestFixtureId.trim()}`);
       const finalObs = noteParts.join(' | ') || undefined;
+
+      const photosProvided: string[] = [];
+      if (photo) photosProvided.push('general');
+      if (platePhoto) photosProvided.push('plate');
 
       const created = await addFixture({
         campusId: selectedCampusId,
@@ -400,6 +405,10 @@ export default function AddAsset() {
         issues: issues.length ? issues : undefined,
         posX: Math.floor(Math.random() * 60 + 20),
         posY: Math.floor(Math.random() * 60 + 20),
+        noLabelReason: noLabel ? noLabelReason : undefined,
+        noLabelReasonOther: noLabel && noLabelReason === 'Other' ? noLabelReasonOther.trim() : undefined,
+        photosProvided,
+        locationConfirmed: true,
       });
       if (created) {
         toast.success('Fixture added');
@@ -410,6 +419,19 @@ export default function AddAsset() {
       toast.error('Could not save fixture');
     }
   }
+
+  // Step 5 inline validation — for the confirm checkbox + Save
+  const trimmedRoom = nearestRoom.trim();
+  const roomLooksValid = trimmedRoom.length >= 2;
+  const step5Missing: string[] = [];
+  if (!selectedCampusId) step5Missing.push('Campus');
+  if (!selectedBuildingId) step5Missing.push('Building');
+  if (!floor) step5Missing.push('Floor');
+  if (!roomLooksValid) step5Missing.push('Room (min 2 chars)');
+  if (!category) step5Missing.push('Fixture type');
+  if (noLabel && !noLabelReason) step5Missing.push('No-label reason');
+  if (noLabel && noLabelReason === 'Other' && !noLabelReasonOther.trim()) step5Missing.push('"Other" reason text');
+  const step5Ready = step5Missing.length === 0;
 
   const canProceed: Record<number, boolean> = {
     1: !!selectedCampusId && !!selectedBuildingId && !!floor && !!nearestRoom,
