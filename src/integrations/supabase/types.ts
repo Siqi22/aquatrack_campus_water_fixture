@@ -115,15 +115,20 @@ export type Database = {
           installation_date: string | null
           issues: string[] | null
           last_maintenance_date: string
+          location_confirmed: boolean
           model: string | null
           model_plate_photo_url: string | null
           nearest_room: string | null
+          no_label_reason: string | null
+          no_label_reason_other: string | null
           observations: string | null
           photo_url: string | null
+          photos_provided: string[] | null
           pos_x: number | null
           pos_y: number | null
           pressure_rating: number
           room_number: string
+          saved_by_name: string | null
           serial_number: string | null
           updated_at: string
         }
@@ -141,15 +146,20 @@ export type Database = {
           installation_date?: string | null
           issues?: string[] | null
           last_maintenance_date?: string
+          location_confirmed?: boolean
           model?: string | null
           model_plate_photo_url?: string | null
           nearest_room?: string | null
+          no_label_reason?: string | null
+          no_label_reason_other?: string | null
           observations?: string | null
           photo_url?: string | null
+          photos_provided?: string[] | null
           pos_x?: number | null
           pos_y?: number | null
           pressure_rating?: number
           room_number: string
+          saved_by_name?: string | null
           serial_number?: string | null
           updated_at?: string
         }
@@ -167,15 +177,20 @@ export type Database = {
           installation_date?: string | null
           issues?: string[] | null
           last_maintenance_date?: string
+          location_confirmed?: boolean
           model?: string | null
           model_plate_photo_url?: string | null
           nearest_room?: string | null
+          no_label_reason?: string | null
+          no_label_reason_other?: string | null
           observations?: string | null
           photo_url?: string | null
+          photos_provided?: string[] | null
           pos_x?: number | null
           pos_y?: number | null
           pressure_rating?: number
           room_number?: string
+          saved_by_name?: string | null
           serial_number?: string | null
           updated_at?: string
         }

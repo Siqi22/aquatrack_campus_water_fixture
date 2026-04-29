@@ -102,6 +102,7 @@ export function exportToCSV(
   fixtures: Fixture[],
   keys: ExportColumnKey[] = DEFAULT_EXPORT_KEYS,
   campusNameById: Record<string, string> = {},
+  filename?: string,
 ) {
   const cols = EXPORT_COLUMNS.filter((c) => keys.includes(c.key));
   const headers = cols.map((c) => c.label);
@@ -113,7 +114,7 @@ export function exportToCSV(
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `fixtures_export_${new Date().toISOString().split('T')[0]}.csv`;
+  a.download = filename || `fixtures_export_${new Date().toISOString().split('T')[0]}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }

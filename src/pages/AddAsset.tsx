@@ -2,13 +2,29 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useFixtureStore, getFixtureStatus, fixtureCategoryMeta } from '@/store/fixtureStore';
 import type { FixtureCategory } from '@/store/fixtureStore';
-import { Camera, ScanLine, CheckCircle2, Building2, ChevronLeft, ChevronRight, ImagePlus, PlusCircle, ListChecks, Search, Droplets, Map, Tags, MessageSquareWarning, HelpCircle, University } from 'lucide-react';
+import { Camera, ScanLine, CheckCircle2, Building2, ChevronLeft, ChevronRight, ImagePlus, PlusCircle, ListChecks, Search, Droplets, Map, Tags, MessageSquareWarning, HelpCircle, University, Info, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { StarRating } from '@/components/StarRating';
 import { StatusBadge } from '@/components/StatusBadge';
 import { FloorPlanView } from '@/components/FloorPlanView';
 
 type Mode = 'choose' | 'onboard' | 'manage';
+
+const NO_LABEL_REASONS = [
+  'Sticker worn off / illegible',
+  'Plate hidden behind wall or fixture body',
+  'Older fixture — no plate present',
+  'Plate damaged / painted over',
+  'Other',
+] as const;
+
+const CATEGORY_REFERENCE_IMAGES: Record<FixtureCategory, string> = {
+  BottleFiller: 'https://placehold.co/600x400/0f172a/ffffff?text=Bottle+Filler',
+  WallFountain: 'https://placehold.co/600x400/0f172a/ffffff?text=Wall+Fountain',
+  CombinationUnit: 'https://placehold.co/600x400/0f172a/ffffff?text=Combo+Unit',
+  FilteredTap: 'https://placehold.co/600x400/0f172a/ffffff?text=Filtered+Tap',
+  Other: 'https://placehold.co/600x400/0f172a/ffffff?text=Other',
+};
 
 function fuzzyIncludes(haystack: string, needle: string) {
   return haystack.toLowerCase().includes(needle.trim().toLowerCase());
@@ -84,10 +100,12 @@ export default function AddAsset() {
   const [scanResult, setScanResult] = useState<{ brand: string; model: string; serialNumber: string; filterType: string; category: string; confidence: number } | null>(null);
   const [noLabel, setNoLabel] = useState(false);
   const [noLabelReason, setNoLabelReason] = useState('');
+  const [noLabelReasonOther, setNoLabelReasonOther] = useState('');
   const [nearestRoom, setNearestRoom] = useState('');
   const [category, setCategory] = useState<FixtureCategory | null>(null);
   const [suggestedCategory, setSuggestedCategory] = useState<FixtureCategory | null>(null);
   const [categoryHelp, setCategoryHelp] = useState<FixtureCategory | null>(null);
+  const [categoryRefHelp, setCategoryRefHelp] = useState<FixtureCategory | null>(null);
   const [pressure, setPressure] = useState(3);
   const [cleanliness, setCleanliness] = useState(3);
   const [observations, setObservations] = useState('');
@@ -344,23 +362,28 @@ export default function AddAsset() {
       toast.error('Please confirm the fixture location before saving.');
       return;
     }
+    if (noLabel && !noLabelReason) {
+      toast.error('Pick a reason for the missing model label.');
+      return;
+    }
+    if (noLabel && noLabelReason === 'Other' && !noLabelReasonOther.trim()) {
+      toast.error('Describe the "Other" reason for the missing label.');
+      return;
+    }
     try {
       const [photoUrl, plateUrl] = await Promise.all([
         photo ? uploadFixturePhoto(photo, 'general').catch(() => '') : Promise.resolve(''),
         platePhoto ? uploadFixturePhoto(platePhoto, 'plate').catch(() => '') : Promise.resolve(''),
       ]);
 
-      // Compose observations: include no-label note + nearest fixture id reference
       const noteParts: string[] = [];
       if (observations.trim()) noteParts.push(observations.trim());
-      if (noLabel) {
-        const reason = noLabelReason.trim() || 'no model label visible';
-        noteParts.push(`[No model label] ${reason}`);
-      }
-      if (nearestFixtureId.trim()) {
-        noteParts.push(`Nearest fixture ID: ${nearestFixtureId.trim()}`);
-      }
+      if (nearestFixtureId.trim()) noteParts.push(`Nearest fixture ID: ${nearestFixtureId.trim()}`);
       const finalObs = noteParts.join(' | ') || undefined;
+
+      const photosProvided: string[] = [];
+      if (photo) photosProvided.push('general');
+      if (platePhoto) photosProvided.push('plate');
 
       const created = await addFixture({
         campusId: selectedCampusId,
@@ -382,6 +405,10 @@ export default function AddAsset() {
         issues: issues.length ? issues : undefined,
         posX: Math.floor(Math.random() * 60 + 20),
         posY: Math.floor(Math.random() * 60 + 20),
+        noLabelReason: noLabel ? noLabelReason : undefined,
+        noLabelReasonOther: noLabel && noLabelReason === 'Other' ? noLabelReasonOther.trim() : undefined,
+        photosProvided,
+        locationConfirmed: true,
       });
       if (created) {
         toast.success('Fixture added');
@@ -393,12 +420,29 @@ export default function AddAsset() {
     }
   }
 
+  // Step 5 inline validation — for the confirm checkbox + Save
+  const trimmedRoom = nearestRoom.trim();
+  const roomLooksValid = trimmedRoom.length >= 2;
+  const step5Missing: string[] = [];
+  if (!selectedCampusId) step5Missing.push('Campus');
+  if (!selectedBuildingId) step5Missing.push('Building');
+  if (!floor) step5Missing.push('Floor');
+  if (!roomLooksValid) step5Missing.push('Room (min 2 chars)');
+  if (!category) step5Missing.push('Fixture type');
+  if (noLabel && !noLabelReason) step5Missing.push('No-label reason');
+  if (noLabel && noLabelReason === 'Other' && !noLabelReasonOther.trim()) step5Missing.push('"Other" reason text');
+  const step5Ready = step5Missing.length === 0;
+
+  useEffect(() => {
+    if (!step5Ready && locationConfirmed) setLocationConfirmed(false);
+  }, [step5Ready, locationConfirmed]);
+
   const canProceed: Record<number, boolean> = {
     1: !!selectedCampusId && !!selectedBuildingId && !!floor && !!nearestRoom,
     2: true,
     3: true,
     4: !!category,
-    5: locationConfirmed,
+    5: locationConfirmed && step5Ready,
   };
 
   // Mode chooser
@@ -897,25 +941,64 @@ export default function AddAsset() {
           {/* Quick fixture-type pick after taking photos */}
           <div className="rounded-2xl border bg-card p-4">
             <p className="text-sm font-semibold text-foreground">What type of fixture is this?</p>
-            <p className="text-[11px] text-muted-foreground">You can change this on the next step.</p>
+            <p className="text-[11px] text-muted-foreground">You can change this on the next step. Tap <Info className="inline h-3 w-3 -mt-0.5" /> for a reference photo.</p>
             <div className="mt-2 grid grid-cols-2 gap-2">
               {(Object.keys(fixtureCategoryMeta) as FixtureCategory[]).map((id) => {
                 const active = category === id;
                 return (
-                  <button
+                  <div
                     key={id}
-                    type="button"
-                    onClick={() => setCategory(id)}
-                    className={`rounded-lg border px-2 py-2 text-left text-xs ${
-                      active ? 'border-accent bg-accent/10 text-foreground' : 'bg-card text-muted-foreground'
-                    }`}
+                    className={`relative rounded-lg border ${active ? 'border-accent bg-accent/10' : 'bg-card'}`}
                   >
-                    {fixtureCategoryMeta[id].label}
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => setCategory(id)}
+                      className={`block w-full text-left px-2 py-2 pr-8 text-xs ${active ? 'text-foreground' : 'text-muted-foreground'}`}
+                    >
+                      {fixtureCategoryMeta[id].label}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setCategoryRefHelp(id); }}
+                      aria-label={`Reference image for ${fixtureCategoryMeta[id].label}`}
+                      className="absolute right-1 top-1 rounded-full p-1.5 text-accent hover:bg-accent/15"
+                    >
+                      <Info className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 );
               })}
             </div>
           </div>
+
+          {/* Reference-image modal */}
+          {categoryRefHelp && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setCategoryRefHelp(null)}>
+              <div className="w-full max-w-sm rounded-2xl bg-card p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{fixtureCategoryMeta[categoryRefHelp].label}</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">{fixtureCategoryMeta[categoryRefHelp].examples.join(' • ')}</p>
+                  </div>
+                  <button onClick={() => setCategoryRefHelp(null)} className="rounded-full p-1.5 hover:bg-secondary" aria-label="Close">
+                    <X className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                </div>
+                <img
+                  src={CATEGORY_REFERENCE_IMAGES[categoryRefHelp]}
+                  alt={`${fixtureCategoryMeta[categoryRefHelp].label} reference`}
+                  className="mt-3 w-full rounded-xl border object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={() => { setCategory(categoryRefHelp); setCategoryRefHelp(null); }}
+                  className="mt-3 w-full rounded-xl bg-accent px-4 py-2 text-xs font-semibold text-accent-foreground"
+                >
+                  Pick this type
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="rounded-2xl border bg-card p-4">
             <div className="flex items-center justify-between gap-3">
@@ -1027,12 +1110,40 @@ export default function AddAsset() {
                 </div>
               </label>
               {noLabel && (
-                <textarea
-                  value={noLabelReason}
-                  onChange={(e) => setNoLabelReason(e.target.value)}
-                  placeholder="Why? e.g. 'sticker worn off', 'older model with no plate', 'plate behind wall'"
-                  className="mt-2 w-full min-h-[60px] rounded-lg border bg-card px-3 py-2 text-xs text-foreground"
-                />
+                <div className="mt-2 space-y-2">
+                  <div>
+                    <label className="text-[11px] font-medium text-muted-foreground">
+                      Reason <span className="text-status-urgent">*</span>
+                    </label>
+                    <select
+                      value={noLabelReason}
+                      onChange={(e) => setNoLabelReason(e.target.value)}
+                      className="mt-1 w-full rounded-lg border bg-card px-3 py-2 text-xs text-foreground"
+                    >
+                      <option value="">Select a reason…</option>
+                      {NO_LABEL_REASONS.map((r) => (
+                        <option key={r} value={r}>{r}</option>
+                      ))}
+                    </select>
+                    {!noLabelReason && (
+                      <p className="mt-1 text-[10px] text-status-urgent">Required when no plate photo is provided.</p>
+                    )}
+                  </div>
+                  {noLabelReason === 'Other' && (
+                    <div>
+                      <label className="text-[11px] font-medium text-muted-foreground">Describe</label>
+                      <textarea
+                        value={noLabelReasonOther}
+                        onChange={(e) => setNoLabelReasonOther(e.target.value)}
+                        placeholder="Explain why the model label can't be captured"
+                        className="mt-1 w-full min-h-[50px] rounded-lg border bg-card px-3 py-2 text-xs text-foreground"
+                      />
+                      {!noLabelReasonOther.trim() && (
+                        <p className="mt-1 text-[10px] text-status-urgent">Please describe the reason.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 
@@ -1237,10 +1348,20 @@ export default function AddAsset() {
             <p className="mt-1 text-[11px] text-muted-foreground">Helps audit the position relative to known assets. Leave blank if none nearby.</p>
           </div>
 
-          <label className="flex items-start gap-2 rounded-xl border bg-card p-3 cursor-pointer">
+          {!step5Ready && (
+            <div className="rounded-xl border border-status-warning/40 bg-status-warning/10 p-3">
+              <p className="text-xs font-semibold text-status-warning">Complete these before confirming:</p>
+              <ul className="mt-1 list-disc pl-4 text-[11px] text-status-warning/90">
+                {step5Missing.map((m) => <li key={m}>{m}</li>)}
+              </ul>
+            </div>
+          )}
+
+          <label className={`flex items-start gap-2 rounded-xl border p-3 ${step5Ready ? 'bg-card cursor-pointer' : 'bg-muted/30 cursor-not-allowed opacity-60'}`}>
             <input
               type="checkbox"
               checked={locationConfirmed}
+              disabled={!step5Ready}
               onChange={(e) => setLocationConfirmed(e.target.checked)}
               className="mt-0.5"
             />
@@ -1285,7 +1406,7 @@ export default function AddAsset() {
                   setPhoto(null); setPlatePhoto(null); setBrand(''); setModel(''); setSerialNumber('');
                   setFilterType(''); setScanned(false); setScanError(null); setScanResult(null); setCategory(null); setSuggestedCategory(null);
                   setObservations(''); setIssues([]); setNearestRoom('');
-                  setNoLabel(false); setNoLabelReason(''); setNearestFixtureId(''); setLocationConfirmed(false);
+                  setNoLabel(false); setNoLabelReason(''); setNoLabelReasonOther(''); setNearestFixtureId(''); setLocationConfirmed(false);
                   setStep(1);
                   setStep(1);
                   setPostSaveOpen(false);
