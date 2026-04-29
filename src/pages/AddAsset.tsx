@@ -1207,6 +1207,50 @@ export default function AddAsset() {
         </div>
       )}
 
+      {/* Step 5: Final location confirmation (required) */}
+      {step === 5 && (
+        <div className="mt-4 space-y-4">
+          <div className="rounded-2xl border border-accent/40 bg-accent/5 p-4">
+            <p className="text-sm font-semibold text-foreground">⚠ Confirm exact location</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Verify everything below — once saved, this fixture is locked to this location.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border bg-card p-4 space-y-2 text-sm">
+            <div className="flex justify-between"><span className="text-muted-foreground">Campus</span><span className="font-semibold text-foreground text-right">{selectedCampus ? `${selectedCampus.school} — ${selectedCampus.name}` : '—'}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Building</span><span className="font-semibold text-foreground text-right">{selectedBuilding?.name ?? '—'}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Floor</span><span className="font-semibold text-foreground">{floor || '—'}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Room / landmark</span><span className="font-semibold text-foreground text-right">{nearestRoom || '—'}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Fixture type</span><span className="font-semibold text-foreground">{category ? fixtureCategoryMeta[category].label : '—'}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Brand / Model</span><span className="font-semibold text-foreground text-right">{(brand || '—')} {model && `· ${model}`}</span></div>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-foreground">Nearest fixture ID <span className="text-muted-foreground font-normal">(for reference)</span></label>
+            <input
+              value={nearestFixtureId}
+              onChange={(e) => setNearestFixtureId(e.target.value)}
+              placeholder="e.g. F-0123 — the closest already-tagged fixture"
+              className="mt-1 w-full rounded-lg border bg-card px-3 py-2.5 text-sm text-foreground"
+            />
+            <p className="mt-1 text-[11px] text-muted-foreground">Helps audit the position relative to known assets. Leave blank if none nearby.</p>
+          </div>
+
+          <label className="flex items-start gap-2 rounded-xl border bg-card p-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={locationConfirmed}
+              onChange={(e) => setLocationConfirmed(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span className="text-xs text-foreground">
+              I confirm the campus, building, floor, room and nearest fixture ID above are correct for this fixture.
+            </span>
+          </label>
+        </div>
+      )}
+
       {/* Navigation */}
       <div className="mt-6 flex gap-3">
         {step > 1 && (
@@ -1215,12 +1259,12 @@ export default function AddAsset() {
           </button>
         )}
         <div className="flex-1" />
-        {step < 4 ? (
+        {step < 5 ? (
           <button onClick={() => setStep(step + 1)} disabled={!canProceed[step]} className="flex items-center gap-1 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground disabled:opacity-40">
             Next <ChevronRight className="h-4 w-4" />
           </button>
         ) : (
-          <button onClick={handleSubmit} disabled={!canProceed[4]} className="flex items-center gap-1 rounded-lg bg-accent px-6 py-2.5 text-sm font-semibold text-accent-foreground disabled:opacity-40">
+          <button onClick={handleSubmit} disabled={!canProceed[5]} className="flex items-center gap-1 rounded-lg bg-accent px-6 py-2.5 text-sm font-semibold text-accent-foreground disabled:opacity-40">
             <CheckCircle2 className="h-4 w-4" /> Save Fixture
           </button>
         )}
