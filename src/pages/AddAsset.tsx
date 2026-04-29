@@ -937,25 +937,64 @@ export default function AddAsset() {
           {/* Quick fixture-type pick after taking photos */}
           <div className="rounded-2xl border bg-card p-4">
             <p className="text-sm font-semibold text-foreground">What type of fixture is this?</p>
-            <p className="text-[11px] text-muted-foreground">You can change this on the next step.</p>
+            <p className="text-[11px] text-muted-foreground">You can change this on the next step. Tap <Info className="inline h-3 w-3 -mt-0.5" /> for a reference photo.</p>
             <div className="mt-2 grid grid-cols-2 gap-2">
               {(Object.keys(fixtureCategoryMeta) as FixtureCategory[]).map((id) => {
                 const active = category === id;
                 return (
-                  <button
+                  <div
                     key={id}
-                    type="button"
-                    onClick={() => setCategory(id)}
-                    className={`rounded-lg border px-2 py-2 text-left text-xs ${
-                      active ? 'border-accent bg-accent/10 text-foreground' : 'bg-card text-muted-foreground'
-                    }`}
+                    className={`relative rounded-lg border ${active ? 'border-accent bg-accent/10' : 'bg-card'}`}
                   >
-                    {fixtureCategoryMeta[id].label}
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => setCategory(id)}
+                      className={`block w-full text-left px-2 py-2 pr-8 text-xs ${active ? 'text-foreground' : 'text-muted-foreground'}`}
+                    >
+                      {fixtureCategoryMeta[id].label}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setCategoryRefHelp(id); }}
+                      aria-label={`Reference image for ${fixtureCategoryMeta[id].label}`}
+                      className="absolute right-1 top-1 rounded-full p-1.5 text-accent hover:bg-accent/15"
+                    >
+                      <Info className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 );
               })}
             </div>
           </div>
+
+          {/* Reference-image modal */}
+          {categoryRefHelp && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setCategoryRefHelp(null)}>
+              <div className="w-full max-w-sm rounded-2xl bg-card p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{fixtureCategoryMeta[categoryRefHelp].label}</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">{fixtureCategoryMeta[categoryRefHelp].examples.join(' • ')}</p>
+                  </div>
+                  <button onClick={() => setCategoryRefHelp(null)} className="rounded-full p-1.5 hover:bg-secondary" aria-label="Close">
+                    <X className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                </div>
+                <img
+                  src={CATEGORY_REFERENCE_IMAGES[categoryRefHelp]}
+                  alt={`${fixtureCategoryMeta[categoryRefHelp].label} reference`}
+                  className="mt-3 w-full rounded-xl border object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={() => { setCategory(categoryRefHelp); setCategoryRefHelp(null); }}
+                  className="mt-3 w-full rounded-xl bg-accent px-4 py-2 text-xs font-semibold text-accent-foreground"
+                >
+                  Pick this type
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="rounded-2xl border bg-card p-4">
             <div className="flex items-center justify-between gap-3">
