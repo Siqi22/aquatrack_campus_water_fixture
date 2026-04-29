@@ -36,21 +36,28 @@ export default function Dashboard() {
 
   return (
     <div className="px-4 pt-6">
-      <div className="flex items-center justify-between">
+      <div className="card-soft relative overflow-hidden p-4">
+        <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-primary/10" />
+        <div className="relative flex items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <Droplets className="h-6 w-6 text-accent" />
-            <h1 className="text-xl font-bold text-foreground">AquaTrack</h1>
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10">
+              <Droplets className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">AquaTrack</h1>
+              <p className="text-xs text-muted-foreground">Campus Fixture Dashboard</p>
+            </div>
           </div>
-          <p className="text-sm text-muted-foreground">Campus Fixture Dashboard</p>
         </div>
         <button
           onClick={() => setExportOpen(true)}
-          className="flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-xs font-semibold text-background shadow-sm"
+          className="flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-sm"
         >
           <Download className="h-3.5 w-3.5" />
           Export
         </button>
+        </div>
       </div>
       <ExportDialog open={exportOpen} onOpenChange={setExportOpen} fixtures={filteredFixtures} campuses={campuses} />
 

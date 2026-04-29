@@ -449,11 +449,13 @@ export default function AddAsset() {
   if (mode === 'choose') {
     return (
       <div className="px-4 pt-8 pb-6 min-h-[calc(100vh-80px)] flex flex-col">
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-accent/10 mb-3">
-            <Droplets className="h-8 w-8 text-accent" />
+        <div className="card-soft relative mb-5 overflow-hidden p-5 text-center">
+          <div className="absolute -left-10 -top-10 h-28 w-28 rounded-full bg-secondary/60" />
+          <div className="absolute -right-12 top-8 h-32 w-32 rounded-full bg-primary/10" />
+          <div className="relative inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-3">
+            <Droplets className="h-8 w-8 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Asset Manager</h1>
+          <h1 className="relative text-2xl font-bold tracking-tight text-foreground">Asset Manager</h1>
           <p className="text-sm text-muted-foreground mt-1">Choose your workflow</p>
         </div>
 

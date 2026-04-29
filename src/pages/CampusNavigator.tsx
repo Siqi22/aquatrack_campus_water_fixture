@@ -27,11 +27,18 @@ export default function CampusNavigator() {
 
   return (
     <div className="px-4 pt-6">
-      <div>
-        <h1 className="text-xl font-bold text-foreground">Campus Navigator</h1>
+      <div className="card-soft p-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
+            <GraduationCap className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+        <h1 className="text-xl font-bold tracking-tight text-foreground">Campus Navigator</h1>
         <p className="text-sm text-muted-foreground">
           Browse fixtures by campus, building & floor
         </p>
+          </div>
+        </div>
       </div>
 
       <div className="mt-3 card-soft p-3">

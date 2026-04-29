@@ -53,30 +53,18 @@ export default function FixtureDetail() {
   const mapboxToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN as string | undefined;
   const [geoFeature, setGeoFeature] = useState<MapboxFeature | null>(null);
   const [geoLoading, setGeoLoading] = useState(false);
-
-  if (!fixture) {
-    return (
-      <div className="px-4 pt-6 text-center">
-        <p className="text-muted-foreground">Fixture not found.</p>
-        <button onClick={() => navigate(-1)} className="mt-4 text-sm text-accent">Go back</button>
-      </div>
-    );
-  }
-
-  const status = getFixtureStatus(fixture.lastMaintenanceDate);
-  const days = getDaysSinceMaintenance(fixture.lastMaintenanceDate);
-  const remaining = Math.max(0, 180 - days);
-  const campus = campuses.find((c) => c.id === fixture.campusId);
-  const building = buildings.find((b) => b.id === fixture.buildingId);
+  const campus = fixture ? campuses.find((c) => c.id === fixture.campusId) : undefined;
+  const building = fixture ? buildings.find((b) => b.id === fixture.buildingId) : undefined;
 
   const geoQuery = useMemo(() => {
+    if (!fixture) return '';
     const parts: string[] = [];
     if (fixture.buildingName) parts.push(fixture.buildingName);
     if (campus?.school) parts.push(campus.school);
     if (campus?.name) parts.push(campus.name);
     if (campus?.address) parts.push(campus.address);
     return parts.filter(Boolean).join(', ');
-  }, [campus?.address, campus?.name, campus?.school, fixture.buildingName]);
+  }, [campus?.address, campus?.name, campus?.school, fixture]);
 
   useEffect(() => {
     if (!mapboxToken) {
@@ -103,6 +91,19 @@ export default function FixtureDetail() {
       cancelled = true;
     };
   }, [geoQuery, mapboxToken]);
+
+  if (!fixture) {
+    return (
+      <div className="px-4 pt-6 text-center">
+        <p className="text-muted-foreground">Fixture not found.</p>
+        <button onClick={() => navigate(-1)} className="mt-4 text-sm text-accent">Go back</button>
+      </div>
+    );
+  }
+
+  const status = getFixtureStatus(fixture.lastMaintenanceDate);
+  const days = getDaysSinceMaintenance(fixture.lastMaintenanceDate);
+  const remaining = Math.max(0, 180 - days);
 
   function handleSave() {
     updateFixture({
