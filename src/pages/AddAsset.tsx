@@ -935,6 +935,22 @@ export default function AddAsset() {
               </button>
             </div>
 
+            {/* Photo readiness indicators */}
+            <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
+              <div className={`rounded-lg border p-2 ${photo ? 'border-status-good/40 bg-status-good/10' : 'border-status-urgent/40 bg-status-urgent/10'}`}>
+                <p className="font-semibold text-foreground">General photo</p>
+                <p className={photo ? 'text-status-good' : 'text-status-urgent'}>
+                  {photo ? '✓ Ready' : '✗ Missing — required'}
+                </p>
+              </div>
+              <div className={`rounded-lg border p-2 ${platePhoto ? 'border-status-good/40 bg-status-good/10' : noLabel ? 'border-muted bg-muted/10' : 'border-status-warning/40 bg-status-warning/10'}`}>
+                <p className="font-semibold text-foreground">Model plate</p>
+                <p className={platePhoto ? 'text-status-good' : noLabel ? 'text-muted-foreground' : 'text-status-warning'}>
+                  {platePhoto ? '✓ Ready' : noLabel ? 'Skipped (no label)' : '⚠ Missing'}
+                </p>
+              </div>
+            </div>
+
             {scanError && (
               <div className="mt-3 rounded-xl border border-status-urgent/40 bg-status-urgent/10 p-3">
                 <div className="flex items-start gap-2">
@@ -942,21 +958,14 @@ export default function AddAsset() {
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-status-urgent">Scan failed</p>
                     <p className="mt-0.5 text-[11px] text-status-urgent/80 break-words">{scanError}</p>
-                    <p className="mt-1 text-[11px] text-muted-foreground">
-                      Try retaking the photo with the label centered and well-lit, or fill the fields manually below.
-                    </p>
-                    <div className="mt-2 flex gap-2">
-                      <button
-                        onClick={() => platePhotoInputRef.current?.click()}
-                        className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold text-secondary-foreground"
-                      >
-                        Retake photo
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <button onClick={() => photoInputRef.current?.click()} className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold text-secondary-foreground">
+                        Retake general
                       </button>
-                      <button
-                        onClick={handleScan}
-                        disabled={scanning}
-                        className="rounded-full bg-foreground px-3 py-1 text-[11px] font-semibold text-background disabled:opacity-50"
-                      >
+                      <button onClick={() => platePhotoInputRef.current?.click()} className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold text-secondary-foreground">
+                        Retake plate
+                      </button>
+                      <button onClick={handleScan} disabled={scanning} className="rounded-full bg-foreground px-3 py-1 text-[11px] font-semibold text-background disabled:opacity-50">
                         {scanning ? 'Retrying…' : 'Try again'}
                       </button>
                     </div>
@@ -965,12 +974,68 @@ export default function AddAsset() {
               </div>
             )}
 
-            {scanned && !scanError && (
-              <div className="mt-3 flex items-center gap-2 text-status-good">
-                <CheckCircle2 className="h-4 w-4" />
-                <span className="text-sm font-medium">Scan ready — confirm or edit below</span>
+            {scanned && !scanError && scanResult && (
+              <div className="mt-3 rounded-xl border border-status-good/40 bg-status-good/5 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-status-good">
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span className="text-sm font-semibold">Scan complete</span>
+                  </div>
+                  <span className="text-[11px] text-muted-foreground">Confidence: {Math.round(scanResult.confidence * 100)}%</span>
+                </div>
+                <div className="mt-2 grid grid-cols-2 gap-1.5 text-[11px]">
+                  {[
+                    ['Brand', scanResult.brand],
+                    ['Model', scanResult.model],
+                    ['Serial', scanResult.serialNumber],
+                    ['Filter', scanResult.filterType],
+                  ].map(([k, v]) => (
+                    <div key={k} className="rounded-md bg-card border px-2 py-1">
+                      <p className="text-muted-foreground">{k}</p>
+                      <p className={`font-medium ${v ? 'text-foreground' : 'text-status-warning'}`}>
+                        {v || '— not detected'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-2 text-[11px] text-muted-foreground">Review and edit any field below before continuing.</p>
               </div>
             )}
+
+            {/* No model label path */}
+            <div className="mt-3 rounded-xl border bg-secondary/30 p-3">
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={noLabel}
+                  onChange={(e) => {
+                    const v = e.target.checked;
+                    setNoLabel(v);
+                    if (v) {
+                      setPlatePhoto(null);
+                      setBrand(brand || '');
+                      setModel(model || '');
+                      setScanError(null);
+                      setScanned(false);
+                    }
+                  }}
+                  className="mt-0.5"
+                />
+                <div className="flex-1">
+                  <p className="text-xs font-semibold text-foreground">No model label visible</p>
+                  <p className="text-[11px] text-muted-foreground">Skip the plate photo. Brand/Model stay editable below; we'll save a note explaining why.</p>
+                </div>
+              </label>
+              {noLabel && (
+                <textarea
+                  value={noLabelReason}
+                  onChange={(e) => setNoLabelReason(e.target.value)}
+                  placeholder="Why? e.g. 'sticker worn off', 'older model with no plate', 'plate behind wall'"
+                  className="mt-2 w-full min-h-[60px] rounded-lg border bg-card px-3 py-2 text-xs text-foreground"
+                />
+              )}
+            </div>
+
 
             {/* Always-editable fields so older / unlabeled fixtures still work */}
             <div className="mt-3 space-y-3">
