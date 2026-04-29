@@ -6,41 +6,35 @@
 
 @layer base {
   :root {
-    /* Hoteliq-inspired: clean white base with purple-blue accents */
-    --background: 246 100% 99%;
-    --foreground: 0 0% 12%;
+    --background: 220 20% 97%;
+    --foreground: 220 30% 10%;
 
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 12%;
+    --card-foreground: 220 30% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 12%;
+    --popover-foreground: 220 30% 10%;
 
-    /* #5D5FEF */
-    --primary: 239 82% 65%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 220 60% 25%;
+    --primary-foreground: 0 0% 98%;
 
-    /* #C4C5FF */
-    --secondary: 239 100% 88%;
-    --secondary-foreground: 0 0% 12%;
+    --secondary: 220 15% 92%;
+    --secondary-foreground: 220 30% 20%;
 
-    /* #D9D7F2 */
-    --muted: 244 51% 90%;
-    --muted-foreground: 0 0% 42%;
+    --muted: 220 15% 94%;
+    --muted-foreground: 220 10% 50%;
 
-    --accent: 239 82% 65%;
+    --accent: 200 80% 45%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 98%;
 
-    /* #E8E8E8 */
-    --border: 0 0% 91%;
-    --input: 0 0% 91%;
-    --ring: 239 82% 65%;
+    --border: 220 15% 90%;
+    --input: 220 15% 90%;
+    --ring: 220 60% 25%;
 
-    /* Larger radius to match modern app cards */
-    --radius: 1rem;
+    --radius: 0.625rem;
 
     /* Custom status tokens */
     --status-good: 142 71% 45%;
@@ -49,7 +43,7 @@
 
     /* Custom surface tokens */
     --surface-elevated: 0 0% 100%;
-    --surface-sunken: 246 51% 96%;
+    --surface-sunken: 220 20% 95%;
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -95,14 +89,6 @@
 @layer base {
   * {
     @apply border-border;
-    /* Hide scrollbars globally (still scrollable) */
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE/Edge legacy */
-  }
-  *::-webkit-scrollbar {
-    width: 0px;
-    height: 0px;
-    display: none; /* Safari/Chrome */
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
@@ -117,13 +103,13 @@
 
   .app-surface {
     background:
-      radial-gradient(900px 520px at 12% -8%, hsl(var(--secondary) / 0.55), transparent 58%),
-      radial-gradient(780px 460px at 88% 4%, hsl(var(--primary) / 0.14), transparent 62%),
+      radial-gradient(1200px 600px at 20% 0%, hsl(var(--accent) / 0.10), transparent 55%),
+      radial-gradient(900px 500px at 80% 10%, hsl(var(--primary) / 0.10), transparent 60%),
       linear-gradient(to bottom, hsl(var(--background)), hsl(var(--background)));
   }
 
   .card-soft {
-    @apply bg-card/90 backdrop-blur-xl border shadow-[0_12px_32px_rgba(31,31,31,0.08)] rounded-2xl;
+    @apply bg-card/85 backdrop-blur-xl border shadow-[0_20px_60px_rgba(0,0,0,0.06)] rounded-2xl;
   }
 
   .pill {
