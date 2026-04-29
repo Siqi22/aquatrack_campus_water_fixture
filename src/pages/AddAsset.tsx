@@ -10,6 +10,22 @@ import { FloorPlanView } from '@/components/FloorPlanView';
 
 type Mode = 'choose' | 'onboard' | 'manage';
 
+const NO_LABEL_REASONS = [
+  'Sticker worn off / illegible',
+  'Plate hidden behind wall or fixture body',
+  'Older fixture — no plate present',
+  'Plate damaged / painted over',
+  'Other',
+] as const;
+
+const CATEGORY_REFERENCE_IMAGES: Record<FixtureCategory, string> = {
+  BottleFiller: 'https://placehold.co/600x400/0f172a/ffffff?text=Bottle+Filler',
+  WallFountain: 'https://placehold.co/600x400/0f172a/ffffff?text=Wall+Fountain',
+  CombinationUnit: 'https://placehold.co/600x400/0f172a/ffffff?text=Combo+Unit',
+  FilteredTap: 'https://placehold.co/600x400/0f172a/ffffff?text=Filtered+Tap',
+  Other: 'https://placehold.co/600x400/0f172a/ffffff?text=Other',
+};
+
 function fuzzyIncludes(haystack: string, needle: string) {
   return haystack.toLowerCase().includes(needle.trim().toLowerCase());
 }
