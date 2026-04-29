@@ -433,6 +433,10 @@ export default function AddAsset() {
   if (noLabel && noLabelReason === 'Other' && !noLabelReasonOther.trim()) step5Missing.push('"Other" reason text');
   const step5Ready = step5Missing.length === 0;
 
+  useEffect(() => {
+    if (!step5Ready && locationConfirmed) setLocationConfirmed(false);
+  }, [step5Ready, locationConfirmed]);
+
   const canProceed: Record<number, boolean> = {
     1: !!selectedCampusId && !!selectedBuildingId && !!floor && !!nearestRoom,
     2: true,
