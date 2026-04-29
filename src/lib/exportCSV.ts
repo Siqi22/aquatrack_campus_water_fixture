@@ -52,6 +52,46 @@ export const DEFAULT_EXPORT_KEYS: ExportColumnKey[] = [
   'serialNumber', 'filterType', 'lastMaintenance', 'status',
 ];
 
+export interface ExportTemplate {
+  id: string;
+  label: string;
+  description: string;
+  keys: ExportColumnKey[];
+}
+
+export const EXPORT_TEMPLATES: ExportTemplate[] = [
+  {
+    id: 'default',
+    label: 'Default',
+    description: 'Balanced set of identification + maintenance fields',
+    keys: DEFAULT_EXPORT_KEYS,
+  },
+  {
+    id: 'maintenance',
+    label: 'Maintenance Only',
+    description: 'For technicians: where, what, when last serviced',
+    keys: ['id', 'campus', 'building', 'floor', 'room', 'filterType', 'lastMaintenance', 'status', 'issues'],
+  },
+  {
+    id: 'asset-register',
+    label: 'Asset Register',
+    description: 'Full asset inventory: brand, model, serial, install date',
+    keys: ['id', 'campus', 'building', 'floor', 'room', 'category', 'brand', 'model', 'serialNumber', 'filterType', 'installationDate', 'lastMaintenance'],
+  },
+  {
+    id: 'compliance',
+    label: 'Compliance',
+    description: 'Audit-ready: location, status, observations, issues',
+    keys: ['id', 'campus', 'building', 'floor', 'room', 'category', 'brand', 'model', 'serialNumber', 'lastMaintenance', 'status', 'observations', 'issues'],
+  },
+  {
+    id: 'all',
+    label: 'All Columns',
+    description: 'Every available field',
+    keys: EXPORT_COLUMNS.map((c) => c.key),
+  },
+];
+
 function escapeCSV(v: string | number): string {
   const s = String(v ?? '');
   if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
