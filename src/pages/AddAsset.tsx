@@ -81,6 +81,9 @@ export default function AddAsset() {
   const [scanned, setScanned] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
+  const [scanResult, setScanResult] = useState<{ brand: string; model: string; serialNumber: string; filterType: string; category: string; confidence: number } | null>(null);
+  const [noLabel, setNoLabel] = useState(false);
+  const [noLabelReason, setNoLabelReason] = useState('');
   const [nearestRoom, setNearestRoom] = useState('');
   const [category, setCategory] = useState<FixtureCategory | null>(null);
   const [suggestedCategory, setSuggestedCategory] = useState<FixtureCategory | null>(null);
@@ -89,6 +92,8 @@ export default function AddAsset() {
   const [cleanliness, setCleanliness] = useState(3);
   const [observations, setObservations] = useState('');
   const [issues, setIssues] = useState<string[]>([]);
+  const [nearestFixtureId, setNearestFixtureId] = useState('');
+  const [locationConfirmed, setLocationConfirmed] = useState(false);
   const [postSaveOpen, setPostSaveOpen] = useState(false);
 
   // University/campus creation + fuzzy matching
