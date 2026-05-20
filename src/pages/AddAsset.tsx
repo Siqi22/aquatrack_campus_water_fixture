@@ -4,19 +4,12 @@ import { useFixtureStore, getFixtureStatus, fixtureCategoryMeta } from '@/store/
 import type { FixtureCategory } from '@/store/fixtureStore';
 import { Camera, ScanLine, CheckCircle2, Building2, ChevronLeft, ChevronRight, ImagePlus, PlusCircle, ListChecks, Search, Droplets, Map, Tags, MessageSquareWarning, HelpCircle, University, Info, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { StarRating } from '@/components/StarRating';
+import { SimpleRating } from '@/components/SimpleRating';
 import { StatusBadge } from '@/components/StatusBadge';
 import { FloorPlanView } from '@/components/FloorPlanView';
+import { FIELD_LABELS, NO_LABEL_REASONS, ISSUE_OPTIONS } from '@/lib/fieldLabels';
 
 type Mode = 'choose' | 'onboard' | 'manage';
-
-const NO_LABEL_REASONS = [
-  'Sticker worn off / illegible',
-  'Plate hidden behind wall or fixture body',
-  'Older fixture — no plate present',
-  'Plate damaged / painted over',
-  'Other',
-] as const;
 
 const CATEGORY_REFERENCE_IMAGES: Record<FixtureCategory, string> = {
   BottleFiller: 'https://placehold.co/600x400/0f172a/ffffff?text=Bottle+Filler',
@@ -35,7 +28,7 @@ import { uploadFixturePhoto } from '@/lib/uploadPhoto';
 import { toast } from 'sonner';
 
 export default function AddAsset() {
-  const { campuses, buildings, fixtures, addCampus, addBuilding, addFixture, searchFixtures, getBuildingsByCampus, getFixturesByCampus, setFloorStatus } = useFixtureStore();
+  const { campuses, buildings, fixtures, addCampus, addBuilding, addFixture, searchFixtures, getBuildingsByCampus, getFixturesByCampus, setFloorStatus, getFloorProgress } = useFixtureStore();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [mode, setMode] = useState<Mode>('choose');
@@ -47,7 +40,7 @@ export default function AddAsset() {
   const [manageQuery, setManageQuery] = useState('');
   const [manageCampus, setManageCampus] = useState<string>(campuses[0]?.id || '');
   const [manageBuilding, setManageBuilding] = useState<string>('');
-  const [manageFloor, setManageFloor] = useState<number | null>(null);
+  const [manageFloor, setManageFloor] = useState<string | null>(null);
 
   // Onboard state
   const [step, setStep] = useState(1);
@@ -74,8 +67,8 @@ export default function AddAsset() {
   const [suggestedCategory, setSuggestedCategory] = useState<FixtureCategory | null>(null);
   const [categoryHelp, setCategoryHelp] = useState<FixtureCategory | null>(null);
   const [categoryRefHelp, setCategoryRefHelp] = useState<FixtureCategory | null>(null);
-  const [pressure, setPressure] = useState(3);
-  const [cleanliness, setCleanliness] = useState(3);
+  const [pressure, setPressure] = useState(2);
+  const [cleanliness, setCleanliness] = useState(2);
   const [observations, setObservations] = useState('');
   const [issues, setIssues] = useState<string[]>([]);
   const [nearestFixtureId, setNearestFixtureId] = useState('');
@@ -108,6 +101,13 @@ export default function AddAsset() {
     if (!buildingQuery.trim()) return campusBuildings;
     return campusBuildings.filter((b) => fuzzyIncludes(b.name, buildingQuery));
   }, [buildingQuery, campusBuildings, selectedCampusId]);
+
+  const floorProgress = selectedBuildingId && floor.trim()
+    ? getFloorProgress(selectedBuildingId, floor.trim())
+    : null;
+  const floorLocked = floorProgress?.status === 'Restricted';
+
+  const STEP_LABELS = ['Location', 'Photos & label', 'Fixture type', 'Condition', 'Confirm'];
 
   // Deep link support from Campus → Assets (pre-fill).
   useEffect(() => {
@@ -274,7 +274,7 @@ export default function AddAsset() {
         campusId: selectedCampusId,
         buildingId: selectedBuildingId,
         buildingName: building.name,
-        floor: parseInt(floor),
+        floor: floor.trim(),
         roomNumber: nearestRoom,
         nearestRoom,
         brand,
@@ -288,8 +288,6 @@ export default function AddAsset() {
         qualityRating: { pressure, cleanliness },
         observations: finalObs,
         issues: issues.length ? issues : undefined,
-        posX: Math.floor(Math.random() * 60 + 20),
-        posY: Math.floor(Math.random() * 60 + 20),
         noLabelReason: noLabel ? noLabelReason : undefined,
         noLabelReasonOther: noLabel && noLabelReason === 'Other' ? noLabelReasonOther.trim() : undefined,
         photosProvided,
@@ -323,10 +321,10 @@ export default function AddAsset() {
   }, [step5Ready, locationConfirmed]);
 
   const canProceed: Record<number, boolean> = {
-    1: !!selectedCampusId && !!selectedBuildingId && !!floor && !!nearestRoom,
+    1: !!selectedCampusId && !!selectedBuildingId && !!floor.trim() && !!nearestRoom && !floorLocked,
     2: true,
-    3: true,
-    4: !!category,
+    3: !!category,
+    4: true,
     5: locationConfirmed && step5Ready,
   };
 
@@ -436,8 +434,8 @@ export default function AddAsset() {
         <button onClick={() => setMode('choose')} className="text-xs text-accent font-medium mb-3 flex items-center gap-1">
           ← Back
         </button>
-        <h1 className="text-xl font-bold text-foreground">Manage Assets</h1>
-        <p className="text-sm text-muted-foreground">Browse fixtures on the floor plan</p>
+        <h1 className="text-xl font-bold text-foreground">Manage database</h1>
+        <p className="text-sm text-muted-foreground">Search fixtures or browse by building and floor</p>
 
         {/* Campus selector */}
         <div className="flex gap-2 mt-4 overflow-x-auto pb-1">
@@ -488,7 +486,7 @@ export default function AddAsset() {
               {manageCampusBuildings.map((b) => (
                 <button
                   key={b.id}
-                  onClick={() => { setManageBuilding(b.id); setManageFloor(1); }}
+                  onClick={() => { setManageBuilding(b.id); setManageFloor('1'); }}
                   className={`rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors ${
                     manageBuilding === b.id ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'
                   }`}
@@ -501,7 +499,7 @@ export default function AddAsset() {
             {/* Floor tabs */}
             {manageBuildingObj && (
               <div className="flex gap-1.5 mt-3">
-                {Array.from({ length: manageBuildingObj.floors }, (_, i) => i + 1).map((fl) => (
+                {Array.from({ length: manageBuildingObj.floors }, (_, i) => String(i + 1)).map((fl) => (
                   <button
                     key={fl}
                     onClick={() => setManageFloor(fl)}
@@ -509,7 +507,7 @@ export default function AddAsset() {
                       manageFloor === fl ? 'bg-accent text-accent-foreground' : 'bg-secondary/60 text-muted-foreground'
                     }`}
                   >
-                    F{fl}
+                    {fl}
                   </button>
                 ))}
               </div>
@@ -522,6 +520,7 @@ export default function AddAsset() {
                   buildingId={manageBuilding}
                   floor={manageFloor}
                   buildingName={manageBuildingObj.name}
+                  campusId={manageCampus}
                 />
               </div>
             )}
@@ -529,7 +528,7 @@ export default function AddAsset() {
             {!manageBuilding && (
               <div className="flex flex-col items-center py-12 text-muted-foreground">
                 <Map className="h-8 w-8 mb-2 opacity-40" />
-                <p className="text-sm">Select a building to view floor plan</p>
+                <p className="text-sm">Select a building to browse floors</p>
               </div>
             )}
           </>
@@ -548,16 +547,13 @@ export default function AddAsset() {
 
       {/* Step indicator */}
       <div className="mt-4 flex gap-2">
-        {[1, 2, 3, 4].map((s) => (
-          <div key={s} className={`h-1.5 flex-1 rounded-full ${s <= step ? 'bg-accent' : 'bg-secondary'}`} />
-        ))}
+        {STEP_LABELS.map((_, i) => {
+          const s = i + 1;
+          return <div key={s} className={`h-1.5 flex-1 rounded-full ${s <= step ? 'bg-accent' : 'bg-secondary'}`} />;
+        })}
       </div>
       <p className="mt-2 text-xs text-muted-foreground">
-        {step === 1 && 'Location'}
-        {step === 2 && 'Photos'}
-        {step === 3 && 'Confirm type'}
-        {step === 4 && 'Rate & notes'}
-        <span className="ml-2 opacity-70">({step}/4)</span>
+        {STEP_LABELS[step - 1]} <span className="ml-1 opacity-70">({step}/{STEP_LABELS.length})</span>
       </p>
 
       {/* Step 1: Campus, Building, Floor, nearest room */}
@@ -662,17 +658,25 @@ export default function AddAsset() {
 
           {selectedBuilding && (
             <div>
-              <label className="text-sm font-medium text-foreground">📍 What floor are you on?</label>
-              <select value={floor} onChange={(e) => setFloor(e.target.value)} className="mt-1 w-full rounded-lg border bg-card px-3 py-2.5 text-sm text-foreground">
-                <option value="">Select floor...</option>
-                {Array.from({ length: selectedBuilding.floors }, (_, i) => <option key={i + 1} value={i + 1}>Floor {i + 1}</option>)}
-              </select>
+              <label className="text-sm font-medium text-foreground">{FIELD_LABELS.floor}</label>
+              <input
+                value={floor}
+                onChange={(e) => setFloor(e.target.value)}
+                placeholder="e.g. 2, G, L1, B2"
+                className="mt-1 w-full rounded-lg border bg-card px-3 py-2.5 text-sm text-foreground"
+              />
+              <p className="mt-1 text-[11px] text-muted-foreground">Letters and numbers are both OK (e.g. ground floor = G).</p>
+              {floorLocked && (
+                <div className="mt-2 rounded-xl border border-status-urgent/40 bg-status-urgent/10 p-3 text-xs text-status-urgent">
+                  This floor is locked{floorProgress?.restrictedReason ? `: ${floorProgress.restrictedReason}` : ''}. Unlock it from Campus before adding fixtures.
+                </div>
+              )}
             </div>
           )}
 
-          {selectedBuilding && floor && (
+          {selectedBuilding && floor.trim() && !floorLocked && (
             <div>
-              <label className="text-sm font-medium text-foreground">🚪 Room number (or nearest landmark)</label>
+              <label className="text-sm font-medium text-foreground">{FIELD_LABELS.room}</label>
               <input
                 value={nearestRoom}
                 onChange={(e) => setNearestRoom(e.target.value)}
@@ -693,11 +697,11 @@ export default function AddAsset() {
           <div className="rounded-2xl border bg-accent/5 p-3">
             <p className="text-sm font-semibold text-foreground">📸 What to photograph</p>
             <ul className="mt-1.5 text-[11px] text-muted-foreground space-y-1 list-disc pl-4">
-              <li><strong>General photo:</strong> the whole fixture so it can be identified.</li>
-              <li><strong>Model plate:</strong> the brand/model sticker — usually on the side, back, or under the basin.</li>
+              <li><strong>{FIELD_LABELS.generalPhoto}:</strong> the whole fixture so it can be identified.</li>
+              <li><strong>{FIELD_LABELS.modelLabel}:</strong> the company/model sticker — usually on the side, back, or under the basin.</li>
             </ul>
             <p className="mt-1.5 text-[11px] text-muted-foreground">
-              Note: some older fixtures don't have a model sticker. If so, skip the plate photo and fill the fields manually.
+              Note: some fixtures have no model label, or only partial info. Leave any field blank and continue.
             </p>
           </div>
 
@@ -751,7 +755,7 @@ export default function AddAsset() {
             <div className="rounded-xl border-2 border-dashed p-3">
               {platePhoto ? (
                 <>
-                  <img src={platePhoto} alt="Model Plate" className="h-24 w-full rounded-lg object-cover" />
+                  <img src={platePhoto} alt={FIELD_LABELS.modelLabel} className="h-24 w-full rounded-lg object-cover" />
                   <div className="mt-2 flex gap-2">
                     <button onClick={() => platePhotoInputRef.current?.click()} className="flex-1 rounded-md bg-secondary px-2 py-1 text-[11px] font-semibold text-secondary-foreground">Retake</button>
                     <button onClick={() => { setPlatePhoto(null); setScanned(false); setScanError(null); }} className="rounded-md bg-secondary px-2 py-1 text-[11px] font-semibold text-secondary-foreground">✕</button>
@@ -760,8 +764,8 @@ export default function AddAsset() {
               ) : (
                 <button onClick={() => platePhotoInputRef.current?.click()} className="flex w-full flex-col items-center gap-1.5 py-3 text-muted-foreground">
                   <ImagePlus className="h-6 w-6" />
-                  <span className="text-xs font-medium">Model plate</span>
-                  <span className="text-[10px] text-muted-foreground">Brand/model sticker</span>
+                  <span className="text-xs font-medium">{FIELD_LABELS.modelLabel}</span>
+                  <span className="text-[10px] text-muted-foreground">Company / model sticker</span>
                 </button>
               )}
             </div>
@@ -835,7 +839,7 @@ export default function AddAsset() {
                 <ScanLine className="h-4 w-4 text-accent" />
                 <div>
                   <p className="text-sm font-semibold text-foreground">Auto-scan label</p>
-                  <p className="text-[11px] text-muted-foreground">Reads brand/model/serial from the plate photo</p>
+                  <p className="text-[11px] text-muted-foreground">Reads {FIELD_LABELS.companyName.toLowerCase()}, {FIELD_LABELS.model.toLowerCase()}, {FIELD_LABELS.serialNumber.toLowerCase()} from the label photo</p>
                 </div>
               </div>
               <button
@@ -856,7 +860,7 @@ export default function AddAsset() {
                 </p>
               </div>
               <div className={`rounded-lg border p-2 ${platePhoto ? 'border-status-good/40 bg-status-good/10' : noLabel ? 'border-muted bg-muted/10' : 'border-status-warning/40 bg-status-warning/10'}`}>
-                <p className="font-semibold text-foreground">Model plate</p>
+                <p className="font-semibold text-foreground">{FIELD_LABELS.modelLabel}</p>
                 <p className={platePhoto ? 'text-status-good' : noLabel ? 'text-muted-foreground' : 'text-status-warning'}>
                   {platePhoto ? '✓ Ready' : noLabel ? 'Skipped (no label)' : '⚠ Missing'}
                 </p>
@@ -897,10 +901,10 @@ export default function AddAsset() {
                 </div>
                 <div className="mt-2 grid grid-cols-2 gap-1.5 text-[11px]">
                   {[
-                    ['Brand', scanResult.brand],
-                    ['Model', scanResult.model],
-                    ['Serial', scanResult.serialNumber],
-                    ['Filter', scanResult.filterType],
+                    [FIELD_LABELS.companyName, scanResult.brand],
+                    [FIELD_LABELS.model, scanResult.model],
+                    [FIELD_LABELS.serialNumber, scanResult.serialNumber],
+                    [FIELD_LABELS.productNumber, scanResult.filterType],
                   ].map(([k, v]) => (
                     <div key={k} className="rounded-md bg-card border px-2 py-1">
                       <p className="text-muted-foreground">{k}</p>
@@ -934,30 +938,31 @@ export default function AddAsset() {
                   className="mt-0.5"
                 />
                 <div className="flex-1">
-                  <p className="text-xs font-semibold text-foreground">No model label visible</p>
-                  <p className="text-[11px] text-muted-foreground">Skip the plate photo. Brand/Model stay editable below; we'll save a note explaining why.</p>
+                  <p className="text-xs font-semibold text-foreground">No model label / label unreadable</p>
+                  <p className="text-[11px] text-muted-foreground">Skip the label photo. {FIELD_LABELS.companyName} and {FIELD_LABELS.model} can stay blank — we'll record why below.</p>
                 </div>
               </label>
               {noLabel && (
                 <div className="mt-2 space-y-2">
-                  <div>
-                    <label className="text-[11px] font-medium text-muted-foreground">
-                      Reason <span className="text-status-urgent">*</span>
-                    </label>
-                    <select
-                      value={noLabelReason}
-                      onChange={(e) => setNoLabelReason(e.target.value)}
-                      className="mt-1 w-full rounded-lg border bg-card px-3 py-2 text-xs text-foreground"
-                    >
-                      <option value="">Select a reason…</option>
-                      {NO_LABEL_REASONS.map((r) => (
-                        <option key={r} value={r}>{r}</option>
-                      ))}
-                    </select>
-                    {!noLabelReason && (
-                      <p className="mt-1 text-[10px] text-status-urgent">Required when no plate photo is provided.</p>
-                    )}
+                  <p className="text-[11px] font-medium text-muted-foreground">
+                    Why can't the label be captured? <span className="text-status-urgent">*</span>
+                  </p>
+                  <div className="space-y-1.5">
+                    {NO_LABEL_REASONS.map((r) => (
+                      <label key={r} className="flex items-start gap-2 rounded-lg border bg-card px-3 py-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={noLabelReason === r}
+                          onChange={() => setNoLabelReason(noLabelReason === r ? '' : r)}
+                          className="mt-0.5"
+                        />
+                        <span className="text-xs text-foreground">{r}</span>
+                      </label>
+                    ))}
                   </div>
+                  {!noLabelReason && (
+                    <p className="text-[10px] text-status-urgent">Select one reason above.</p>
+                  )}
                   {noLabelReason === 'Other' && (
                     <div>
                       <label className="text-[11px] font-medium text-muted-foreground">Describe</label>
@@ -980,17 +985,19 @@ export default function AddAsset() {
             {/* Always-editable fields so older / unlabeled fixtures still work */}
             <div className="mt-3 space-y-3">
               {[
-                { label: 'Brand', value: brand, setter: setBrand },
-                { label: 'Model', value: model, setter: setModel },
-                { label: 'Serial Number', value: serialNumber, setter: setSerialNumber },
-                { label: 'Filter Type', value: filterType, setter: setFilterType },
-              ].map(({ label, value, setter }) => (
+                { label: FIELD_LABELS.companyName, value: brand, setter: setBrand, optional: true },
+                { label: FIELD_LABELS.model, value: model, setter: setModel, optional: true },
+                { label: FIELD_LABELS.serialNumber, value: serialNumber, setter: setSerialNumber, optional: true },
+                { label: FIELD_LABELS.productNumber, value: filterType, setter: setFilterType, optional: true },
+              ].map(({ label, value, setter, optional }) => (
                 <div key={label}>
-                  <label className="text-xs font-medium text-muted-foreground">{label}</label>
+                  <label className="text-xs font-medium text-muted-foreground">
+                    {label}{optional ? ' (optional)' : ''}
+                  </label>
                   <input
                     value={value}
                     onChange={(e) => setter(e.target.value)}
-                    placeholder={label === 'Serial Number' ? 'Leave blank if no label' : ''}
+                    placeholder={optional ? 'Leave blank if not on label' : ''}
                     className="mt-1 w-full rounded-lg border bg-card px-3 py-2 text-sm text-foreground"
                   />
                 </div>
@@ -1103,22 +1110,22 @@ export default function AddAsset() {
           <div>
             <div className="flex items-center gap-2 text-muted-foreground">
               <MessageSquareWarning className="h-4 w-4" />
-              <p className="text-sm">Optional: rate & note any issues</p>
+              <p className="text-sm">Optional: note condition (Low / OK / Good)</p>
             </div>
           </div>
           <div>
-            <label className="text-sm font-medium text-foreground">Water Pressure</label>
-            <StarRating value={pressure} onChange={setPressure} />
+            <label className="text-sm font-medium text-foreground">Water pressure</label>
+            <SimpleRating value={pressure} onChange={setPressure} />
           </div>
           <div>
             <label className="text-sm font-medium text-foreground">Cleanliness</label>
-            <StarRating value={cleanliness} onChange={setCleanliness} />
+            <SimpleRating value={cleanliness} onChange={setCleanliness} />
           </div>
 
           <div>
             <label className="text-sm font-medium text-foreground">Quick issues</label>
             <div className="mt-2 flex flex-wrap gap-2">
-              {['rust', 'low_flow', 'noisy', 'dirty', 'clogged_filter'].map((id) => {
+              {ISSUE_OPTIONS.map(({ id, label }) => {
                 const active = issues.includes(id);
                 return (
                   <button
@@ -1128,7 +1135,7 @@ export default function AddAsset() {
                       active ? 'bg-accent text-accent-foreground' : 'bg-secondary text-secondary-foreground'
                     }`}
                   >
-                    {id}
+                    {label}
                   </button>
                 );
               })}
@@ -1160,10 +1167,12 @@ export default function AddAsset() {
           <div className="rounded-2xl border bg-card p-4 space-y-2 text-sm">
             <div className="flex justify-between"><span className="text-muted-foreground">Campus</span><span className="font-semibold text-foreground text-right">{selectedCampus ? `${selectedCampus.school} — ${selectedCampus.name}` : '—'}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Building</span><span className="font-semibold text-foreground text-right">{selectedBuilding?.name ?? '—'}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Floor</span><span className="font-semibold text-foreground">{floor || '—'}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Room / landmark</span><span className="font-semibold text-foreground text-right">{nearestRoom || '—'}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">{FIELD_LABELS.floor}</span><span className="font-semibold text-foreground">{floor || '—'}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">{FIELD_LABELS.room}</span><span className="font-semibold text-foreground text-right">{nearestRoom || '—'}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Fixture type</span><span className="font-semibold text-foreground">{category ? fixtureCategoryMeta[category].label : '—'}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Brand / Model</span><span className="font-semibold text-foreground text-right">{(brand || '—')} {model && `· ${model}`}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">{FIELD_LABELS.companyName} / {FIELD_LABELS.model}</span><span className="font-semibold text-foreground text-right">{(brand || '—')} {model && `· ${model}`}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">{FIELD_LABELS.serialNumber}</span><span className="font-semibold text-foreground">{serialNumber || '—'}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">{FIELD_LABELS.productNumber}</span><span className="font-semibold text-foreground">{filterType || '—'}</span></div>
           </div>
 
           <div>
@@ -1195,7 +1204,7 @@ export default function AddAsset() {
               className="mt-0.5"
             />
             <span className="text-xs text-foreground">
-              I confirm the campus, building, floor, room and nearest fixture ID above are correct for this fixture.
+              I confirm the location, fixture type, and label details above are correct (blank fields are OK when not on the label).
             </span>
           </label>
         </div>
@@ -1247,7 +1256,7 @@ export default function AddAsset() {
               <button
                 onClick={async () => {
                   if (selectedBuildingId && floor) {
-                    await setFloorStatus(selectedBuildingId, parseInt(floor), 'Done');
+                    await setFloorStatus(selectedBuildingId, floor.trim(), 'Done');
                     toast.success(`Floor ${floor} marked as Done`);
                   }
                   setPostSaveOpen(false);

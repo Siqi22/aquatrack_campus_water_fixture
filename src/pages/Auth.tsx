@@ -148,7 +148,7 @@ export default function Auth() {
         </div>
 
         <p className="mt-4 text-center text-[11px] text-muted-foreground">
-          New users start as <strong>Surveyor</strong>. Switch to Facilities from the Campus tab.
+          New users start as collectors. Add fixtures from the home screen or Assets tab.
         </p>
       </div>
     </div>

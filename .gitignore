@@ -17,6 +17,11 @@ dist-ssr
 .env.*
 !.env.example
 
+# Local CSV test imports (use in-app Import instead)
+/campus water tracker*.csv
+*.csv
+!public/samples/*.csv
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

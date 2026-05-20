@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
+import type { ImportAnalysis, ImportResult } from '@/lib/importCSV';
+import { parseCampusLabel, estimateBuildingFloors } from '@/lib/importCSV';
 
 export type FixtureStatus = 'Good' | 'Warning' | 'Urgent';
 export type UserRole = 'Surveyor' | 'Facilities';
@@ -52,7 +54,7 @@ export interface Fixture {
   campusId: string;
   buildingId: string;
   buildingName: string;
-  floor: number;
+  floor: string;
   roomNumber: string;
   nearestRoom?: string;
   brand: string;
@@ -95,7 +97,7 @@ export interface Campus {
 
 export interface BuildingFloorProgress {
   buildingId: string;
-  floor: number;
+  floor: string;
   status: FloorStatus;
   restrictedReason?: string;
   startedAt?: string;
@@ -145,7 +147,7 @@ function mapFixture(r: FixtureRow, buildingName: string): Fixture {
     campusId: r.campus_id,
     buildingId: r.building_id,
     buildingName,
-    floor: r.floor,
+    floor: String(r.floor),
     roomNumber: r.room_number,
     nearestRoom: r.nearest_room ?? r.room_number,
     brand: r.brand ?? '',
@@ -172,7 +174,7 @@ function mapFixture(r: FixtureRow, buildingName: string): Fixture {
 function mapFloorProgress(r: FloorProgressRow): BuildingFloorProgress {
   return {
     buildingId: r.building_id,
-    floor: r.floor,
+    floor: String(r.floor),
     status: r.status as FloorStatus,
     restrictedReason: r.restricted_reason ?? undefined,
     startedAt: r.started_at ?? undefined,
@@ -202,19 +204,20 @@ interface FixtureStore {
   completeService: (fixtureId: string) => Promise<void>;
   setFloorStatus: (
     buildingId: string,
-    floor: number,
+    floor: string,
     status: FloorStatus,
     opts?: { restrictedReason?: string },
   ) => Promise<void>;
-  getFloorProgress: (buildingId: string, floor: number) => BuildingFloorProgress;
+  getFloorProgress: (buildingId: string, floor: string) => BuildingFloorProgress;
   getFloorsByBuilding: (buildingId: string) => BuildingFloorProgress[];
   searchFixtures: (query: string) => Fixture[];
   getFixturesByBuilding: (buildingId: string) => Fixture[];
-  getFixturesByBuildingAndFloor: (buildingId: string, floor: number) => Fixture[];
+  getFixturesByBuildingAndFloor: (buildingId: string, floor: string) => Fixture[];
   getBuildingsByCampus: (campusId: string) => Building[];
   getFixturesByCampus: (campusId: string) => Fixture[];
   getMaintenanceTasks: () => Fixture[];
   getFixtureById: (id: string) => Fixture | undefined;
+  importFromAnalysis: (analysis: ImportAnalysis) => Promise<ImportResult>;
 }
 
 const ROLE_KEY = 'aquaTrack:userRole';
@@ -272,10 +275,11 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
 
       // Auto-create floor_progress rows for missing (building, floor) combos so the UI has something to show.
       const existing = new Set(floorProgress.map((p) => `${p.buildingId}:${p.floor}`));
-      const missing: { building_id: string; floor: number; status: FloorStatus }[] = [];
+      const missing: { building_id: string; floor: string; status: FloorStatus }[] = [];
       for (const b of buildings) {
         for (let fl = 1; fl <= b.floors; fl++) {
-          if (!existing.has(`${b.id}:${fl}`)) missing.push({ building_id: b.id, floor: fl, status: 'NotStarted' });
+          const key = String(fl);
+          if (!existing.has(`${b.id}:${key}`)) missing.push({ building_id: b.id, floor: key, status: 'NotStarted' });
         }
       }
       if (missing.length) {
@@ -323,7 +327,7 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
     const next = mapBuilding(data);
     // Seed floor_progress for this building.
     const fpRows = Array.from({ length: next.floors }, (_, i) => ({
-      building_id: next.id, floor: i + 1, status: 'NotStarted' as FloorStatus,
+      building_id: next.id, floor: String(i + 1), status: 'NotStarted' as FloorStatus,
     }));
     const { data: fpInserted } = await supabase.from('floor_progress').insert(fpRows).select('*');
     set((s) => ({
@@ -334,6 +338,19 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
   },
 
   addFixture: async (f) => {
+    const floorKey = String(f.floor).trim();
+    const existingFp = get().floorProgress.find((p) => p.buildingId === f.buildingId && p.floor === floorKey);
+    if (!existingFp) {
+      const { data: inserted } = await supabase
+        .from('floor_progress')
+        .insert({ building_id: f.buildingId, floor: floorKey, status: 'NotStarted' })
+        .select('*')
+        .maybeSingle();
+      if (inserted) {
+        set((s) => ({ floorProgress: [...s.floorProgress, mapFloorProgress(inserted)] }));
+      }
+    }
+
     const { data: userResp } = await supabase.auth.getUser();
     const userId = userResp?.user?.id ?? null;
     let savedByName: string | null = f.savedByName ?? null;
@@ -346,7 +363,7 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
       .insert({
         campus_id: f.campusId,
         building_id: f.buildingId,
-        floor: f.floor,
+        floor: floorKey,
         room_number: f.roomNumber,
         nearest_room: f.nearestRoom ?? f.roomNumber,
         brand: f.brand,
@@ -358,8 +375,6 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
         cleanliness_rating: f.qualityRating.cleanliness,
         observations: f.observations ?? null,
         issues: f.issues ?? null,
-        pos_x: f.posX ?? null,
-        pos_y: f.posY ?? null,
         photo_url: f.photoURL || null,
         model_plate_photo_url: f.modelPlatePhotoURL || null,
         installation_date: f.installationDate ?? null,
@@ -378,16 +393,16 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
     const next = mapFixture(data, buildingName);
 
     // Auto-advance floor status NotStarted -> InProgress
-    const fp = get().floorProgress.find((p) => p.buildingId === f.buildingId && p.floor === f.floor);
+    const fp = get().floorProgress.find((p) => p.buildingId === f.buildingId && p.floor === floorKey);
     if (fp && fp.status === 'NotStarted') {
       const today = new Date().toISOString().slice(0, 10);
       await supabase.from('floor_progress')
         .update({ status: 'InProgress', started_at: today })
         .eq('building_id', f.buildingId)
-        .eq('floor', f.floor);
+        .eq('floor', floorKey);
       set((s) => ({
         floorProgress: s.floorProgress.map((p) =>
-          p.buildingId === f.buildingId && p.floor === f.floor ? { ...p, status: 'InProgress', startedAt: today } : p,
+          p.buildingId === f.buildingId && p.floor === floorKey ? { ...p, status: 'InProgress', startedAt: today } : p,
         ),
       }));
     }
@@ -445,15 +460,15 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
   },
 
   getFloorProgress: (buildingId, floor) => {
-    const b = get().buildings.find((x) => x.id === buildingId);
-    const max = b?.floors ?? floor;
-    const fl = Math.max(1, Math.min(max, floor));
-    return get().floorProgress.find((p) => p.buildingId === buildingId && p.floor === fl) ?? {
-      buildingId, floor: fl, status: 'NotStarted',
+    const key = String(floor).trim();
+    return get().floorProgress.find((p) => p.buildingId === buildingId && p.floor === key) ?? {
+      buildingId, floor: key, status: 'NotStarted',
     };
   },
   getFloorsByBuilding: (buildingId) =>
-    get().floorProgress.filter((p) => p.buildingId === buildingId).sort((a, c) => a.floor - c.floor),
+    get().floorProgress
+      .filter((p) => p.buildingId === buildingId)
+      .sort((a, c) => a.floor.localeCompare(c.floor, undefined, { numeric: true })),
   searchFixtures: (query) => {
     const q = query.toLowerCase();
     return get().fixtures.filter(
@@ -472,4 +487,156 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
   getFixturesByCampus: (campusId) => get().fixtures.filter((f) => f.campusId === campusId),
   getMaintenanceTasks: () => get().fixtures.filter((f) => getDaysSinceMaintenance(f.lastMaintenanceDate) > 150),
   getFixtureById: (id) => get().fixtures.find((f) => f.id === id),
+
+  importFromAnalysis: async (analysis) => {
+    const { data: userResp } = await supabase.auth.getUser();
+    const userId = userResp?.user?.id ?? null;
+
+    let campusesCreated = 0;
+    let buildingsCreated = 0;
+
+    const campusKey = (label: string) => label.trim().toLowerCase();
+    const buildingKey = (campusLabel: string, buildingName: string) =>
+      `${campusKey(campusLabel)}::${buildingName.trim().toLowerCase()}`;
+
+    const campusIdByLabel = new Map<string, string>();
+    const buildingIdByKey = new Map<string, string>();
+
+    for (const label of analysis.campusLabels) {
+      const parsed = parseCampusLabel(label);
+      const existing = get().campuses.find(
+        (c) =>
+          c.name.toLowerCase() === parsed.name.toLowerCase() &&
+          c.school.toLowerCase() === parsed.school.toLowerCase(),
+      );
+      if (existing) {
+        campusIdByLabel.set(campusKey(label), existing.id);
+        continue;
+      }
+      const created = await get().addCampus({ name: parsed.name, school: parsed.school, address: '' });
+      if (created) {
+        campusesCreated++;
+        campusIdByLabel.set(campusKey(label), created.id);
+      }
+    }
+
+    const buildingNames = new Map<string, { campusLabel: string; buildingName: string }>();
+    for (const f of analysis.fixtures) {
+      buildingNames.set(buildingKey(f.campusLabel, f.buildingName), {
+        campusLabel: f.campusLabel,
+        buildingName: f.buildingName,
+      });
+    }
+    for (const l of analysis.floorLocks) {
+      buildingNames.set(buildingKey(l.campusLabel, l.buildingName), {
+        campusLabel: l.campusLabel,
+        buildingName: l.buildingName,
+      });
+    }
+
+    for (const [key, { campusLabel, buildingName }] of buildingNames) {
+      const campusId = campusIdByLabel.get(campusKey(campusLabel));
+      if (!campusId) continue;
+
+      const existing = get().buildings.find(
+        (b) => b.campusId === campusId && b.name.toLowerCase() === buildingName.toLowerCase(),
+      );
+      if (existing) {
+        buildingIdByKey.set(key, existing.id);
+        continue;
+      }
+
+      const floorCount = estimateBuildingFloors(analysis.fixtures, analysis.floorLocks, campusLabel, buildingName);
+      const created = await get().addBuilding({ campusId, name: buildingName, floors: floorCount });
+      if (created) {
+        buildingsCreated++;
+        buildingIdByKey.set(key, created.id);
+      }
+    }
+
+    const existingFp = new Set(get().floorProgress.map((p) => `${p.buildingId}:${p.floor}`));
+    const fpToInsert: { building_id: string; floor: string; status: FloorStatus }[] = [];
+
+    const registerFloor = (campusLabel: string, buildingName: string, floor: string) => {
+      const bId = buildingIdByKey.get(buildingKey(campusLabel, buildingName));
+      if (!bId) return;
+      const fpKey = `${bId}:${floor}`;
+      if (existingFp.has(fpKey)) return;
+      existingFp.add(fpKey);
+      fpToInsert.push({ building_id: bId, floor, status: 'NotStarted' });
+    };
+
+    for (const f of analysis.fixtures) registerFloor(f.campusLabel, f.buildingName, f.floor);
+    for (const l of analysis.floorLocks) registerFloor(l.campusLabel, l.buildingName, l.floor);
+
+    if (fpToInsert.length) {
+      await supabase.from('floor_progress').insert(fpToInsert);
+    }
+
+    type FixtureInsert = Database['public']['Tables']['fixtures']['Insert'];
+    const rows: FixtureInsert[] = [];
+
+    for (const f of analysis.fixtures) {
+      const campusId = campusIdByLabel.get(campusKey(f.campusLabel));
+      const buildingId = buildingIdByKey.get(buildingKey(f.campusLabel, f.buildingName));
+      if (!campusId || !buildingId) continue;
+
+      rows.push({
+        campus_id: campusId,
+        building_id: buildingId,
+        floor: f.floor,
+        room_number: f.nearestRoom,
+        nearest_room: f.nearestRoom,
+        brand: f.brand || null,
+        model: f.model || null,
+        serial_number: f.serialNumber || null,
+        filter_type: f.filterType || null,
+        category: f.category,
+        pressure_rating: f.pressure,
+        cleanliness_rating: f.cleanliness,
+        observations: f.observations ?? null,
+        issues: f.issues ?? null,
+        last_maintenance_date: f.lastMaintenanceDate,
+        installation_date: f.installationDate ?? null,
+        created_by: userId,
+        location_confirmed: true,
+        photos_provided: [],
+      });
+    }
+
+    for (let i = 0; i < rows.length; i += 100) {
+      const batch = rows.slice(i, i + 100);
+      const { error } = await supabase.from('fixtures').insert(batch);
+      if (error) throw error;
+    }
+
+    const lockMap = new Map<string, { buildingId: string; floor: string; reason: string }>();
+    for (const l of analysis.floorLocks) {
+      const buildingId = buildingIdByKey.get(buildingKey(l.campusLabel, l.buildingName));
+      if (!buildingId) continue;
+      lockMap.set(`${buildingId}:${l.floor}`, {
+        buildingId,
+        floor: l.floor,
+        reason: l.reason,
+      });
+    }
+
+    let floorsLocked = 0;
+    for (const lock of lockMap.values()) {
+      await get().setFloorStatus(lock.buildingId, lock.floor, 'Restricted', {
+        restrictedReason: lock.reason,
+      });
+      floorsLocked++;
+    }
+
+    await get().loadAll();
+
+    return {
+      campusesCreated,
+      buildingsCreated,
+      fixturesImported: rows.length,
+      floorsLocked,
+      skipped: analysis.skipped.length,
+    };
+  },
 }));

@@ -3,8 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useFixtureStore, getFixtureStatus, getDaysSinceMaintenance, fixtureCategoryMeta } from '@/store/fixtureStore';
 import type { FixtureCategory } from '@/store/fixtureStore';
 import { StatusBadge } from '@/components/StatusBadge';
-import { StarRating } from '@/components/StarRating';
-import { ChevronLeft, MapPin, Wrench, Clock, CheckCircle2, Edit3, Save, X, ExternalLink, Image as ImageIcon, Hash, Tag, Download } from 'lucide-react';
+import { SimpleRating } from '@/components/SimpleRating';
+import { FIELD_LABELS, issueLabel } from '@/lib/fieldLabels';
+import { ChevronLeft, MapPin, Wrench, CheckCircle2, Edit3, Save, X, ExternalLink, Image as ImageIcon, Hash, Tag, Download } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function FixtureDetail() {
@@ -20,8 +21,8 @@ export default function FixtureDetail() {
   const [model, setModel] = useState(fixture?.model || '');
   const [filterType, setFilterType] = useState(fixture?.filterType || '');
   const [category, setCategory] = useState<FixtureCategory>(fixture?.category || 'Other');
-  const [pressure, setPressure] = useState(fixture?.qualityRating.pressure || 3);
-  const [cleanliness, setCleanliness] = useState(fixture?.qualityRating.cleanliness || 3);
+  const [pressure, setPressure] = useState(fixture?.qualityRating.pressure || 2);
+  const [cleanliness, setCleanliness] = useState(fixture?.qualityRating.cleanliness || 2);
   const [observations, setObservations] = useState(fixture?.observations || '');
 
   const campus = fixture ? campuses.find((c) => c.id === fixture.campusId) : undefined;
@@ -36,10 +37,6 @@ export default function FixtureDetail() {
     if (campus?.address) parts.push(campus.address);
     return parts.filter(Boolean).join(', ');
   }, [campus?.address, campus?.name, campus?.school, fixture]);
-
-  const externalMapUrl = locationLabel
-    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(locationLabel)}`
-    : null;
 
   if (!fixture) {
     return (
@@ -137,11 +134,11 @@ export default function FixtureDetail() {
             <p className="text-[10px] font-medium text-muted-foreground">Ratings</p>
             <div className="mt-1">
               <p className="text-[11px] text-muted-foreground">Pressure</p>
-              <StarRating value={fixture.qualityRating.pressure} readonly />
+              <SimpleRating value={fixture.qualityRating.pressure} readonly />
             </div>
             <div className="mt-2">
               <p className="text-[11px] text-muted-foreground">Cleanliness</p>
-              <StarRating value={fixture.qualityRating.cleanliness} readonly />
+              <SimpleRating value={fixture.qualityRating.cleanliness} readonly />
             </div>
           </div>
         </div>
@@ -161,7 +158,7 @@ export default function FixtureDetail() {
             {fixture.photoURL || fixture.modelPlatePhotoURL ? (
               <div className="grid grid-cols-2 gap-3">
                 <PhotoCard label="General" url={fixture.photoURL} filename={`${fixture.id}-general.jpg`} />
-                <PhotoCard label="Model plate" url={fixture.modelPlatePhotoURL} filename={`${fixture.id}-plate.jpg`} />
+                <PhotoCard label={FIELD_LABELS.modelLabel} url={fixture.modelPlatePhotoURL} filename={`${fixture.id}-plate.jpg`} />
               </div>
             ) : (
               <div className="rounded-xl border bg-secondary/30 p-4 text-center text-muted-foreground">
@@ -178,16 +175,6 @@ export default function FixtureDetail() {
               <MapPin className="h-4 w-4 text-muted-foreground" />
               <h2 className="text-sm font-semibold text-foreground">Location</h2>
             </div>
-            {externalMapUrl ? (
-              <a
-                href={externalMapUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-1 text-xs text-accent font-medium"
-              >
-                Open map <ExternalLink className="h-3 w-3" />
-              </a>
-            ) : null}
           </div>
 
           <div className="p-4">
@@ -237,11 +224,11 @@ export default function FixtureDetail() {
         <div className="space-y-3">
           {editing ? (
             <>
-              <Field label="Room Number" value={roomNumber} onChange={setRoomNumber} />
-              <Field label="Nearest Room / Landmark" value={nearestRoom} onChange={setNearestRoom} />
-              <Field label="Brand" value={brand} onChange={setBrand} />
-              <Field label="Model" value={model} onChange={setModel} />
-              <Field label="Filter Type" value={filterType} onChange={setFilterType} />
+              <Field label={FIELD_LABELS.room} value={roomNumber} onChange={setRoomNumber} />
+              <Field label="Nearest landmark" value={nearestRoom} onChange={setNearestRoom} />
+              <Field label={FIELD_LABELS.companyName} value={brand} onChange={setBrand} />
+              <Field label={FIELD_LABELS.model} value={model} onChange={setModel} />
+              <Field label={FIELD_LABELS.productNumber} value={filterType} onChange={setFilterType} />
               <div>
                 <label className="text-xs font-medium text-muted-foreground">Category</label>
                 <select
@@ -257,12 +244,12 @@ export default function FixtureDetail() {
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Pressure Rating</label>
-                <StarRating value={pressure} onChange={setPressure} />
+                <label className="text-xs font-medium text-muted-foreground">Water pressure</label>
+                <SimpleRating value={pressure} onChange={setPressure} />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Cleanliness Rating</label>
-                <StarRating value={cleanliness} onChange={setCleanliness} />
+                <label className="text-xs font-medium text-muted-foreground">Cleanliness</label>
+                <SimpleRating value={cleanliness} onChange={setCleanliness} />
               </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground">Observations</label>
@@ -277,10 +264,10 @@ export default function FixtureDetail() {
           ) : (
             <>
               <div className="grid grid-cols-2 gap-3">
-                <InfoTile label="Brand" value={fixture.brand || '—'} />
-                <InfoTile label="Model" value={fixture.model || '—'} />
-                <InfoTile label="Serial" value={fixture.serialNumber || '—'} />
-                <InfoTile label="Filter" value={fixture.filterType || '—'} />
+                <InfoTile label={FIELD_LABELS.companyName} value={fixture.brand || '—'} />
+                <InfoTile label={FIELD_LABELS.model} value={fixture.model || '—'} />
+                <InfoTile label={FIELD_LABELS.serialNumber} value={fixture.serialNumber || '—'} />
+                <InfoTile label={FIELD_LABELS.productNumber} value={fixture.filterType || '—'} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <InfoTile label="Category" value={fixtureCategoryMeta[fixture.category]?.label ?? fixture.category} />
@@ -292,7 +279,7 @@ export default function FixtureDetail() {
                   <div className="mt-2 flex flex-wrap gap-2">
                     {fixture.issues.map((i) => (
                       <span key={i} className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold text-secondary-foreground">
-                        {i}
+                        {issueLabel(i)}
                       </span>
                     ))}
                   </div>

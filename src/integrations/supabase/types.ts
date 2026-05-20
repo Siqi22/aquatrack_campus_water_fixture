@@ -110,7 +110,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           filter_type: string | null
-          floor: number
+          floor: string
           id: string
           installation_date: string | null
           issues: string[] | null
@@ -141,7 +141,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           filter_type?: string | null
-          floor: number
+          floor: string
           id?: string
           installation_date?: string | null
           issues?: string[] | null
@@ -216,7 +216,7 @@ export type Database = {
           building_id: string
           created_at: string
           ended_at: string | null
-          floor: number
+          floor: string
           id: string
           notes: string | null
           restricted_reason: string | null
@@ -229,7 +229,7 @@ export type Database = {
           building_id: string
           created_at?: string
           ended_at?: string | null
-          floor: number
+          floor: string
           id?: string
           notes?: string | null
           restricted_reason?: string | null

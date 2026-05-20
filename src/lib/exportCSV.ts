@@ -1,4 +1,5 @@
-import { Fixture, getFixtureStatus } from '@/store/fixtureStore';
+import { Fixture, getFixtureStatus, fixtureCategoryMeta } from '@/store/fixtureStore';
+import { FIELD_LABELS } from '@/lib/fieldLabels';
 
 export type ExportColumnKey =
   | 'id'
@@ -33,11 +34,11 @@ export const EXPORT_COLUMNS: ExportColumn[] = [
   { key: 'floor', label: 'Floor', get: (f) => f.floor },
   { key: 'room', label: 'Room', get: (f) => f.roomNumber },
   { key: 'nearestRoom', label: 'Nearest Room', get: (f) => f.nearestRoom ?? '' },
-  { key: 'category', label: 'Category', get: (f) => f.category },
-  { key: 'brand', label: 'Brand', get: (f) => f.brand },
-  { key: 'model', label: 'Model', get: (f) => f.model },
-  { key: 'serialNumber', label: 'Serial Number', get: (f) => f.serialNumber },
-  { key: 'filterType', label: 'Filter Type', get: (f) => f.filterType },
+  { key: 'category', label: 'Category', get: (f) => fixtureCategoryMeta[f.category]?.label ?? f.category },
+  { key: 'brand', label: FIELD_LABELS.companyName, get: (f) => f.brand },
+  { key: 'model', label: FIELD_LABELS.model, get: (f) => f.model },
+  { key: 'serialNumber', label: FIELD_LABELS.serialNumber, get: (f) => f.serialNumber },
+  { key: 'filterType', label: FIELD_LABELS.productNumber, get: (f) => f.filterType },
   { key: 'lastMaintenance', label: 'Last Maintenance', get: (f) => f.lastMaintenanceDate },
   { key: 'installationDate', label: 'Installation Date', get: (f) => f.installationDate ?? '' },
   { key: 'status', label: 'Status', get: (f) => getFixtureStatus(f.lastMaintenanceDate) },
