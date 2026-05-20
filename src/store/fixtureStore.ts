@@ -1,8 +1,13 @@
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
-import type { ImportAnalysis, ImportResult } from '@/lib/importCSV';
-import { parseCampusLabel, estimateBuildingFloors } from '@/lib/importCSV';
+import type { ImportAnalysis, ImportOptions, ImportResult } from '@/lib/importCSV';
+import {
+  parseCampusLabel,
+  estimateBuildingFloors,
+  resolveExistingFixtureId,
+  buildExistingFixtureIndex,
+} from '@/lib/importCSV';
 
 export type FixtureStatus = 'Good' | 'Warning' | 'Urgent';
 export type UserRole = 'Surveyor' | 'Facilities';
@@ -217,7 +222,7 @@ interface FixtureStore {
   getFixturesByCampus: (campusId: string) => Fixture[];
   getMaintenanceTasks: () => Fixture[];
   getFixtureById: (id: string) => Fixture | undefined;
-  importFromAnalysis: (analysis: ImportAnalysis) => Promise<ImportResult>;
+  importFromAnalysis: (analysis: ImportAnalysis, options?: ImportOptions) => Promise<ImportResult>;
 }
 
 const ROLE_KEY = 'aquaTrack:userRole';
@@ -488,12 +493,17 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
   getMaintenanceTasks: () => get().fixtures.filter((f) => getDaysSinceMaintenance(f.lastMaintenanceDate) > 150),
   getFixtureById: (id) => get().fixtures.find((f) => f.id === id),
 
-  importFromAnalysis: async (analysis) => {
+  importFromAnalysis: async (analysis, options) => {
+    const mode = options?.mode ?? 'skip_duplicates';
     const { data: userResp } = await supabase.auth.getUser();
     const userId = userResp?.user?.id ?? null;
 
     let campusesCreated = 0;
     let buildingsCreated = 0;
+    let fixturesUpdated = 0;
+    let fixturesSkippedDuplicates = 0;
+
+    const index = buildExistingFixtureIndex(get().fixtures, get().campuses);
 
     const campusKey = (label: string) => label.trim().toLowerCase();
     const buildingKey = (campusLabel: string, buildingName: string) =>
@@ -575,15 +585,15 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
 
     type FixtureInsert = Database['public']['Tables']['fixtures']['Insert'];
     const rows: FixtureInsert[] = [];
+    const updates: Array<{ id: string; patch: Database['public']['Tables']['fixtures']['Update'] }> = [];
 
     for (const f of analysis.fixtures) {
       const campusId = campusIdByLabel.get(campusKey(f.campusLabel));
       const buildingId = buildingIdByKey.get(buildingKey(f.campusLabel, f.buildingName));
       if (!campusId || !buildingId) continue;
 
-      rows.push({
-        campus_id: campusId,
-        building_id: buildingId,
+      const existingId = resolveExistingFixtureId(f, index);
+      const patch = {
         floor: f.floor,
         room_number: f.nearestRoom,
         nearest_room: f.nearestRoom,
@@ -598,10 +608,33 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
         issues: f.issues ?? null,
         last_maintenance_date: f.lastMaintenanceDate,
         installation_date: f.installationDate ?? null,
-        created_by: userId,
         location_confirmed: true,
+      };
+
+      if (existingId) {
+        if (mode === 'skip_duplicates') {
+          fixturesSkippedDuplicates++;
+          continue;
+        }
+        if (mode === 'update_existing') {
+          updates.push({ id: existingId, patch });
+          continue;
+        }
+      }
+
+      rows.push({
+        campus_id: campusId,
+        building_id: buildingId,
+        ...patch,
+        created_by: userId,
         photos_provided: [],
       });
+    }
+
+    for (const { id, patch } of updates) {
+      const { error } = await supabase.from('fixtures').update(patch).eq('id', id);
+      if (error) throw error;
+      fixturesUpdated++;
     }
 
     for (let i = 0; i < rows.length; i += 100) {
@@ -635,6 +668,8 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
       campusesCreated,
       buildingsCreated,
       fixturesImported: rows.length,
+      fixturesUpdated,
+      fixturesSkippedDuplicates,
       floorsLocked,
       skipped: analysis.skipped.length,
     };

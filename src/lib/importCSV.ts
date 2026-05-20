@@ -44,6 +44,7 @@ export interface ParsedFixtureRow {
   observations?: string;
   issues?: string[];
   sourceRow: number;
+  externalId?: string;
 }
 
 export interface ParsedFloorLockRow {
@@ -69,12 +70,27 @@ export interface ImportAnalysis {
   skipped: SkippedRow[];
   campusLabels: string[];
   buildingCount: number;
+  duplicateCount: number;
+  newFixtureCount: number;
+}
+
+export type ImportMode = 'insert_only' | 'skip_duplicates' | 'update_existing';
+
+export interface ImportOptions {
+  mode: ImportMode;
+}
+
+export interface ExistingFixtureIndex {
+  byLocation: Map<string, string>;
+  byExternalId: Map<string, string>;
 }
 
 export interface ImportResult {
   campusesCreated: number;
   buildingsCreated: number;
   fixturesImported: number;
+  fixturesUpdated: number;
+  fixturesSkippedDuplicates: number;
   floorsLocked: number;
   skipped: number;
 }
@@ -318,6 +334,7 @@ export function analyzeCSV(text: string, fileName: string): ImportAnalysis {
     }
 
     const issuesRaw = cell(row, mappingByKey(mappings, 'issues'));
+    const externalId = cleanValue(cell(row, mappingByKey(mappings, 'id'))) || undefined;
     const today = new Date().toISOString().slice(0, 10);
     const lastMaint = cell(row, mappingByKey(mappings, 'lastMaintenance')) || today;
 
@@ -341,6 +358,7 @@ export function analyzeCSV(text: string, fileName: string): ImportAnalysis {
         ? issuesRaw.split(/[;|]/).map((s) => s.trim()).filter(Boolean)
         : undefined,
       sourceRow,
+      externalId,
     });
 
     if (access.locked) {
@@ -364,7 +382,82 @@ export function analyzeCSV(text: string, fileName: string): ImportAnalysis {
     skipped,
     campusLabels: [...campusSet],
     buildingCount: buildingSet.size,
+    duplicateCount: 0,
+    newFixtureCount: fixtures.length,
   };
+}
+
+export function locationKeyFromParsed(row: ParsedFixtureRow): string {
+  const { school, name } = parseCampusLabel(row.campusLabel);
+  return locationKey(school, name, row.buildingName, row.floor, row.nearestRoom);
+}
+
+export function locationKey(
+  school: string,
+  campusName: string,
+  buildingName: string,
+  floor: string,
+  room: string,
+): string {
+  return [school, campusName, buildingName, floor, room]
+    .map((part) => part.trim().toLowerCase())
+    .join('::');
+}
+
+/** Build lookup indexes for duplicate detection during import. */
+export function buildExistingFixtureIndex(
+  fixtures: Array<{
+    id: string;
+    campusId: string;
+    buildingName: string;
+    floor: string;
+    roomNumber: string;
+    nearestRoom?: string;
+  }>,
+  campuses: Array<{ id: string; school: string; name: string }>,
+): ExistingFixtureIndex {
+  const campusById = new Map(campuses.map((c) => [c.id, c]));
+  const byLocation = new Map<string, string>();
+  const byExternalId = new Map<string, string>();
+
+  for (const f of fixtures) {
+    const campus = campusById.get(f.campusId);
+    if (!campus) continue;
+    const room = (f.nearestRoom || f.roomNumber).trim();
+    const key = locationKey(campus.school, campus.name, f.buildingName, f.floor, room);
+    byLocation.set(key, f.id);
+    byExternalId.set(f.id, f.id);
+  }
+
+  return { byLocation, byExternalId };
+}
+
+export function enrichAnalysisWithDuplicates(
+  analysis: ImportAnalysis,
+  index: ExistingFixtureIndex,
+): ImportAnalysis {
+  let duplicateCount = 0;
+  for (const row of analysis.fixtures) {
+    const locKey = locationKeyFromParsed(row);
+    const byId = row.externalId ? index.byExternalId.get(row.externalId) : undefined;
+    const byLoc = index.byLocation.get(locKey);
+    if (byId || byLoc) duplicateCount++;
+  }
+  return {
+    ...analysis,
+    duplicateCount,
+    newFixtureCount: analysis.fixtures.length - duplicateCount,
+  };
+}
+
+export function resolveExistingFixtureId(
+  row: ParsedFixtureRow,
+  index: ExistingFixtureIndex,
+): string | undefined {
+  if (row.externalId && index.byExternalId.has(row.externalId)) {
+    return index.byExternalId.get(row.externalId);
+  }
+  return index.byLocation.get(locationKeyFromParsed(row));
 }
 
 export function parseCampusLabel(label: string): { school: string; name: string } {
