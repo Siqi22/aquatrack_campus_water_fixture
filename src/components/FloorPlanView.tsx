@@ -37,8 +37,8 @@ export function FloorPlanView({ buildingId, floor, buildingName, campusId }: Flo
   const addHref = `/add?mode=onboard&buildingId=${encodeURIComponent(buildingId)}&floor=${encodeURIComponent(floor)}${campusId ? `&campusId=${encodeURIComponent(campusId)}` : ''}`;
 
   return (
-    <div className="rounded-2xl border bg-card overflow-hidden">
-      <div className="px-4 py-3 border-b bg-secondary/30">
+    <div className="card-soft overflow-hidden">
+      <div className="border-b bg-secondary/20 px-4 py-3">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-xs font-semibold text-foreground">
@@ -112,7 +112,7 @@ export function FloorPlanView({ buildingId, floor, buildingName, campusId }: Flo
           <p className="mt-1 text-[11px] text-muted-foreground">Record fixtures here, or mark the floor locked if there is no access.</p>
           <Link
             to={addHref}
-            className="mt-4 inline-flex items-center gap-1.5 rounded-2xl bg-foreground px-4 py-2.5 text-xs font-semibold text-background"
+            className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground"
           >
             <PlusCircle className="h-3.5 w-3.5" />
             Add first fixture
@@ -144,7 +144,7 @@ export function FloorPlanView({ buildingId, floor, buildingName, campusId }: Flo
           <div className="p-3">
             <Link
               to={addHref}
-              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed py-2.5 text-xs font-semibold text-accent"
+              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-primary/40 py-2.5 text-xs font-semibold text-primary"
             >
               <PlusCircle className="h-3.5 w-3.5" />
               Add another fixture

@@ -3,6 +3,7 @@ import {
   canExportData,
   canImportSpreadsheets,
   canManageFloorProgress,
+  getRoleQuickStart,
   resolvePrimaryRole,
 } from '@/lib/roles';
 
@@ -20,5 +21,7 @@ describe('roles', () => {
     expect(canExportData('Surveyor')).toBe(true);
     expect(canManageFloorProgress('Facilities')).toBe(true);
     expect(canManageFloorProgress('Surveyor')).toBe(false);
+    expect(getRoleQuickStart('Surveyor', false)[0].id).toBe('survey');
+    expect(getRoleQuickStart('Admin', false)[0].id).toBe('import');
   });
 });

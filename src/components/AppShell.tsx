@@ -1,64 +1,115 @@
-import { ReactNode } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Building2, PlusCircle, LogOut } from 'lucide-react';
+import { ReactNode, useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Building2, ClipboardList, Droplets, Home, LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFixtureStore } from '@/store/fixtureStore';
 import { RoleBadge } from '@/components/RoleBadge';
+import { WelcomeScreen, dismissWelcome, wasWelcomeDismissed } from '@/components/WelcomeScreen';
+import { ImportDialog } from '@/components/ImportDialog';
 import { toast } from 'sonner';
 
 const tabs = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/add', icon: PlusCircle, label: 'Assets' },
+  { to: '/', icon: Home, label: 'Home' },
+  { to: '/add', icon: ClipboardList, label: 'Survey' },
   { to: '/campus', icon: Building2, label: 'Campus' },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, signOut } = useAuth();
-  const primaryRole = useFixtureStore((s) => s.primaryRole);
+  const { primaryRole, loaded, fixtures } = useFixtureStore();
+  const [welcomeOpen, setWelcomeOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get('import') === '1') {
+      setImportOpen(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete('import');
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
+    if (loaded && pathname === '/' && !wasWelcomeDismissed()) {
+      setWelcomeOpen(true);
+    }
+  }, [loaded, pathname]);
+
+  function closeWelcome() {
+    dismissWelcome();
+    setWelcomeOpen(false);
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-background app-surface">
-      <header className="flex items-center justify-between gap-2 px-4 py-2 border-b bg-card/60 backdrop-blur-sm">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="truncate text-[11px] text-muted-foreground">{user?.email}</span>
-          <RoleBadge role={primaryRole} compact />
+      <header className="sticky top-0 z-40 border-b bg-card/90 backdrop-blur-md">
+        <div className="mx-auto flex max-w-lg items-center justify-between gap-3 px-4 py-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+              <Droplets className="h-4 w-4 text-primary" />
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-foreground">AquaTrack</p>
+              <p className="truncate text-[10px] text-muted-foreground">{user?.email}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <RoleBadge role={primaryRole} compact />
+            <button
+              type="button"
+              onClick={async () => {
+                await signOut();
+                toast.success('Signed out');
+                navigate('/auth', { replace: true });
+              }}
+              className="btn-icon"
+              aria-label="Sign out"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
         </div>
-        <button
-          onClick={async () => {
-            await signOut();
-            toast.success('Signed out');
-            navigate('/auth', { replace: true });
-          }}
-          className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground"
-        >
-          <LogOut className="h-3.5 w-3.5" /> Sign out
-        </button>
       </header>
-      <div className="flex-1 overflow-y-scroll pb-24 scroll-gutter-stable">{children}</div>
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-t from-card via-card/95 to-card/80 shadow-[0_-5px_15px_rgba(147,147,147,0.14)] backdrop-blur-xl">
-        <div className="mx-auto flex h-20 max-w-lg items-center justify-center gap-[50px] px-6">
+
+      <main className="mx-auto w-full max-w-lg flex-1 overflow-y-auto pb-24 scroll-gutter-stable">
+        {children}
+      </main>
+
+      <nav className="nav-bar">
+        <div className="mx-auto flex max-w-lg items-stretch justify-around px-2">
           {tabs.map(({ to, icon: Icon, label }) => {
-            const active = pathname === to;
+            const active = pathname === to || (to === '/add' && pathname.startsWith('/add'));
             return (
               <Link
                 key={to}
                 to={to}
                 aria-label={label}
-                className={`flex h-9 items-center justify-center transition-colors ${
-                  active
-                    ? 'gap-1 rounded-[20px] bg-[#C8C8F4]/15 px-3 py-1 text-[#4C4DDC]'
-                    : 'w-8 text-[#939393] hover:text-foreground'
-                }`}
+                className={active ? 'nav-tab-active' : 'nav-tab'}
               >
-                <Icon className="h-6 w-6" strokeWidth={active ? 2.4 : 1.8} />
-                {active ? <span className="text-xs font-semibold leading-none">{label}</span> : null}
+                <Icon className="h-5 w-5" strokeWidth={active ? 2.4 : 2} />
+                <span>{label}</span>
               </Link>
             );
           })}
         </div>
       </nav>
+
+      {welcomeOpen && (
+        <WelcomeScreen
+          role={primaryRole}
+          fixtureCount={fixtures.length}
+          onDismiss={closeWelcome}
+          onImport={() => {
+            closeWelcome();
+            setImportOpen(true);
+          }}
+        />
+      )}
+
+      <ImportDialog open={importOpen} onOpenChange={setImportOpen} />
     </div>
   );
 }

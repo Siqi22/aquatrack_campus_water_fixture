@@ -64,24 +64,25 @@ export default function Auth() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+    <div className="app-surface flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        <div className="text-center mb-6">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-accent/10 mb-3">
-            <Droplets className="h-6 w-6 text-accent" />
+        <div className="mb-8 text-center">
+          <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
+            <Droplets className="h-7 w-7 text-primary" />
           </div>
           <h1 className="text-2xl font-bold text-foreground">AquaTrack</h1>
-          <p className="text-sm text-muted-foreground">Campus water fixture management</p>
+          <p className="mt-1 text-sm text-muted-foreground">Campus water fixture inventory</p>
         </div>
 
-        <div className="rounded-2xl border bg-card p-5 shadow-sm">
-          <div className="inline-flex w-full rounded-full bg-secondary p-0.5 mb-4">
+        <div className="card-soft p-5">
+          <div className="mb-4 inline-flex w-full rounded-xl bg-secondary p-1">
             {(['signin', 'signup'] as const).map((m) => (
               <button
                 key={m}
+                type="button"
                 onClick={() => setMode(m)}
-                className={`flex-1 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
-                  mode === m ? 'bg-foreground text-background' : 'text-muted-foreground'
+                className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
+                  mode === m ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
                 }`}
               >
                 {m === 'signin' ? 'Sign in' : 'Sign up'}
@@ -96,7 +97,7 @@ export default function Auth() {
                 <input
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  className="mt-1 w-full rounded-lg border bg-background px-3 py-2 text-sm"
+                  className="search-input mt-1 pl-3"
                   placeholder="Jane Doe"
                 />
               </div>
@@ -108,7 +109,7 @@ export default function Auth() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full rounded-lg border bg-background px-3 py-2 text-sm"
+                className="search-input mt-1 pl-3"
                 placeholder="you@example.edu"
               />
             </div>
@@ -120,15 +121,11 @@ export default function Auth() {
                 minLength={6}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 w-full rounded-lg border bg-background px-3 py-2 text-sm"
+                className="search-input mt-1 pl-3"
                 placeholder="At least 6 characters"
               />
             </div>
-            <button
-              type="submit"
-              disabled={busy}
-              className="mt-2 w-full rounded-xl bg-foreground py-2.5 text-sm font-semibold text-background disabled:opacity-50"
-            >
+            <button type="submit" disabled={busy} className="btn-primary mt-2 w-full">
               {busy ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Create account'}
             </button>
           </form>
@@ -139,16 +136,13 @@ export default function Auth() {
             <div className="h-px flex-1 bg-border" />
           </div>
 
-          <button
-            onClick={handleGoogle}
-            className="w-full rounded-xl border bg-card py-2.5 text-sm font-semibold text-foreground hover:bg-secondary/30"
-          >
+          <button type="button" onClick={handleGoogle} className="btn-secondary w-full">
             Continue with Google
           </button>
         </div>
 
-        <p className="mt-4 text-center text-[11px] text-muted-foreground">
-          New users start as collectors. Add fixtures from the home screen or Assets tab.
+        <p className="mt-4 text-center text-xs text-muted-foreground">
+          Your role (Collector, Coordinator, or Facilities) is assigned after sign-in.
         </p>
       </div>
     </div>

@@ -2,12 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useFixtureStore, getFixtureStatus, fixtureCategoryMeta } from '@/store/fixtureStore';
 import type { FixtureCategory } from '@/store/fixtureStore';
-import { Camera, ScanLine, CheckCircle2, Building2, ChevronLeft, ChevronRight, ImagePlus, PlusCircle, ListChecks, Search, Droplets, Map, Tags, MessageSquareWarning, HelpCircle, University, Info, X, Upload, FileSpreadsheet } from 'lucide-react';
+import { Camera, ScanLine, CheckCircle2, Building2, ChevronLeft, ChevronRight, ImagePlus, PlusCircle, ListChecks, Search, Droplets, Map, Tags, MessageSquareWarning, HelpCircle, University, Info, X, FileSpreadsheet } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { SimpleRating } from '@/components/SimpleRating';
 import { StatusBadge } from '@/components/StatusBadge';
 import { FloorPlanView } from '@/components/FloorPlanView';
-import { ImportDialog } from '@/components/ImportDialog';
 import { FIELD_LABELS, NO_LABEL_REASONS, ISSUE_OPTIONS } from '@/lib/fieldLabels';
 
 type Mode = 'choose' | 'onboard' | 'manage';
@@ -75,7 +74,6 @@ export default function AddAsset() {
   const [nearestFixtureId, setNearestFixtureId] = useState('');
   const [locationConfirmed, setLocationConfirmed] = useState(false);
   const [postSaveOpen, setPostSaveOpen] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
 
   // University/campus creation + fuzzy matching
   const [campusQuery, setCampusQuery] = useState('');
@@ -333,119 +331,73 @@ export default function AddAsset() {
   // Mode chooser
   if (mode === 'choose') {
     return (
-      <div className="px-4 pt-8 pb-6 min-h-[calc(100vh-80px)] flex flex-col">
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-accent/10 mb-3">
-            <Droplets className="h-8 w-8 text-accent" />
-          </div>
-          <h1 className="text-2xl font-bold text-foreground">Asset Manager</h1>
-          <p className="text-sm text-muted-foreground mt-1">Choose your workflow</p>
-        </div>
+      <div className="page-shell min-h-[calc(100vh-8rem)]">
+        <header className="page-header text-center">
+          <p className="section-label">Survey</p>
+          <h1 className="page-title mt-1">What would you like to do?</h1>
+          <p className="page-subtitle">On-site collection or find an existing record</p>
+        </header>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="space-y-2">
           <button
+            type="button"
             onClick={() => setMode('onboard')}
-            className="flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-accent/30 bg-accent/5 p-5 text-center transition-all hover:border-accent hover:bg-accent/10"
+            className="action-tile action-tile-primary w-full"
           >
-            <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-accent/15">
-              <PlusCircle className="h-6 w-6 text-accent" />
+            <div className="action-tile-icon action-tile-icon-primary">
+              <PlusCircle className="h-5 w-5" />
             </div>
-            <div>
-              <p className="text-sm font-semibold text-foreground">Survey new building</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Collect by floor on site</p>
+            <div className="min-w-0 flex-1 text-left">
+              <p className="text-sm font-semibold text-foreground">Survey a floor</p>
+              <p className="text-xs text-muted-foreground">Walk the building and record fixtures</p>
+            </div>
+          </button>
+
+          <button type="button" onClick={() => setMode('manage')} className="action-tile w-full">
+            <div className="action-tile-icon">
+              <ListChecks className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1 text-left">
+              <p className="text-sm font-semibold text-foreground">Find a fixture</p>
+              <p className="text-xs text-muted-foreground">Search and update an existing record</p>
             </div>
           </button>
 
           <button
-            onClick={() => setMode('manage')}
-            className="flex flex-col items-center gap-3 rounded-2xl border bg-card p-5 text-center transition-all hover:shadow-md"
+            type="button"
+            onClick={() => navigate('/?import=1')}
+            className="action-tile w-full"
           >
-            <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10">
-              <ListChecks className="h-6 w-6 text-primary" />
+            <div className="action-tile-icon">
+              <FileSpreadsheet className="h-5 w-5" />
             </div>
-            <div>
-              <p className="text-sm font-semibold text-foreground">Update existing</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Find & edit fixtures</p>
+            <div className="min-w-0 flex-1 text-left">
+              <p className="text-sm font-semibold text-foreground">Import spreadsheet</p>
+              <p className="text-xs text-muted-foreground">Bulk load from CSV or Excel</p>
             </div>
           </button>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setImportOpen(true)}
-          className="mt-3 flex w-full items-center gap-3 rounded-2xl border bg-card p-4 text-left transition-all hover:shadow-md"
-        >
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-secondary">
-            <FileSpreadsheet className="h-6 w-6 text-accent" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-foreground">Import spreadsheet</p>
-            <p className="text-[11px] text-muted-foreground">
-              Upload CSV or Excel from your device — analyzed and imported only after you confirm
-            </p>
-          </div>
-          <Upload className="h-4 w-4 shrink-0 text-muted-foreground" />
-        </button>
-
-        <ImportDialog open={importOpen} onOpenChange={setImportOpen} />
-
-        <div className="mt-5 grid grid-cols-3 gap-2">
-          <div className="rounded-xl border bg-card/70 p-3 text-center">
-            <p className="text-lg font-bold text-foreground">{campuses.length}</p>
-            <p className="text-[10px] font-medium text-muted-foreground">Campuses</p>
-          </div>
-          <div className="rounded-xl border bg-card/70 p-3 text-center">
-            <p className="text-lg font-bold text-foreground">{buildings.length}</p>
-            <p className="text-[10px] font-medium text-muted-foreground">Buildings</p>
-          </div>
-          <div className="rounded-xl border bg-card/70 p-3 text-center">
-            <p className="text-lg font-bold text-foreground">{fixtures.length}</p>
-            <p className="text-[10px] font-medium text-muted-foreground">Fixtures</p>
-          </div>
-        </div>
-
-        <div className="mt-5 flex-1">
-          <div className="card-soft p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold text-foreground">Recent fixtures</p>
-                <p className="text-[11px] text-muted-foreground">Jump back in where you left off</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setMode('manage')}
-                className="rounded-full bg-secondary px-3 py-1.5 text-[11px] font-semibold text-secondary-foreground"
-              >
-                Browse
-              </button>
+        {recentFixtures.length > 0 && (
+          <section className="mt-8">
+            <h2 className="section-label mb-2">Recent</h2>
+            <div className="space-y-2">
+              {recentFixtures.map((f) => (
+                <Link key={f.id} to={`/fixture/${f.id}`} className="list-row">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-foreground">
+                      {f.buildingName} · Rm {f.roomNumber}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {[f.brand, f.model].filter(Boolean).join(' ') || 'Details pending'}
+                    </p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </Link>
+              ))}
             </div>
-
-            {recentFixtures.length === 0 ? (
-              <div className="mt-3 rounded-xl border bg-card p-4 text-center text-muted-foreground">
-                <p className="text-sm font-medium">No fixtures in your workspace yet</p>
-                <p className="mt-1 text-[11px]">
-                  Import a spreadsheet or start a floor survey — nothing is pre-loaded from a file.
-                </p>
-              </div>
-            ) : (
-              <div className="mt-3 space-y-2">
-                {recentFixtures.map((f) => (
-                  <Link
-                    key={f.id}
-                    to={`/fixture/${f.id}`}
-                    className="flex items-center justify-between rounded-xl border bg-card p-3 transition-colors hover:bg-secondary/20"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-foreground">{f.buildingName} — Rm {f.roomNumber}</p>
-                      <p className="truncate text-[11px] text-muted-foreground">{f.brand} {f.model}</p>
-                    </div>
-                    <ChevronRight className="h-4 w-4 flex-none text-muted-foreground" />
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+          </section>
+        )}
       </div>
     );
   }

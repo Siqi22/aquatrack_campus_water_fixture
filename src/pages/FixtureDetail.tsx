@@ -3,9 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useFixtureStore, getFixtureStatus, getDaysSinceMaintenance, fixtureCategoryMeta } from '@/store/fixtureStore';
 import type { FixtureCategory } from '@/store/fixtureStore';
 import { StatusBadge } from '@/components/StatusBadge';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { SimpleRating } from '@/components/SimpleRating';
 import { FIELD_LABELS, issueLabel } from '@/lib/fieldLabels';
-import { ChevronLeft, MapPin, Wrench, CheckCircle2, Edit3, Save, X, ExternalLink, Image as ImageIcon, Hash, Tag, Download } from 'lucide-react';
+import { MapPin, Wrench, CheckCircle2, Edit3, Save, X, ExternalLink, Image as ImageIcon, Hash, Tag, Download } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function FixtureDetail() {
@@ -73,18 +74,13 @@ export default function FixtureDetail() {
   }
 
   return (
-    <div className="px-4 pt-6 pb-8">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-4">
-        <button onClick={() => navigate(-1)} className="rounded-lg p-1.5 hover:bg-secondary">
-          <ChevronLeft className="h-5 w-5 text-foreground" />
-        </button>
-        <div className="flex-1">
-          <h1 className="text-lg font-bold text-foreground">{fixture.buildingName}</h1>
-          <p className="text-xs text-muted-foreground">Floor {fixture.floor} • Room {fixture.roomNumber}</p>
-        </div>
-        <StatusBadge status={status} />
-      </div>
+    <div className="page-shell pb-8">
+      <PageHeader
+        title={fixture.buildingName}
+        subtitle={`Floor ${fixture.floor} · Room ${fixture.roomNumber}`}
+        onBack={() => navigate(-1)}
+        action={<StatusBadge status={status} />}
+      />
 
       {/* Quick summary */}
       <div className="card-soft p-4 mb-4">
