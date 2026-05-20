@@ -161,13 +161,13 @@ export function ImportDialog({ open, onOpenChange }: Props) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5 text-accent" />
-            Import spreadsheet
+            Import your spreadsheet
           </DialogTitle>
         </DialogHeader>
 
         <p className="text-xs text-muted-foreground">
-          Upload CSV or Excel (.xlsx). Columns are detected automatically — campus, building, floor, room,
-          category, company name, model, serial number, and filter product number.
+          Choose a file from your device (.csv or .xlsx). Headers are auto-detected; rows import only after you
+          review the preview and tap confirm.
         </p>
 
         <div className="flex items-start gap-2 rounded-xl border border-accent/30 bg-accent/5 px-3 py-2 text-[11px] text-muted-foreground">

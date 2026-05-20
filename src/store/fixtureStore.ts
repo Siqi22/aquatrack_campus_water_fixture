@@ -83,6 +83,7 @@ export interface Fixture {
   photosProvided?: string[];
   locationConfirmed?: boolean;
   savedByName?: string;
+  createdBy?: string;
 }
 
 export interface Building {
@@ -175,6 +176,7 @@ function mapFixture(r: FixtureRow, buildingName: string): Fixture {
     photosProvided: (r as { photos_provided?: string[] | null }).photos_provided ?? undefined,
     locationConfirmed: (r as { location_confirmed?: boolean | null }).location_confirmed ?? undefined,
     savedByName: (r as { saved_by_name?: string | null }).saved_by_name ?? undefined,
+    createdBy: r.created_by ?? undefined,
   };
 }
 function mapFloorProgress(r: FloorProgressRow): BuildingFloorProgress {

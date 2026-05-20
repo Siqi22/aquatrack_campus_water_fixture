@@ -125,8 +125,10 @@ Open the URL shown in the terminal (typically `http://localhost:5173`).
 
 ## Importing spreadsheet data
 
-1. Open **Dashboard → Import** (UW Facilities / Admin role only)
-2. Upload `.csv` or `.xlsx` (legacy `.xls` is not supported — re-save as `.xlsx`)
+There is **no bundled sample CSV** in the app. Inventory comes from your Supabase workspace after you upload and confirm an import, or after on-site surveys.
+
+1. Open **Dashboard → Import spreadsheet** (or **Assets → Import spreadsheet**)
+2. Upload `.csv` or `.xlsx` from your computer (legacy `.xls` is not supported — re-save as `.xlsx`)
 3. If the workbook has multiple worksheets, pick the sheet to import
 4. Review detected columns, duplicate count, and preview rows
 5. Choose import mode:
@@ -183,9 +185,9 @@ Re-importing an AquaTrack **Export** CSV with ID column enables update-by-ID.
 
 | DB role | UI label | Capabilities |
 |---------|----------|--------------|
-| `Surveyor` | Collector | Survey fixtures, mark floors locked when no access |
-| `Facilities` | Building coordinator | Above + mark floors complete/unlock, export data |
-| `Admin` | UW Facilities | Above + bulk import |
+| `Surveyor` | Collector | Survey fixtures, import spreadsheets, mark floors locked when no access |
+| `Facilities` | Building coordinator | Above + mark floors complete/unlock |
+| `Admin` | UW Facilities | Same as coordinator + admin delete policies in Supabase |
 
 Roles load from Supabase on login (`user_roles` table). Users with multiple rows get the highest tier. Assign roles in Supabase SQL or dashboard — new signups default to `Surveyor`.
 

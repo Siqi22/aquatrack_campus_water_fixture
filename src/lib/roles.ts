@@ -26,7 +26,7 @@ export const ROLE_META: Record<
   Admin: {
     label: 'UW Facilities',
     tier: 3,
-    description: 'Campus-wide oversight, bulk import/export, and administration.',
+    description: 'Campus-wide oversight and administration.',
   },
 };
 
@@ -54,10 +54,10 @@ export function canMarkFloorLocked(_role: AppRole): boolean {
   return true;
 }
 
-export function canImportSpreadsheets(role: AppRole): boolean {
-  return role === 'Admin';
+export function canImportSpreadsheets(_role: AppRole): boolean {
+  return true;
 }
 
-export function canExportData(role: AppRole): boolean {
-  return hasMinRole(role, 'Facilities');
+export function canExportData(_role: AppRole): boolean {
+  return true;
 }

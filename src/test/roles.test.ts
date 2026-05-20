@@ -13,11 +13,11 @@ describe('roles', () => {
     expect(resolvePrimaryRole([])).toBe('Surveyor');
   });
 
-  it('gates import/export and floor management by tier', () => {
+  it('allows import/export for all roles; floor management for coordinator+', () => {
     expect(canImportSpreadsheets('Admin')).toBe(true);
-    expect(canImportSpreadsheets('Facilities')).toBe(false);
+    expect(canImportSpreadsheets('Surveyor')).toBe(true);
     expect(canExportData('Facilities')).toBe(true);
-    expect(canExportData('Surveyor')).toBe(false);
+    expect(canExportData('Surveyor')).toBe(true);
     expect(canManageFloorProgress('Facilities')).toBe(true);
     expect(canManageFloorProgress('Surveyor')).toBe(false);
   });

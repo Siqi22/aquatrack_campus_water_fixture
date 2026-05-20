@@ -2,11 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useFixtureStore, getFixtureStatus, fixtureCategoryMeta } from '@/store/fixtureStore';
 import type { FixtureCategory } from '@/store/fixtureStore';
-import { Camera, ScanLine, CheckCircle2, Building2, ChevronLeft, ChevronRight, ImagePlus, PlusCircle, ListChecks, Search, Droplets, Map, Tags, MessageSquareWarning, HelpCircle, University, Info, X } from 'lucide-react';
+import { Camera, ScanLine, CheckCircle2, Building2, ChevronLeft, ChevronRight, ImagePlus, PlusCircle, ListChecks, Search, Droplets, Map, Tags, MessageSquareWarning, HelpCircle, University, Info, X, Upload, FileSpreadsheet } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { SimpleRating } from '@/components/SimpleRating';
 import { StatusBadge } from '@/components/StatusBadge';
 import { FloorPlanView } from '@/components/FloorPlanView';
+import { ImportDialog } from '@/components/ImportDialog';
 import { FIELD_LABELS, NO_LABEL_REASONS, ISSUE_OPTIONS } from '@/lib/fieldLabels';
 
 type Mode = 'choose' | 'onboard' | 'manage';
@@ -74,6 +75,7 @@ export default function AddAsset() {
   const [nearestFixtureId, setNearestFixtureId] = useState('');
   const [locationConfirmed, setLocationConfirmed] = useState(false);
   const [postSaveOpen, setPostSaveOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   // University/campus creation + fuzzy matching
   const [campusQuery, setCampusQuery] = useState('');
@@ -340,7 +342,7 @@ export default function AddAsset() {
           <p className="text-sm text-muted-foreground mt-1">Choose your workflow</p>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <button
             onClick={() => setMode('onboard')}
             className="flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-accent/30 bg-accent/5 p-5 text-center transition-all hover:border-accent hover:bg-accent/10"
@@ -350,7 +352,7 @@ export default function AddAsset() {
             </div>
             <div>
               <p className="text-sm font-semibold text-foreground">Survey new building</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Collect by floor</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Collect by floor on site</p>
             </div>
           </button>
 
@@ -367,6 +369,25 @@ export default function AddAsset() {
             </div>
           </button>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setImportOpen(true)}
+          className="mt-3 flex w-full items-center gap-3 rounded-2xl border bg-card p-4 text-left transition-all hover:shadow-md"
+        >
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-secondary">
+            <FileSpreadsheet className="h-6 w-6 text-accent" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-foreground">Import spreadsheet</p>
+            <p className="text-[11px] text-muted-foreground">
+              Upload CSV or Excel from your device — analyzed and imported only after you confirm
+            </p>
+          </div>
+          <Upload className="h-4 w-4 shrink-0 text-muted-foreground" />
+        </button>
+
+        <ImportDialog open={importOpen} onOpenChange={setImportOpen} />
 
         <div className="mt-5 grid grid-cols-3 gap-2">
           <div className="rounded-xl border bg-card/70 p-3 text-center">
@@ -401,8 +422,10 @@ export default function AddAsset() {
 
             {recentFixtures.length === 0 ? (
               <div className="mt-3 rounded-xl border bg-card p-4 text-center text-muted-foreground">
-                <p className="text-sm font-medium">No fixtures yet</p>
-                <p className="mt-1 text-[11px]">Start a survey to add your first one.</p>
+                <p className="text-sm font-medium">No fixtures in your workspace yet</p>
+                <p className="mt-1 text-[11px]">
+                  Import a spreadsheet or start a floor survey — nothing is pre-loaded from a file.
+                </p>
               </div>
             ) : (
               <div className="mt-3 space-y-2">
