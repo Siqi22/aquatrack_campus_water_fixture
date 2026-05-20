@@ -81,6 +81,7 @@ export default function AddAsset() {
   const [nearestFixtureId, setNearestFixtureId] = useState('');
   const [locationConfirmed, setLocationConfirmed] = useState(false);
   const [postSaveOpen, setPostSaveOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // University/campus creation + fuzzy matching
   const [campusQuery, setCampusQuery] = useState('');
@@ -227,11 +228,25 @@ export default function AddAsset() {
     }
   }
 
+  const trimmedRoom = nearestRoom.trim();
+  const roomLooksValid = trimmedRoom.length >= 2;
+
   async function handleSubmit() {
     const building = buildings.find((b) => b.id === selectedBuildingId);
-    if (!building || !category) return;
+    if (!building) {
+      toast.error('Select a building before saving.');
+      return;
+    }
+    if (!category) {
+      toast.error('Select a fixture type before saving.');
+      return;
+    }
+    if (!roomLooksValid) {
+      toast.error('Room / location needs at least 2 characters (e.g. 205 or hallway near restroom).');
+      return;
+    }
     if (!locationConfirmed) {
-      toast.error('Please confirm the fixture location before saving.');
+      toast.error('Check the confirmation box on this step before saving.');
       return;
     }
     if (noLabel && !noLabelReason) {
@@ -242,6 +257,7 @@ export default function AddAsset() {
       toast.error('Describe the "Other" reason for the missing label.');
       return;
     }
+    setSaving(true);
     try {
       const [photoUrl, plateUrl] = await Promise.all([
         photo ? uploadFixturePhoto(photo, 'general').catch(() => '') : Promise.resolve(''),
@@ -262,8 +278,8 @@ export default function AddAsset() {
         buildingId: selectedBuildingId,
         buildingName: building.name,
         floor: floor.trim(),
-        roomNumber: nearestRoom,
-        nearestRoom,
+        roomNumber: trimmedRoom,
+        nearestRoom: trimmedRoom,
         brand,
         model,
         serialNumber,
@@ -283,16 +299,18 @@ export default function AddAsset() {
       if (created) {
         toast.success('Fixture added');
         setPostSaveOpen(true);
+      } else {
+        toast.error('Could not save fixture. Check the browser console for details.');
       }
     } catch (e) {
       console.error(e);
-      toast.error('Could not save fixture');
+      toast.error(e instanceof Error ? e.message : 'Could not save fixture');
+    } finally {
+      setSaving(false);
     }
   }
 
   // Step 5 inline validation — for the confirm checkbox + Save
-  const trimmedRoom = nearestRoom.trim();
-  const roomLooksValid = trimmedRoom.length >= 2;
   const step5Missing: string[] = [];
   if (!selectedCampusId) step5Missing.push('Campus');
   if (!selectedBuildingId) step5Missing.push('Building');
@@ -308,7 +326,7 @@ export default function AddAsset() {
   }, [step5Ready, locationConfirmed]);
 
   const canProceed: Record<number, boolean> = {
-    1: !!selectedCampusId && !!selectedBuildingId && !!floor.trim() && !!nearestRoom && !floorLocked,
+    1: !!selectedCampusId && !!selectedBuildingId && !!floor.trim() && roomLooksValid && !floorLocked,
     2: true,
     3: !!category,
     4: true,
@@ -646,8 +664,11 @@ export default function AddAsset() {
                 className="mt-1 w-full rounded-lg border bg-card px-3 py-2.5 text-sm text-foreground"
               />
               <p className="mt-1 text-[11px] text-muted-foreground">
-                Tip: drinking water sources are often by the restroom. Confirm the exact location before taking photos.
+                Tip: drinking water sources are often by the restroom. Use at least 2 characters (e.g. 205 or hallway near restroom).
               </p>
+              {nearestRoom.trim().length > 0 && !roomLooksValid && (
+                <p className="mt-1 text-[11px] text-status-urgent">Room / location must be at least 2 characters.</p>
+              )}
             </div>
           )}
         </div>
@@ -1157,6 +1178,10 @@ export default function AddAsset() {
             </div>
           )}
 
+          {!locationConfirmed && step5Ready && (
+            <p className="text-[11px] text-muted-foreground">Check the box below to enable Save.</p>
+          )}
+
           <label className={`flex items-start gap-2 rounded-xl border p-3 ${step5Ready ? 'bg-card cursor-pointer' : 'bg-muted/30 cursor-not-allowed opacity-60'}`}>
             <input
               type="checkbox"
@@ -1185,8 +1210,8 @@ export default function AddAsset() {
             Next <ChevronRight className="h-4 w-4" />
           </button>
         ) : (
-          <button onClick={handleSubmit} disabled={!canProceed[5]} className="flex items-center gap-1 rounded-lg bg-accent px-6 py-2.5 text-sm font-semibold text-accent-foreground disabled:opacity-40">
-            <CheckCircle2 className="h-4 w-4" /> Save Fixture
+          <button onClick={handleSubmit} disabled={!canProceed[5] || saving} className="flex items-center gap-1 rounded-lg bg-accent px-6 py-2.5 text-sm font-semibold text-accent-foreground disabled:opacity-40">
+            <CheckCircle2 className="h-4 w-4" /> {saving ? 'Saving…' : 'Save Fixture'}
           </button>
         )}
       </div>

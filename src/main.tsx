@@ -36,7 +36,9 @@ function renderMissingConfig() {
 if (!supabaseUrl?.trim() || !supabaseKey?.trim()) {
   renderMissingConfig();
 } else {
-  import("./App.tsx").then(({ default: App }) => {
+  import("./App.tsx").then(async ({ default: App }) => {
+    const { initNativePlatform } = await import("./lib/nativePlatform");
+    await initNativePlatform();
     createRoot(rootEl).render(<App />);
   });
 }

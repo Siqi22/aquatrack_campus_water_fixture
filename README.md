@@ -130,7 +130,47 @@ Legacy fallback: set `LOVABLE_API_KEY` instead of Anthropic if needed.
 npm run dev
 ```
 
-Open the URL shown in the terminal (typically `http://localhost:5173`).
+Open the URL shown in the terminal (typically `http://localhost:8080`).
+
+---
+
+## iOS app (Capacitor)
+
+Requires **macOS**, **Xcode** (from App Store), and **CocoaPods** (`brew install cocoapods`).
+
+### One-time setup
+
+```bash
+npm install
+npm run build
+export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8   # add to ~/.zshrc if pod install fails
+cd ios/App && pod install && cd ../..
+```
+
+### Run on iPhone (physical device)
+
+1. Connect iPhone with USB, trust the computer, enable **Developer Mode** on the phone (Settings → Privacy & Security).
+2. Open the Xcode workspace:
+
+   ```bash
+   npm run cap:open:ios
+   ```
+
+   (Opens `ios/App/App.xcworkspace` — use the `.xcworkspace`, not `.xcodeproj`.)
+
+3. In Xcode: select your **iPhone** as the run destination (top toolbar).
+4. **Signing & Capabilities** → Team: your Apple ID (free account works for personal testing).
+5. Press **Run** (▶). First launch: Settings → General → VPN & Device Management → trust the developer app.
+
+### After web code changes
+
+```bash
+npm run build:ios    # rebuild dist + sync to ios/App
+```
+
+Then run again from Xcode (or `npm run cap:run:ios` if Xcode CLI is healthy).
+
+**Note:** `.env` values are baked in at `npm run build` time. Rebuild before syncing when you change Supabase keys.
 
 ---
 

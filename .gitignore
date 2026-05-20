@@ -10,6 +10,13 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+
+# Capacitor / Xcode
+ios/App/Pods
+ios/App/App/public
+ios/DerivedData
+*.xcuserstate
+xcuserdata
 *.local
 
 # Environment files (never commit secrets)

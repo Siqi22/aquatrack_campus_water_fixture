@@ -119,7 +119,7 @@ export type Database = {
           location_confirmed: boolean
           model: string | null
           model_plate_photo_url: string | null
-          nearest_room: string | null
+          nearest_room: string
           no_label_reason: string | null
           no_label_reason_other: string | null
           observations: string | null
@@ -128,7 +128,6 @@ export type Database = {
           pos_x: number | null
           pos_y: number | null
           pressure_rating: number
-          room_number: string
           saved_by_name: string | null
           serial_number: string | null
           updated_at: string
@@ -151,7 +150,7 @@ export type Database = {
           location_confirmed?: boolean
           model?: string | null
           model_plate_photo_url?: string | null
-          nearest_room?: string | null
+          nearest_room: string
           no_label_reason?: string | null
           no_label_reason_other?: string | null
           observations?: string | null
@@ -160,7 +159,6 @@ export type Database = {
           pos_x?: number | null
           pos_y?: number | null
           pressure_rating?: number
-          room_number: string
           saved_by_name?: string | null
           serial_number?: string | null
           updated_at?: string
@@ -192,7 +190,6 @@ export type Database = {
           pos_x?: number | null
           pos_y?: number | null
           pressure_rating?: number
-          room_number?: string
           saved_by_name?: string | null
           serial_number?: string | null
           updated_at?: string

@@ -9,6 +9,7 @@ import {
   buildExistingFixtureIndex,
 } from '@/lib/importCSV';
 import { resolvePrimaryRole, type AppRole } from '@/lib/roles';
+import { formatSupabaseError } from '@/lib/utils';
 import { categoryFromSpreadsheetLabel } from '@/lib/importCSV';
 import {
   buildImportMetadata,
@@ -216,8 +217,8 @@ function mapFixture(r: FixtureRow, buildingName: string): Fixture {
     buildingId: r.building_id,
     buildingName,
     floor: String(r.floor),
-    roomNumber: r.room_number,
-    nearestRoom: r.nearest_room ?? r.room_number,
+    roomNumber: r.nearest_room,
+    nearestRoom: r.nearest_room,
     brand: r.brand ?? '',
     model: r.model ?? '',
     serialNumber: r.serial_number ?? '',
@@ -226,11 +227,8 @@ function mapFixture(r: FixtureRow, buildingName: string): Fixture {
     lastMaintenanceDate: r.last_maintenance_date,
     filterType: r.filter_type ?? '',
     installationDate: r.installation_date ?? undefined,
-    category:
-      resolveCategoryFromImportProvenance(
-        (r as FixtureRow & { import_metadata?: string | null }).import_metadata,
-        r.observations,
-      ) ?? normalizeFixtureCategory(r.category),
+    // Survey / edit saves the picker choice to fixtures.category — that column is authoritative.
+    category: normalizeFixtureCategory(r.category),
     qualityRating: { pressure: r.pressure_rating ?? 3, cleanliness: r.cleanliness_rating ?? 3 },
     observations: r.observations ?? undefined,
     issues: r.issues ?? undefined,
@@ -353,10 +351,13 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
           const split = splitImportFromObservations(row.observations);
           if (!importMeta && split.importMetadata) importMeta = split.importMetadata;
 
-          const fromOriginal = resolveCategoryFromImportProvenance(importMeta || row.observations, row.observations);
+          // Only imported rows (import_metadata) get category/floor backfill — not field-survey entries.
+          const fromOriginal = importMeta
+            ? resolveCategoryFromImportProvenance(importMeta, row.observations)
+            : undefined;
           const normalized = fromOriginal ?? normalizeFixtureCategory(row.category);
 
-          const originalFloor = parseOriginalFloorFromImportMetadata(importMeta);
+          const originalFloor = importMeta ? parseOriginalFloorFromImportMetadata(importMeta) : undefined;
           const storedFloor = String(row.floor).trim();
           const patch: Database['public']['Tables']['fixtures']['Update'] = {};
 
@@ -364,8 +365,8 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
             patch.import_metadata = split.importMetadata;
             patch.observations = split.observations ?? null;
           }
-          if (row.category !== normalized) patch.category = normalized;
-          if (originalFloor && originalFloor !== storedFloor) patch.floor = originalFloor;
+          if (importMeta && row.category !== normalized) patch.category = normalized;
+          if (importMeta && originalFloor && originalFloor !== storedFloor) patch.floor = originalFloor;
 
           if (Object.keys(patch).length) {
             const { error } = await supabase.from('fixtures').update(patch).eq('id', row.id);
@@ -473,12 +474,12 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
         campus_id: f.campusId,
         building_id: f.buildingId,
         floor: floorKey,
-        room_number: f.roomNumber,
-        nearest_room: f.nearestRoom ?? f.roomNumber,
+        nearest_room: (f.nearestRoom ?? f.roomNumber).trim(),
         brand: f.brand,
         model: f.model,
         serial_number: f.serialNumber,
         filter_type: f.filterType,
+        // Fixture type from Add Asset step 2/3 picker (PorcelainFountain, MetalFountain, …)
         category: normalizeFixtureCategory(f.category),
         pressure_rating: f.qualityRating.pressure,
         cleanliness_rating: f.qualityRating.cleanliness,
@@ -497,7 +498,10 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
       } as never)
       .select('*')
       .single();
-    if (error || !data) { console.error(error); return null; }
+    if (error || !data) {
+      console.error('addFixture failed', error);
+      throw new Error(formatSupabaseError(error));
+    }
     const buildingName = get().buildings.find((b) => b.id === data.building_id)?.name ?? f.buildingName;
     const next = mapFixture(data, buildingName);
 
@@ -522,8 +526,7 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
 
   updateFixture: async (f) => {
     const { error } = await supabase.from('fixtures').update({
-      room_number: f.roomNumber,
-      nearest_room: f.nearestRoom ?? f.roomNumber,
+      nearest_room: (f.nearestRoom ?? f.roomNumber).trim(),
       brand: f.brand,
       model: f.model,
       serial_number: f.serialNumber,
@@ -712,8 +715,7 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
 
       const patch = {
         floor: f.floor,
-        room_number: f.nearestRoom,
-        nearest_room: f.nearestRoom,
+        nearest_room: f.nearestRoom.trim(),
         brand: f.brand || null,
         model: f.model || null,
         serial_number: f.serialNumber || null,
