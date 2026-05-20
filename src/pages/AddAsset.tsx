@@ -34,38 +34,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { uploadFixturePhoto } from '@/lib/uploadPhoto';
 import { toast } from 'sonner';
 
-type MapboxFeature = {
-  id: string;
-  place_name: string;
-  text: string;
-  center?: [number, number];
-  context?: Array<{ id: string; text: string }>;
-};
-
-async function mapboxAutocomplete(args: {
-  token: string;
-  query: string;
-  limit?: number;
-  types?: string;
-}) {
-  const limit = args.limit ?? 6;
-  const types = args.types ?? 'poi,place,locality,address';
-  const url = new URL(
-    `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(args.query)}.json`,
-  );
-  url.searchParams.set('access_token', args.token);
-  url.searchParams.set('autocomplete', 'true');
-  url.searchParams.set('limit', String(limit));
-  url.searchParams.set('types', types);
-
-  const res = await fetch(url.toString());
-  if (!res.ok) throw new Error(`Mapbox geocoding failed: ${res.status}`);
-  const data: unknown = await res.json();
-  const features = (data as { features?: unknown }).features;
-  if (!Array.isArray(features)) return [] as MapboxFeature[];
-  return features.filter((f): f is MapboxFeature => !!f && typeof f === 'object' && 'id' in f) as MapboxFeature[];
-}
-
 export default function AddAsset() {
   const { campuses, buildings, fixtures, addCampus, addBuilding, addFixture, searchFixtures, getBuildingsByCampus, getFixturesByCampus, setFloorStatus } = useFixtureStore();
   const navigate = useNavigate();
@@ -119,15 +87,9 @@ export default function AddAsset() {
   const [universityName, setUniversityName] = useState('');
   const [campusName, setCampusName] = useState('');
   const [campusAddress, setCampusAddress] = useState('');
-  const [campusSuggestOpen, setCampusSuggestOpen] = useState(false);
-  const [campusGeoSuggestions, setCampusGeoSuggestions] = useState<MapboxFeature[]>([]);
-  const [campusGeoLoading, setCampusGeoLoading] = useState(false);
 
   // Building fuzzy matching
   const [buildingQuery, setBuildingQuery] = useState('');
-  const [buildingSuggestOpen, setBuildingSuggestOpen] = useState(false);
-  const [buildingGeoSuggestions, setBuildingGeoSuggestions] = useState<MapboxFeature[]>([]);
-  const [buildingGeoLoading, setBuildingGeoLoading] = useState(false);
 
   const campusBuildings = useMemo(
     () => (selectedCampusId ? getBuildingsByCampus(selectedCampusId) : []),
@@ -146,83 +108,6 @@ export default function AddAsset() {
     if (!buildingQuery.trim()) return campusBuildings;
     return campusBuildings.filter((b) => fuzzyIncludes(b.name, buildingQuery));
   }, [buildingQuery, campusBuildings, selectedCampusId]);
-
-  const mapboxToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN as string | undefined;
-
-  useEffect(() => {
-    const q = `${universityName} ${campusName}`.trim();
-    if (!campusSuggestOpen) return;
-    if (!q) {
-      setCampusGeoSuggestions([]);
-      return;
-    }
-    if (!mapboxToken) {
-      setCampusGeoSuggestions([]);
-      return;
-    }
-
-    let cancelled = false;
-    const t = setTimeout(async () => {
-      try {
-        setCampusGeoLoading(true);
-        const results = await mapboxAutocomplete({
-          token: mapboxToken,
-          query: q,
-          types: 'poi,place,locality',
-          limit: 6,
-        });
-        if (!cancelled) setCampusGeoSuggestions(results);
-      } catch {
-        if (!cancelled) setCampusGeoSuggestions([]);
-      } finally {
-        if (!cancelled) setCampusGeoLoading(false);
-      }
-    }, 250);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(t);
-    };
-  }, [universityName, campusName, campusSuggestOpen, mapboxToken]);
-
-  useEffect(() => {
-    const q = newBuildingName.trim();
-    if (!buildingSuggestOpen) return;
-    if (!q) {
-      setBuildingGeoSuggestions([]);
-      return;
-    }
-    if (!mapboxToken) {
-      setBuildingGeoSuggestions([]);
-      return;
-    }
-
-    const context = selectedCampus ? `${selectedCampus.school} ${selectedCampus.name}` : '';
-    const composed = context ? `${q}, ${context}` : q;
-
-    let cancelled = false;
-    const t = setTimeout(async () => {
-      try {
-        setBuildingGeoLoading(true);
-        const results = await mapboxAutocomplete({
-          token: mapboxToken,
-          query: composed,
-          types: 'poi,address',
-          limit: 6,
-        });
-        if (!cancelled) setBuildingGeoSuggestions(results);
-      } catch {
-        if (!cancelled) setBuildingGeoSuggestions([]);
-      } finally {
-        if (!cancelled) setBuildingGeoLoading(false);
-      }
-    }, 250);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(t);
-    };
-  }, [newBuildingName, buildingSuggestOpen, mapboxToken, selectedCampus]);
 
   // Deep link support from Campus → Assets (pre-fill).
   useEffect(() => {
@@ -705,41 +590,13 @@ export default function AddAsset() {
                 <p className="text-sm font-semibold text-foreground">Create new university/campus</p>
               </div>
               <div className="mt-3 grid grid-cols-1 gap-2">
-                <div className="relative">
+                <div>
                   <input
                     value={universityName}
                     onChange={(e) => setUniversityName(e.target.value)}
-                    onFocus={() => setCampusSuggestOpen(true)}
-                    onBlur={() => setTimeout(() => setCampusSuggestOpen(false), 120)}
                     placeholder="University name (e.g. University of Washington)"
                     className="w-full rounded-lg border bg-card px-3 py-2 text-sm text-foreground"
                   />
-
-                  {campusSuggestOpen && (campusGeoLoading || campusGeoSuggestions.length > 0) && (
-                    <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border bg-popover shadow-lg">
-                      {campusGeoLoading && (
-                        <div className="px-3 py-2 text-xs text-muted-foreground">Searching…</div>
-                      )}
-                      {campusGeoSuggestions.map((f) => (
-                        <button
-                          key={f.id}
-                          type="button"
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => {
-                            // Keep creation flow: just prefill the form with a real-world suggestion.
-                            setUniversityName(f.text);
-                            setCampusName('');
-                            setCampusAddress(f.place_name);
-                            setCampusSuggestOpen(false);
-                          }}
-                          className="w-full px-3 py-2 text-left transition-colors hover:bg-secondary/40"
-                        >
-                          <p className="text-sm font-semibold text-foreground">{f.text}</p>
-                          <p className="text-[11px] text-muted-foreground">{f.place_name}</p>
-                        </button>
-                      ))}
-                    </div>
-                  )}
                 </div>
 
                 <input
@@ -790,40 +647,12 @@ export default function AddAsset() {
           {selectedCampusId && (
             <div className="rounded-lg border bg-secondary/50 p-3">
               <p className="text-xs font-medium text-foreground mb-2">Or create new building</p>
-              <div className="relative mb-2">
-                <input
-                  value={newBuildingName}
-                  onChange={(e) => setNewBuildingName(e.target.value)}
-                  onFocus={() => setBuildingSuggestOpen(true)}
-                  onBlur={() => setTimeout(() => setBuildingSuggestOpen(false), 120)}
-                  placeholder="Building name"
-                  className="w-full rounded-lg border bg-card px-3 py-2 text-sm text-foreground"
-                />
-
-                {buildingSuggestOpen && (buildingGeoLoading || buildingGeoSuggestions.length > 0) && (
-                  <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border bg-popover shadow-lg">
-                    {buildingGeoLoading && (
-                      <div className="px-3 py-2 text-xs text-muted-foreground">Searching…</div>
-                    )}
-                    {buildingGeoSuggestions.map((f) => (
-                      <button
-                        key={f.id}
-                        type="button"
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => {
-                          setNewBuildingName(f.text);
-                          if (!campusAddress.trim()) setCampusAddress(f.place_name);
-                          setBuildingSuggestOpen(false);
-                        }}
-                        className="w-full px-3 py-2 text-left transition-colors hover:bg-secondary/40"
-                      >
-                        <p className="text-sm font-semibold text-foreground">{f.text}</p>
-                        <p className="text-[11px] text-muted-foreground">{f.place_name}</p>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <input
+                value={newBuildingName}
+                onChange={(e) => setNewBuildingName(e.target.value)}
+                placeholder="Building name"
+                className="w-full rounded-lg border bg-card px-3 py-2 text-sm text-foreground mb-2"
+              />
               <input value={newBuildingFloors} onChange={(e) => setNewBuildingFloors(e.target.value)} placeholder="Number of floors" type="number" className="w-full rounded-lg border bg-card px-3 py-2 text-sm text-foreground mb-2" />
               <button onClick={handleCreateBuilding} className="rounded-lg bg-primary px-4 py-2 text-xs font-medium text-primary-foreground">
                 <Building2 className="inline h-3 w-3 mr-1" /> Create Building

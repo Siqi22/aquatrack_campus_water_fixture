@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useFixtureStore, getFixtureStatus } from '@/store/fixtureStore';
 import { FloorPlanView } from '@/components/FloorPlanView';
-import { CampusMap } from '@/components/CampusMap';
 import { Building2, ChevronRight, ChevronDown, Layers, Map, GraduationCap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -11,7 +10,6 @@ export default function CampusNavigator() {
   const [selectedCampus, setSelectedCampus] = useState<string>(campuses[0]?.id || '');
   const [expandedBuilding, setExpandedBuilding] = useState<string | null>(null);
   const [selectedFloor, setSelectedFloor] = useState<{ buildingId: string; floor: number } | null>(null);
-  const [view, setView] = useState<'list' | 'map'>('list');
 
   const campusBuildings = selectedCampus ? getBuildingsByCampus(selectedCampus) : [];
   const campusFixtureCount = selectedCampus ? getFixturesByCampus(selectedCampus).length : 0;
@@ -63,25 +61,6 @@ export default function CampusNavigator() {
         </div>
       </div>
 
-      <div className="mt-4 inline-flex rounded-full bg-secondary p-0.5">
-        <button
-          onClick={() => setView('list')}
-          className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
-            view === 'list' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground'
-          }`}
-        >
-          List
-        </button>
-        <button
-          onClick={() => setView('map')}
-          className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
-            view === 'map' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground'
-          }`}
-        >
-          Map
-        </button>
-      </div>
-
       {/* Campus selector */}
       <div className="flex gap-2 mt-4 overflow-x-auto pb-1">
         {campuses.map((c) => (
@@ -110,17 +89,8 @@ export default function CampusNavigator() {
         </div>
       )}
 
-      {view === 'map' && (
-        <div className="mt-4">
-          <CampusMap campusId={selectedCampus || 'all'} />
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            Colors reflect floor collection status (Done/InProgress/NotStarted/Restricted).
-          </p>
-        </div>
-      )}
-
       {/* Floor plan view */}
-      {view === 'list' && selectedFloor && (
+      {selectedFloor && (
         <div className="mt-4">
           <button
             onClick={() => setSelectedFloor(null)}
@@ -137,7 +107,7 @@ export default function CampusNavigator() {
       )}
 
       {/* Building list */}
-      {view === 'list' && !selectedFloor && (
+      {!selectedFloor && (
         <div className="mt-4 space-y-3">
           {campusBuildings.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">

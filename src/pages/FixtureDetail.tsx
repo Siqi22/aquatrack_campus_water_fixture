@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useFixtureStore, getFixtureStatus, getDaysSinceMaintenance, fixtureCategoryMeta } from '@/store/fixtureStore';
 import type { FixtureCategory } from '@/store/fixtureStore';
@@ -6,32 +6,6 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { StarRating } from '@/components/StarRating';
 import { ChevronLeft, MapPin, Wrench, Clock, CheckCircle2, Edit3, Save, X, ExternalLink, Image as ImageIcon, Hash, Tag, Download } from 'lucide-react';
 import { toast } from 'sonner';
-
-type MapboxFeature = {
-  id: string;
-  place_name: string;
-  text: string;
-  center?: [number, number];
-};
-
-async function mapboxForwardGeocode(args: { token: string; query: string; limit?: number; types?: string }) {
-  const limit = args.limit ?? 1;
-  const types = args.types ?? 'poi,address,place,locality';
-  const url = new URL(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(args.query)}.json`);
-  url.searchParams.set('access_token', args.token);
-  url.searchParams.set('autocomplete', 'false');
-  url.searchParams.set('limit', String(limit));
-  url.searchParams.set('types', types);
-
-  const res = await fetch(url.toString());
-  if (!res.ok) throw new Error(`Mapbox geocoding failed: ${res.status}`);
-  const data: unknown = await res.json();
-  const features = (data as { features?: unknown }).features;
-  if (!Array.isArray(features) || features.length === 0) return null;
-  const f = features[0] as MapboxFeature;
-  if (!f || typeof f !== 'object') return null;
-  return f;
-}
 
 export default function FixtureDetail() {
   const { id } = useParams<{ id: string }>();
@@ -50,13 +24,10 @@ export default function FixtureDetail() {
   const [cleanliness, setCleanliness] = useState(fixture?.qualityRating.cleanliness || 3);
   const [observations, setObservations] = useState(fixture?.observations || '');
 
-  const mapboxToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN as string | undefined;
-  const [geoFeature, setGeoFeature] = useState<MapboxFeature | null>(null);
-  const [geoLoading, setGeoLoading] = useState(false);
   const campus = fixture ? campuses.find((c) => c.id === fixture.campusId) : undefined;
   const building = fixture ? buildings.find((b) => b.id === fixture.buildingId) : undefined;
 
-  const geoQuery = useMemo(() => {
+  const locationLabel = useMemo(() => {
     if (!fixture) return '';
     const parts: string[] = [];
     if (fixture.buildingName) parts.push(fixture.buildingName);
@@ -66,31 +37,9 @@ export default function FixtureDetail() {
     return parts.filter(Boolean).join(', ');
   }, [campus?.address, campus?.name, campus?.school, fixture]);
 
-  useEffect(() => {
-    if (!mapboxToken) {
-      setGeoFeature(null);
-      return;
-    }
-    if (!geoQuery.trim()) {
-      setGeoFeature(null);
-      return;
-    }
-    let cancelled = false;
-    setGeoLoading(true);
-    mapboxForwardGeocode({ token: mapboxToken, query: geoQuery, limit: 1, types: 'poi,address,place,locality' })
-      .then((f) => {
-        if (!cancelled) setGeoFeature(f);
-      })
-      .catch(() => {
-        if (!cancelled) setGeoFeature(null);
-      })
-      .finally(() => {
-        if (!cancelled) setGeoLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [geoQuery, mapboxToken]);
+  const externalMapUrl = locationLabel
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(locationLabel)}`
+    : null;
 
   if (!fixture) {
     return (
@@ -125,19 +74,6 @@ export default function FixtureDetail() {
     completeService(fixture.id);
     toast.success('Service completed — timer reset!');
   }
-
-  const mapCenter = geoFeature?.center;
-  const mapImgUrl =
-    mapboxToken && mapCenter
-      ? `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/pin-s+0ea5e9(${mapCenter[0]},${mapCenter[1]})/${mapCenter[0]},${mapCenter[1]},16/800x450@2x?access_token=${encodeURIComponent(
-          mapboxToken,
-        )}`
-      : null;
-
-  const externalMapUrl =
-    mapCenter && mapCenter.length === 2
-      ? `https://www.google.com/maps?q=${encodeURIComponent(`${mapCenter[1]},${mapCenter[0]}`)}`
-      : null;
 
   return (
     <div className="px-4 pt-6 pb-8">
@@ -255,35 +191,23 @@ export default function FixtureDetail() {
           </div>
 
           <div className="p-4">
-            {!mapboxToken ? (
-              <div className="rounded-xl border bg-secondary/30 p-4 text-center text-muted-foreground">
-                <p className="text-sm font-medium">Map disabled</p>
-                <p className="mt-1 text-[11px]">
-                  Set <code className="rounded bg-secondary px-1.5 py-0.5">VITE_MAPBOX_ACCESS_TOKEN</code> to enable location.
+            {locationLabel ? (
+              <div className="rounded-xl border bg-secondary/30 p-4">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Tag className="h-3 w-3 shrink-0" />
+                  <span>{locationLabel}</span>
+                </div>
+                {campus?.address ? (
+                  <p className="mt-2 text-[11px] text-muted-foreground">{campus.address}</p>
+                ) : null}
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  Update the campus address in Assets for more accurate directions.
                 </p>
               </div>
-            ) : geoLoading ? (
-              <div className="rounded-xl border bg-secondary/30 p-4 text-center text-muted-foreground">
-                <p className="text-sm font-medium">Locating…</p>
-                <p className="mt-1 text-[11px]">Searching by building + campus.</p>
-              </div>
-            ) : mapImgUrl ? (
-              <>
-                <img src={mapImgUrl} alt="Map" className="h-44 w-full rounded-xl border object-cover" loading="lazy" />
-                <div className="mt-3 space-y-1">
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Tag className="h-3 w-3" />
-                    <span className="truncate">{geoFeature?.place_name ?? geoQuery}</span>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground">
-                    Hint: if this is off, update the campus address for better accuracy.
-                  </p>
-                </div>
-              </>
             ) : (
               <div className="rounded-xl border bg-secondary/30 p-4 text-center text-muted-foreground">
-                <p className="text-sm font-medium">No map match</p>
-                <p className="mt-1 text-[11px]">We couldn’t resolve an address for this campus/building yet.</p>
+                <p className="text-sm font-medium">No location details</p>
+                <p className="mt-1 text-[11px]">Add a campus address when onboarding this fixture.</p>
               </div>
             )}
           </div>
