@@ -3,6 +3,7 @@ import { useFixtureStore, getFixtureStatus } from '@/store/fixtureStore';
 import type { FixtureStatus } from '@/store/fixtureStore';
 import { StatusBadge } from '@/components/StatusBadge';
 import { FIELD_LABELS, FLOOR_STATUS_LABELS } from '@/lib/fieldLabels';
+import { canManageFloorProgress, canMarkFloorLocked } from '@/lib/roles';
 import { Droplets, Lock, PlusCircle } from 'lucide-react';
 
 const statusColors: Record<FixtureStatus, string> = {
@@ -19,7 +20,9 @@ interface FloorPlanViewProps {
 }
 
 export function FloorPlanView({ buildingId, floor, buildingName, campusId }: FloorPlanViewProps) {
-  const { getFixturesByBuildingAndFloor, getFloorProgress, setFloorStatus } = useFixtureStore();
+  const { getFixturesByBuildingAndFloor, getFloorProgress, setFloorStatus, primaryRole } = useFixtureStore();
+  const canManageProgress = canManageFloorProgress(primaryRole);
+  const canLock = canMarkFloorLocked(primaryRole);
   const fixtures = getFixturesByBuildingAndFloor(buildingId, floor);
   const floorProgress = getFloorProgress(buildingId, floor);
   const isLocked = floorProgress.status === 'Restricted';
@@ -56,7 +59,7 @@ export function FloorPlanView({ buildingId, floor, buildingName, campusId }: Flo
         </div>
 
         <div className="mt-2 flex flex-wrap gap-2">
-          {!isLocked && fixtures.length > 0 && floorProgress.status !== 'Done' && (
+          {canManageProgress && !isLocked && fixtures.length > 0 && floorProgress.status !== 'Done' && (
             <button
               onClick={() => setFloorStatus(buildingId, floor, 'Done')}
               className="rounded-full bg-secondary px-3 py-1 text-[10px] font-semibold text-secondary-foreground"
@@ -64,7 +67,7 @@ export function FloorPlanView({ buildingId, floor, buildingName, campusId }: Flo
               Mark floor complete
             </button>
           )}
-          {!isLocked && (
+          {canLock && !isLocked && (
             <button
               onClick={() => {
                 const reason = window.prompt('Why is this floor locked? (e.g. needs key/card)', floorProgress.restrictedReason ?? '');
@@ -76,7 +79,7 @@ export function FloorPlanView({ buildingId, floor, buildingName, campusId }: Flo
               Mark locked
             </button>
           )}
-          {isLocked && (
+          {canManageProgress && isLocked && (
             <button
               onClick={() => setFloorStatus(buildingId, floor, 'InProgress')}
               className="rounded-full bg-secondary px-3 py-1 text-[10px] font-semibold text-secondary-foreground"

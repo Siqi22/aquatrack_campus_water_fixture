@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Upload, FileSpreadsheet, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Upload, FileSpreadsheet, AlertTriangle, CheckCircle2, Camera } from 'lucide-react';
 import {
   analyzeCSV,
   enrichAnalysisWithDuplicates,
@@ -10,7 +10,12 @@ import {
   type ImportAnalysis,
   type ImportMode,
 } from '@/lib/importCSV';
-import { isSpreadsheetFile, spreadsheetFormatLabel, spreadsheetToCSVText } from '@/lib/spreadsheet';
+import {
+  isSpreadsheetFile,
+  parseSpreadsheetFile,
+  spreadsheetFormatLabel,
+  type SpreadsheetSheet,
+} from '@/lib/spreadsheet';
 import { useFixtureStore } from '@/store/fixtureStore';
 import { toast } from 'sonner';
 
@@ -44,6 +49,9 @@ export function ImportDialog({ open, onOpenChange }: Props) {
   const [importMode, setImportMode] = useState<ImportMode>('skip_duplicates');
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sheets, setSheets] = useState<SpreadsheetSheet[]>([]);
+  const [selectedSheet, setSelectedSheet] = useState<string>('');
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
 
   useEffect(() => {
     if (!open) {
@@ -51,6 +59,9 @@ export function ImportDialog({ open, onOpenChange }: Props) {
       setError(null);
       setImporting(false);
       setImportMode('skip_duplicates');
+      setSheets([]);
+      setSelectedSheet('');
+      setPendingFile(null);
     }
   }, [open]);
 
@@ -63,32 +74,59 @@ export function ImportDialog({ open, onOpenChange }: Props) {
     return analysis.newFixtureCount;
   }, [analysis, importMode]);
 
+  async function analyzeSheetText(text: string, file: File) {
+    let result = analyzeCSV(text, file.name);
+    if (result.headers.length === 0) {
+      setError('Could not read column headers from this file.');
+      setAnalysis(null);
+      return;
+    }
+    if (result.mappings.length < 3) {
+      setError('Not enough recognizable columns. Expected campus, building, floor, and room at minimum.');
+      setAnalysis(null);
+      return;
+    }
+    const index = buildExistingFixtureIndex(fixtures, campuses);
+    result = enrichAnalysisWithDuplicates(result, index);
+    setAnalysis(result);
+    setImportMode(result.duplicateCount > 0 ? 'skip_duplicates' : 'insert_only');
+  }
+
   async function handleFile(file: File) {
     setError(null);
     try {
       if (!isSpreadsheetFile(file)) {
-        setError('Unsupported file type. Upload .csv, .xlsx, or .xls');
+        setError('Unsupported file type. Upload .csv or .xlsx');
         return;
       }
-      const text = await spreadsheetToCSVText(file);
-      let result = analyzeCSV(text, file.name);
-      if (result.headers.length === 0) {
-        setError('Could not read column headers from this file.');
-        setAnalysis(null);
-        return;
-      }
-      if (result.mappings.length < 3) {
-        setError('Not enough recognizable columns. Expected campus, building, floor, and room at minimum.');
-        setAnalysis(null);
-        return;
-      }
-      const index = buildExistingFixtureIndex(fixtures, campuses);
-      result = enrichAnalysisWithDuplicates(result, index);
-      setAnalysis(result);
-      setImportMode(result.duplicateCount > 0 ? 'skip_duplicates' : 'insert_only');
+      const workbook = await parseSpreadsheetFile(file);
+      setPendingFile(file);
+      setSheets(workbook.sheets);
+      const firstSheet = workbook.sheets[0]?.name ?? '';
+      setSelectedSheet(firstSheet);
+      await analyzeSheetText(workbook.sheets[0]?.csv ?? '', file);
     } catch (e) {
       console.error(e);
-      setError('Failed to parse file. Export as UTF-8 CSV or Excel (.xlsx) and try again.');
+      const message = e instanceof Error ? e.message : 'Failed to parse file.';
+      setError(message.includes('Unsupported') || message.includes('.xls')
+        ? message
+        : 'Failed to parse file. Export as UTF-8 CSV or Excel (.xlsx) and try again.');
+      setAnalysis(null);
+      setSheets([]);
+    }
+  }
+
+  async function handleSheetChange(sheetName: string) {
+    if (!pendingFile) return;
+    setSelectedSheet(sheetName);
+    const sheet = sheets.find((s) => s.name === sheetName);
+    if (!sheet) return;
+    setError(null);
+    try {
+      await analyzeSheetText(sheet.csv, pendingFile);
+    } catch (e) {
+      console.error(e);
+      setError('Failed to read the selected sheet.');
       setAnalysis(null);
     }
   }
@@ -114,6 +152,9 @@ export function ImportDialog({ open, onOpenChange }: Props) {
     }
   }
 
+  const needsOnSitePhotos =
+    analysis != null && analysis.fixtures.length > analysis.rowsWithPhotos;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
@@ -125,14 +166,22 @@ export function ImportDialog({ open, onOpenChange }: Props) {
         </DialogHeader>
 
         <p className="text-xs text-muted-foreground">
-          Upload CSV or Excel (.xlsx). Columns are detected automatically — campus, building, floor, room, category,
-          company name, model, serial number, and filter product number.
+          Upload CSV or Excel (.xlsx). Columns are detected automatically — campus, building, floor, room,
+          category, company name, model, serial number, and filter product number.
         </p>
+
+        <div className="flex items-start gap-2 rounded-xl border border-accent/30 bg-accent/5 px-3 py-2 text-[11px] text-muted-foreground">
+          <Camera className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" />
+          <span>
+            Photos are not included in typical exports. Imported fixtures will need fixture and model-label
+            photos captured on site unless your spreadsheet has <strong className="font-semibold text-foreground">Photo URL</strong> columns.
+          </span>
+        </div>
 
         <input
           ref={inputRef}
           type="file"
-          accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+          accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0];
@@ -149,15 +198,36 @@ export function ImportDialog({ open, onOpenChange }: Props) {
           >
             <Upload className="h-8 w-8 text-accent" />
             <span className="text-sm font-semibold text-foreground">Choose spreadsheet file</span>
-            <span className="text-[11px] text-muted-foreground">CSV, Excel (.xlsx), or legacy .xls</span>
+            <span className="text-[11px] text-muted-foreground">CSV or Excel (.xlsx)</span>
           </button>
         ) : (
           <div className="space-y-3">
+            {sheets.length > 1 && (
+              <div>
+                <label htmlFor="import-sheet" className="text-xs font-semibold text-foreground">
+                  Worksheet
+                </label>
+                <select
+                  id="import-sheet"
+                  value={selectedSheet}
+                  onChange={(e) => void handleSheetChange(e.target.value)}
+                  className="mt-1 w-full rounded-lg border bg-card px-3 py-2 text-xs text-foreground"
+                >
+                  {sheets.map((s) => (
+                    <option key={s.name} value={s.name}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div className="rounded-xl border bg-secondary/30 p-3">
               <p className="text-sm font-semibold text-foreground">
                 {analysis.fileName}{' '}
                 <span className="text-[10px] font-normal text-muted-foreground">
-                  ({spreadsheetFormatLabel(analysis.fileName)})
+                  ({spreadsheetFormatLabel(analysis.fileName)}
+                  {sheets.length > 1 ? ` · ${selectedSheet}` : ''})
                 </span>
               </p>
               <div className="mt-2 grid grid-cols-2 gap-2 text-[11px]">
@@ -174,10 +244,17 @@ export function ImportDialog({ open, onOpenChange }: Props) {
                   <p className="font-bold text-foreground">{analysis.floorLocks.length}</p>
                 </div>
                 <div className="rounded-lg bg-card px-2 py-1.5">
-                  <span className="text-muted-foreground">Buildings</span>
-                  <p className="font-bold text-foreground">{analysis.buildingCount}</p>
+                  <span className="text-muted-foreground">With photo URLs</span>
+                  <p className="font-bold text-foreground">{analysis.rowsWithPhotos}</p>
                 </div>
               </div>
+              {needsOnSitePhotos && (
+                <p className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground">
+                  <Camera className="h-3 w-3" />
+                  {analysis.fixtures.length - analysis.rowsWithPhotos} fixture
+                  {analysis.fixtures.length - analysis.rowsWithPhotos === 1 ? '' : 's'} will need on-site photos after import.
+                </p>
+              )}
               {analysis.skipped.length > 0 && (
                 <p className="mt-2 flex items-center gap-1 text-[11px] text-status-warning">
                   <AlertTriangle className="h-3 w-3" />
@@ -259,6 +336,8 @@ export function ImportDialog({ open, onOpenChange }: Props) {
               onClick={() => {
                 setAnalysis(null);
                 setError(null);
+                setSheets([]);
+                setPendingFile(null);
               }}
             >
               Choose different file

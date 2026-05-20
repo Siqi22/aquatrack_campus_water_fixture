@@ -2,6 +2,8 @@ import { ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Building2, PlusCircle, LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFixtureStore } from '@/store/fixtureStore';
+import { RoleBadge } from '@/components/RoleBadge';
 import { toast } from 'sonner';
 
 const tabs = [
@@ -14,11 +16,15 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const primaryRole = useFixtureStore((s) => s.primaryRole);
 
   return (
     <div className="flex min-h-screen flex-col bg-background app-surface">
-      <header className="flex items-center justify-between px-4 py-2 border-b bg-card/60 backdrop-blur-sm">
-        <span className="text-[11px] text-muted-foreground truncate">{user?.email}</span>
+      <header className="flex items-center justify-between gap-2 px-4 py-2 border-b bg-card/60 backdrop-blur-sm">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-[11px] text-muted-foreground">{user?.email}</span>
+          <RoleBadge role={primaryRole} compact />
+        </div>
         <button
           onClick={async () => {
             await signOut();

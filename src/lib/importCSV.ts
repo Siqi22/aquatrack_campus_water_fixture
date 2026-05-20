@@ -18,7 +18,9 @@ export type ImportFieldKey =
   | 'cleanliness'
   | 'observations'
   | 'issues'
-  | 'id';
+  | 'id'
+  | 'photoURL'
+  | 'modelPlatePhotoURL';
 
 export interface ColumnMapping {
   key: ImportFieldKey;
@@ -45,6 +47,8 @@ export interface ParsedFixtureRow {
   issues?: string[];
   sourceRow: number;
   externalId?: string;
+  photoURL?: string;
+  modelPlatePhotoURL?: string;
 }
 
 export interface ParsedFloorLockRow {
@@ -72,6 +76,7 @@ export interface ImportAnalysis {
   buildingCount: number;
   duplicateCount: number;
   newFixtureCount: number;
+  rowsWithPhotos: number;
 }
 
 export type ImportMode = 'insert_only' | 'skip_duplicates' | 'update_existing';
@@ -114,6 +119,14 @@ const HEADER_ALIASES: Record<ImportFieldKey, string[]> = {
   cleanliness: ['cleanliness', 'clean'],
   observations: ['observations', 'notes', 'comments'],
   issues: ['issues', 'problems'],
+  photoURL: ['photo url', 'photo', 'fixture photo', 'image url', 'photo link'],
+  modelPlatePhotoURL: [
+    'model label photo',
+    'model plate photo',
+    'label photo',
+    'plate photo',
+    'model photo',
+  ],
 };
 
 function normalizeHeader(h: string): string {
@@ -335,6 +348,9 @@ export function analyzeCSV(text: string, fileName: string): ImportAnalysis {
 
     const issuesRaw = cell(row, mappingByKey(mappings, 'issues'));
     const externalId = cleanValue(cell(row, mappingByKey(mappings, 'id'))) || undefined;
+    const photoURL = cleanValue(cell(row, mappingByKey(mappings, 'photoURL'))) || undefined;
+    const modelPlatePhotoURL =
+      cleanValue(cell(row, mappingByKey(mappings, 'modelPlatePhotoURL'))) || undefined;
     const today = new Date().toISOString().slice(0, 10);
     const lastMaint = cell(row, mappingByKey(mappings, 'lastMaintenance')) || today;
 
@@ -359,6 +375,8 @@ export function analyzeCSV(text: string, fileName: string): ImportAnalysis {
         : undefined,
       sourceRow,
       externalId,
+      photoURL,
+      modelPlatePhotoURL,
     });
 
     if (access.locked) {
@@ -384,6 +402,7 @@ export function analyzeCSV(text: string, fileName: string): ImportAnalysis {
     buildingCount: buildingSet.size,
     duplicateCount: 0,
     newFixtureCount: fixtures.length,
+    rowsWithPhotos: fixtures.filter((f) => f.photoURL || f.modelPlatePhotoURL).length,
   };
 }
 
@@ -515,6 +534,8 @@ export function mappingLabel(key: ImportFieldKey): string {
     cleanliness: 'Cleanliness',
     observations: 'Observations',
     issues: 'Issues',
+    photoURL: 'Photo URL',
+    modelPlatePhotoURL: 'Model label photo URL',
   };
   return labels[key];
 }

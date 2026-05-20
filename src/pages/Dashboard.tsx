@@ -6,9 +6,20 @@ import { Search, Droplets, AlertTriangle, Download, Upload, Wrench, ArrowRight, 
 import { ExportDialog } from '@/components/ExportDialog';
 import { ImportDialog } from '@/components/ImportDialog';
 import { FLOOR_STATUS_LABELS } from '@/lib/fieldLabels';
+import { canExportData, canImportSpreadsheets } from '@/lib/roles';
 
 export default function Dashboard() {
-  const { fixtures, campuses, buildings, searchFixtures, getMaintenanceTasks, getFixturesByCampus, getBuildingsByCampus, getFloorsByBuilding } = useFixtureStore();
+  const {
+    fixtures,
+    campuses,
+    buildings,
+    primaryRole,
+    searchFixtures,
+    getMaintenanceTasks,
+    getFixturesByCampus,
+    getBuildingsByCampus,
+    getFloorsByBuilding,
+  } = useFixtureStore();
   const [query, setQuery] = useState('');
   const [selectedCampus, setSelectedCampus] = useState<string>('all');
   const [exportOpen, setExportOpen] = useState(false);
@@ -47,20 +58,24 @@ export default function Dashboard() {
           <p className="text-sm text-muted-foreground">Campus drinking-water fixture inventory</p>
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={() => setImportOpen(true)}
-            className="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-2 text-xs font-semibold text-secondary-foreground"
-          >
-            <Upload className="h-3.5 w-3.5" />
-            Import
-          </button>
-          <button
-            onClick={() => setExportOpen(true)}
-            className="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-2 text-xs font-semibold text-secondary-foreground"
-          >
-            <Download className="h-3.5 w-3.5" />
-            Export
-          </button>
+          {canImportSpreadsheets(primaryRole) && (
+            <button
+              onClick={() => setImportOpen(true)}
+              className="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-2 text-xs font-semibold text-secondary-foreground"
+            >
+              <Upload className="h-3.5 w-3.5" />
+              Import
+            </button>
+          )}
+          {canExportData(primaryRole) && (
+            <button
+              onClick={() => setExportOpen(true)}
+              className="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-2 text-xs font-semibold text-secondary-foreground"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Export
+            </button>
+          )}
         </div>
       </div>
       <ImportDialog open={importOpen} onOpenChange={setImportOpen} />

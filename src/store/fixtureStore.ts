@@ -8,9 +8,10 @@ import {
   resolveExistingFixtureId,
   buildExistingFixtureIndex,
 } from '@/lib/importCSV';
+import { resolvePrimaryRole, type AppRole } from '@/lib/roles';
 
 export type FixtureStatus = 'Good' | 'Warning' | 'Urgent';
-export type UserRole = 'Surveyor' | 'Facilities';
+export type { AppRole };
 export type FloorStatus = 'NotStarted' | 'InProgress' | 'Done' | 'Restricted';
 
 export type FixtureCategory =
@@ -194,8 +195,8 @@ function mapFloorProgress(r: FloorProgressRow): BuildingFloorProgress {
 interface FixtureStore {
   loading: boolean;
   loaded: boolean;
-  userRole: UserRole;
-  setUserRole: (role: UserRole) => void;
+  userRoles: AppRole[];
+  primaryRole: AppRole;
   campuses: Campus[];
   buildings: Building[];
   fixtures: Fixture[];
@@ -225,52 +226,52 @@ interface FixtureStore {
   importFromAnalysis: (analysis: ImportAnalysis, options?: ImportOptions) => Promise<ImportResult>;
 }
 
-const ROLE_KEY = 'aquaTrack:userRole';
-
-function loadRole(): UserRole {
-  try {
-    const v = localStorage.getItem(ROLE_KEY);
-    return v === 'Facilities' ? 'Facilities' : 'Surveyor';
-  } catch {
-    return 'Surveyor';
-  }
-}
-
-function saveRole(role: UserRole) {
-  try { localStorage.setItem(ROLE_KEY, role); } catch { /* ignore */ }
-}
-
 export const useFixtureStore = create<FixtureStore>((set, get) => ({
   loading: false,
   loaded: false,
-  userRole: loadRole(),
+  userRoles: [],
+  primaryRole: 'Surveyor',
   campuses: [],
   buildings: [],
   fixtures: [],
   floorProgress: [],
 
-  setUserRole: (role) => {
-    saveRole(role);
-    set({ userRole: role });
-  },
-
-  reset: () => set({ loaded: false, campuses: [], buildings: [], fixtures: [], floorProgress: [] }),
+  reset: () =>
+    set({
+      loaded: false,
+      userRoles: [],
+      primaryRole: 'Surveyor',
+      campuses: [],
+      buildings: [],
+      fixtures: [],
+      floorProgress: [],
+    }),
 
   loadAll: async () => {
     if (get().loading) return;
     set({ loading: true });
     try {
-      const [campusesRes, buildingsRes, fixturesRes, fpRes] = await Promise.all([
+      const { data: userResp } = await supabase.auth.getUser();
+      const userId = userResp?.user?.id ?? null;
+
+      const [campusesRes, buildingsRes, fixturesRes, fpRes, rolesRes] = await Promise.all([
         supabase.from('campuses').select('*').order('created_at', { ascending: true }),
         supabase.from('buildings').select('*').order('created_at', { ascending: true }),
         supabase.from('fixtures').select('*').order('created_at', { ascending: true }),
         supabase.from('floor_progress').select('*'),
+        userId
+          ? supabase.from('user_roles').select('role').eq('user_id', userId)
+          : Promise.resolve({ data: [] as { role: AppRole }[], error: null }),
       ]);
 
       if (campusesRes.error) throw campusesRes.error;
       if (buildingsRes.error) throw buildingsRes.error;
       if (fixturesRes.error) throw fixturesRes.error;
       if (fpRes.error) throw fpRes.error;
+      if (rolesRes.error) throw rolesRes.error;
+
+      const userRoles = (rolesRes.data ?? []).map((r) => r.role);
+      const primaryRole = resolvePrimaryRole(userRoles);
 
       const campuses = (campusesRes.data ?? []).map(mapCampus);
       const buildings = (buildingsRes.data ?? []).map(mapBuilding);
@@ -302,7 +303,7 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
         if (seed) campuses.push(mapCampus(seed));
       }
 
-      set({ campuses, buildings, fixtures, floorProgress, loaded: true });
+      set({ campuses, buildings, fixtures, floorProgress, userRoles, primaryRole, loaded: true });
     } catch (e) {
       console.error('loadAll failed', e);
     } finally {
@@ -593,6 +594,10 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
       if (!campusId || !buildingId) continue;
 
       const existingId = resolveExistingFixtureId(f, index);
+      const photoURL = f.photoURL?.trim() || null;
+      const modelPlatePhotoURL = f.modelPlatePhotoURL?.trim() || null;
+      const photosProvided = [photoURL, modelPlatePhotoURL].filter(Boolean) as string[];
+
       const patch = {
         floor: f.floor,
         room_number: f.nearestRoom,
@@ -609,6 +614,9 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
         last_maintenance_date: f.lastMaintenanceDate,
         installation_date: f.installationDate ?? null,
         location_confirmed: true,
+        photo_url: photoURL,
+        model_plate_photo_url: modelPlatePhotoURL,
+        photos_provided: photosProvided.length ? photosProvided : [],
       };
 
       if (existingId) {
@@ -627,7 +635,6 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
         building_id: buildingId,
         ...patch,
         created_by: userId,
-        photos_provided: [],
       });
     }
 

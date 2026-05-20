@@ -28,7 +28,7 @@ Built for the University of Washington campus water inventory program, with term
 | Frontend | React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui |
 | State | Zustand (`fixtureStore`) |
 | Backend | Supabase (Postgres, Auth, Storage, Edge Functions) |
-| Import | Custom CSV parser + SheetJS (`xlsx`) for Excel |
+| Import | Custom CSV parser + lazy-loaded `read-excel-file` for Excel |
 | Scanning | `scan-fixture-label` Edge Function (Lovable AI Gateway / Gemini vision) |
 
 ---
@@ -125,14 +125,17 @@ Open the URL shown in the terminal (typically `http://localhost:5173`).
 
 ## Importing spreadsheet data
 
-1. Open **Dashboard → Import**
-2. Upload `.csv`, `.xlsx`, or `.xls`
-3. Review detected columns, duplicate count, and preview rows
-4. Choose import mode:
+1. Open **Dashboard → Import** (UW Facilities / Admin role only)
+2. Upload `.csv` or `.xlsx` (legacy `.xls` is not supported — re-save as `.xlsx`)
+3. If the workbook has multiple worksheets, pick the sheet to import
+4. Review detected columns, duplicate count, and preview rows
+5. Choose import mode:
    - **Skip duplicates** — add only new fixtures (default when duplicates detected)
    - **Update existing** — refresh matches by campus + building + floor + room (or by ID if present)
    - **Insert all** — create every row (initial seed imports)
-5. Confirm import
+6. Confirm import
+
+**Photos:** Typical exports do not include images. Imported fixtures need on-site fixture and model-label photos unless the spreadsheet includes **Photo URL** / **Model label photo** columns with valid links.
 
 The parser recognizes common header aliases (e.g. “Company name”, “Serial Number”, “Filter Type”, “Nearest Room”) and handles:
 
@@ -147,7 +150,7 @@ Re-importing an AquaTrack **Export** CSV with ID column enables update-by-ID.
 
 ## Exporting data
 
-**Dashboard → Export** supports templates and custom column selection. Default export uses slide-aligned column names (company name, serial number, product number, etc.).
+**Dashboard → Export** (Building coordinator and above) supports templates and custom column selection. Default export uses slide-aligned column names (company name, serial number, product number, etc.).
 
 ---
 
@@ -176,27 +179,35 @@ Re-importing an AquaTrack **Export** CSV with ID column enables update-by-ID.
 
 ## Architecture notes
 
+### Roles (Supabase `user_roles`)
+
+| DB role | UI label | Capabilities |
+|---------|----------|--------------|
+| `Surveyor` | Collector | Survey fixtures, mark floors locked when no access |
+| `Facilities` | Building coordinator | Above + mark floors complete/unlock, export data |
+| `Admin` | UW Facilities | Above + bulk import |
+
+Roles load from Supabase on login (`user_roles` table). Users with multiple rows get the highest tier. Assign roles in Supabase SQL or dashboard — new signups default to `Surveyor`.
+
 ### Collector-first UX
 
-The app defaults to a single **collector** role in the UI (no facilities toggle). Floor locking and progress tracking support survey workflows without requiring a separate map provider.
+The UI adapts to the signed-in user’s role (no localStorage toggle). Collectors focus on survey workflows; coordinators manage floor progress; central facilities handle bulk import.
 
 ### State management
 
-`fixtureStore.loadAll()` hydrates campuses, buildings, fixtures, and floor progress from Supabase on login. Mutations write through to Postgres and update local Zustand state.
+`fixtureStore.loadAll()` hydrates campuses, buildings, fixtures, floor progress, and the user’s `user_roles` from Supabase on login. Mutations write through to Postgres and update local Zustand state.
 
 ### Import pipeline
 
 ```
-File upload → spreadsheetToCSVText → analyzeCSV → enrichAnalysisWithDuplicates
+File upload → parseSpreadsheetFile (lazy Excel) → analyzeCSV → enrichAnalysisWithDuplicates
          → importFromAnalysis (skip | update | insert) → Supabase bulk write
 ```
 
-### Known limitations / roadmap
+### Known limitations
 
-- Role layers (collector → building coordinator → central facilities) are modeled in feedback but not yet wired to Supabase `user_roles`
-- No `.xlsx` multi-sheet selection (uses first sheet)
-- Photo URLs from import are not populated (photos require on-site capture or storage upload)
 - Playwright E2E scaffold present; expand coverage as needed
+- Remaining npm audit items are dev-only (`esbuild` via Vite dev server) — upgrade Vite major when ready
 
 ---
 
