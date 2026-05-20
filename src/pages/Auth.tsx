@@ -20,7 +20,13 @@ export default function Auth() {
     if (session) navigate('/', { replace: true });
   }, [session, navigate]);
 
-  if (authLoading) return null;
+  if (authLoading) {
+    return (
+      <div className="app-surface flex min-h-screen items-center justify-center text-sm text-muted-foreground">
+        Loading…
+      </div>
+    );
+  }
   if (session) return <Navigate to="/" replace />;
 
   async function handleEmailAuth(e: React.FormEvent) {

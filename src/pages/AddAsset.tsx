@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { useFixtureStore, getFixtureStatus, fixtureCategoryMeta } from '@/store/fixtureStore';
+import {
+  useFixtureStore,
+  getFixtureStatus,
+  fixtureCategoryMeta,
+  FIXTURE_CATEGORIES,
+  normalizeFixtureCategory,
+} from '@/store/fixtureStore';
 import type { FixtureCategory } from '@/store/fixtureStore';
 import { Camera, ScanLine, CheckCircle2, Building2, ChevronLeft, ChevronRight, ImagePlus, PlusCircle, ListChecks, Search, Droplets, Map, Tags, MessageSquareWarning, HelpCircle, University, Info, X, FileSpreadsheet } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -8,14 +14,15 @@ import { SimpleRating } from '@/components/SimpleRating';
 import { StatusBadge } from '@/components/StatusBadge';
 import { FloorPlanView } from '@/components/FloorPlanView';
 import { FIELD_LABELS, NO_LABEL_REASONS, ISSUE_OPTIONS } from '@/lib/fieldLabels';
+import { scanFixtureLabelFromPhoto } from '@/lib/scanFixtureLabel';
 
 type Mode = 'choose' | 'onboard' | 'manage';
 
 const CATEGORY_REFERENCE_IMAGES: Record<FixtureCategory, string> = {
-  BottleFiller: 'https://placehold.co/600x400/0f172a/ffffff?text=Bottle+Filler',
-  WallFountain: 'https://placehold.co/600x400/0f172a/ffffff?text=Wall+Fountain',
-  CombinationUnit: 'https://placehold.co/600x400/0f172a/ffffff?text=Combo+Unit',
-  FilteredTap: 'https://placehold.co/600x400/0f172a/ffffff?text=Filtered+Tap',
+  PorcelainFountain: 'https://placehold.co/600x400/0f172a/ffffff?text=Porcelain+fountain',
+  MetalFountain: 'https://placehold.co/600x400/0f172a/ffffff?text=Metal+fountain',
+  VendingMachine: 'https://placehold.co/600x400/0f172a/ffffff?text=Vending+machine',
+  BottleRefillStation: 'https://placehold.co/600x400/0f172a/ffffff?text=Bottle+refill+station',
   Other: 'https://placehold.co/600x400/0f172a/ffffff?text=Other',
 };
 
@@ -189,46 +196,26 @@ export default function AddAsset() {
 
     setScanning(true);
     try {
-      const base64 = platePhoto.split(',')[1] ?? '';
-      const { data, error } = await supabase.functions.invoke('scan-fixture-label', {
-        body: { imageBase64: base64 },
+      const result = await scanFixtureLabelFromPhoto(platePhoto);
+      setScanResult({
+        ...result,
+        category: result.category,
       });
-      if (error) {
-        const msg = (error as { message?: string }).message || 'Edge function error';
-        throw new Error(msg);
+      setBrand(result.brand);
+      setModel(result.model);
+      setSerialNumber(result.serialNumber);
+      setFilterType(result.filterType);
+      setSuggestedCategory(result.category);
+      setCategory((prev) => prev ?? result.category);
+      setScanned(true);
+      const missing: string[] = [];
+      if (!result.brand) missing.push('brand');
+      if (!result.model) missing.push('model');
+      if (missing.length) {
+        toast.warning(`Scan partial — couldn't read: ${missing.join(', ')}`);
+      } else {
+        toast.success('Label scanned with Claude');
       }
-      if (data && typeof data === 'object' && !('error' in data)) {
-        const result = {
-          brand: String(data.brand ?? '').trim(),
-          model: String(data.model ?? '').trim(),
-          serialNumber: String(data.serialNumber ?? '').trim(),
-          filterType: String(data.filterType ?? '').trim(),
-          category: String(data.category ?? '').trim(),
-          confidence: typeof data.confidence === 'number' ? data.confidence : 0,
-        };
-        setScanResult(result);
-        setBrand(result.brand);
-        setModel(result.model);
-        setSerialNumber(result.serialNumber);
-        setFilterType(result.filterType);
-        const cat = result.category as FixtureCategory;
-        if ((Object.keys(fixtureCategoryMeta) as string[]).includes(cat)) {
-          setSuggestedCategory(cat);
-          setCategory((prev) => prev ?? cat);
-        }
-        setScanned(true);
-        const missing: string[] = [];
-        if (!result.brand) missing.push('brand');
-        if (!result.model) missing.push('model');
-        if (missing.length) {
-          toast.warning(`Scan partial — couldn't read: ${missing.join(', ')}`);
-        } else {
-          toast.success('Label scanned');
-        }
-        return;
-      }
-      const errMsg = (data as { error?: string })?.error ?? 'No structured response from AI';
-      throw new Error(errMsg);
     } catch (e) {
       console.error('scan failed', e);
       const msg = e instanceof Error ? e.message : 'Unknown error';
@@ -751,7 +738,7 @@ export default function AddAsset() {
             <p className="text-sm font-semibold text-foreground">What type of fixture is this?</p>
             <p className="text-[11px] text-muted-foreground">You can change this on the next step. Tap <Info className="inline h-3 w-3 -mt-0.5" /> for a reference photo.</p>
             <div className="mt-2 grid grid-cols-2 gap-2">
-              {(Object.keys(fixtureCategoryMeta) as FixtureCategory[]).map((id) => {
+              {FIXTURE_CATEGORIES.map((id) => {
                 const active = category === id;
                 return (
                   <div
@@ -813,7 +800,7 @@ export default function AddAsset() {
               <div className="flex items-center gap-2">
                 <ScanLine className="h-4 w-4 text-accent" />
                 <div>
-                  <p className="text-sm font-semibold text-foreground">Auto-scan label</p>
+                  <p className="text-sm font-semibold text-foreground">AI scan label (Claude Haiku)</p>
                   <p className="text-[11px] text-muted-foreground">Reads {FIELD_LABELS.companyName.toLowerCase()}, {FIELD_LABELS.model.toLowerCase()}, {FIELD_LABELS.serialNumber.toLowerCase()} from the label photo</p>
                 </div>
               </div>
@@ -998,7 +985,7 @@ export default function AddAsset() {
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            {(Object.keys(fixtureCategoryMeta) as FixtureCategory[]).map((id) => {
+            {FIXTURE_CATEGORIES.map((id) => {
               const meta = fixtureCategoryMeta[id];
               const active = category === id;
               return (

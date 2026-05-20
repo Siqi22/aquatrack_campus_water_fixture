@@ -1,4 +1,4 @@
-import type { FixtureCategory } from '@/store/fixtureStore';
+import { normalizeFixtureCategory, type FixtureCategory } from '@/store/fixtureStore';
 
 export type ImportFieldKey =
   | 'campus'
@@ -7,6 +7,7 @@ export type ImportFieldKey =
   | 'accessStatus'
   | 'nearestRoom'
   | 'category'
+  | 'originalCategory'
   | 'brand'
   | 'model'
   | 'serialNumber'
@@ -107,7 +108,8 @@ const HEADER_ALIASES: Record<ImportFieldKey, string[]> = {
   floor: ['floor', 'level'],
   accessStatus: ['status', 'access', 'access status', 'floor status'],
   nearestRoom: ['nearest room', 'room', 'room number', 'nearest room / landmark', 'location'],
-  category: ['category', 'type', 'fixture type', 'fixture category'],
+  category: ['category', 'type', 'fixture type', 'fixture category', 'fountain type'],
+  originalCategory: ['original category', 'original type', 'legacy category', 'csv category'],
   brand: ['brand', 'company', 'company name', 'manufacturer'],
   model: ['model', 'model number'],
   serialNumber: ['serial number', 'serial', 'serial no', 'serial #'],
@@ -231,22 +233,34 @@ function cleanValue(value: string): string {
   return v;
 }
 
+/** Map spreadsheet / original-category text to fountain type (exported for import backfill). */
+export function categoryFromSpreadsheetLabel(raw: string): FixtureCategory | null {
+  const info = mapCategory(raw);
+  return info?.category ?? null;
+}
+
 function mapCategory(raw: string): { category: FixtureCategory; label: string } | null {
   const label = raw.trim();
   if (isPlaceholder(label)) return null;
   const s = label.toLowerCase();
 
-  if (s.includes('bottle') || s.includes('refill')) return { category: 'BottleFiller', label };
-  if (s.includes('combo') || s.includes('attachment') || s.includes('combination')) {
-    return { category: 'CombinationUnit', label };
+  if (s.includes('porcelain')) return { category: 'PorcelainFountain', label };
+  if (s.includes('metal') && s.includes('fountain')) return { category: 'MetalFountain', label };
+  if (s.includes('vending')) return { category: 'VendingMachine', label };
+  if (
+    s.includes('bottle') ||
+    s.includes('refill') ||
+    s.includes('combo') ||
+    s.includes('attachment') ||
+    s.includes('combination') ||
+    s.includes('ezh2o')
+  ) {
+    return { category: 'BottleRefillStation', label };
   }
-  if (s.includes('filtered') || s.includes('tap') || s.includes('sink')) return { category: 'FilteredTap', label };
-  if (s.includes('porcelain') || s.includes('fountain') || s.includes('water fountain')) {
-    return { category: 'WallFountain', label };
-  }
-  if (s.includes('vending')) return { category: 'Other', label };
+  if (s.includes('filtered') || s.includes('tap') || s.includes('sink')) return { category: 'Other', label };
+  if (s.includes('fountain') || s.includes('water fountain')) return { category: 'Other', label };
 
-  return { category: 'Other', label };
+  return { category: normalizeFixtureCategory(label), label };
 }
 
 function mapAccessStatus(raw: string): { locked: boolean; reason: string } {
@@ -302,7 +316,9 @@ export function analyzeCSV(text: string, fileName: string): ImportAnalysis {
     const floor = cell(row, mappingByKey(mappings, 'floor'));
     const accessStatus = cell(row, mappingByKey(mappings, 'accessStatus'));
     const nearestRoom = cell(row, mappingByKey(mappings, 'nearestRoom'));
-    const categoryRaw = cell(row, mappingByKey(mappings, 'category'));
+    const categoryRaw =
+      cell(row, mappingByKey(mappings, 'originalCategory')) ||
+      cell(row, mappingByKey(mappings, 'category'));
 
     if (!campusLabel && !buildingName && !floor) {
       skipped.push({ row: sourceRow, reason: 'Empty row' });
@@ -360,7 +376,7 @@ export function analyzeCSV(text: string, fileName: string): ImportAnalysis {
       floor,
       nearestRoom: nearestRoom.replace(/^room\s+/i, '').trim(),
       category: categoryInfo.category,
-      categoryLabel: categoryInfo.label,
+      categoryLabel: categoryRaw.trim() || categoryInfo.label,
       brand: cleanValue(cell(row, mappingByKey(mappings, 'brand'))),
       model: cleanValue(cell(row, mappingByKey(mappings, 'model'))),
       serialNumber: cleanValue(cell(row, mappingByKey(mappings, 'serialNumber'))),

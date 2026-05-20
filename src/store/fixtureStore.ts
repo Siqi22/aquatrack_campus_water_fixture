@@ -9,46 +9,107 @@ import {
   buildExistingFixtureIndex,
 } from '@/lib/importCSV';
 import { resolvePrimaryRole, type AppRole } from '@/lib/roles';
+import { categoryFromSpreadsheetLabel } from '@/lib/importCSV';
+import {
+  buildImportMetadata,
+  categoryFromOriginalLabel,
+  parseOriginalFloorFromImportMetadata,
+  resolveCategoryFromImportProvenance,
+  splitImportFromObservations,
+} from '@/lib/importMetadata';
 
 export type FixtureStatus = 'Good' | 'Warning' | 'Urgent';
 export type { AppRole };
 export type FloorStatus = 'NotStarted' | 'InProgress' | 'Done' | 'Restricted';
 
 export type FixtureCategory =
-  | 'BottleFiller'
-  | 'WallFountain'
-  | 'CombinationUnit'
-  | 'FilteredTap'
+  | 'PorcelainFountain'
+  | 'MetalFountain'
+  | 'VendingMachine'
+  | 'BottleRefillStation'
   | 'Other';
+
+/** Display order for fountain type pickers */
+export const FIXTURE_CATEGORIES: FixtureCategory[] = [
+  'PorcelainFountain',
+  'MetalFountain',
+  'VendingMachine',
+  'BottleRefillStation',
+  'Other',
+];
 
 export const fixtureCategoryMeta: Record<
   FixtureCategory,
   { label: string; examples: string[]; hints?: string[] }
 > = {
-  BottleFiller: {
-    label: 'Bottle filler',
-    examples: ['Metal Elkay EZH2O', 'Stainless bottle station', 'Sensor bottle filler'],
+  PorcelainFountain: {
+    label: 'Porcelain fountain',
+    examples: ['White ceramic basin', 'Wall-hung porcelain', 'Traditional drinking fountain'],
     hints: ['Often near restrooms'],
   },
-  WallFountain: {
-    label: 'Wall fountain',
-    examples: ['Porcelain wall fountain', 'Metal wall fountain'],
+  MetalFountain: {
+    label: 'Metal fountain',
+    examples: ['Stainless steel basin', 'Elkay metal fountain', 'ADA metal fountain'],
     hints: ['Often near restrooms'],
   },
-  CombinationUnit: {
-    label: 'Combo unit',
-    examples: ['Bottle filler + fountain', 'EZH2O combo'],
-    hints: ['Often near restrooms'],
+  VendingMachine: {
+    label: 'Vending machine',
+    examples: ['Water bottle vending', 'Filtered water kiosk'],
   },
-  FilteredTap: {
-    label: 'Filtered tap / sink',
-    examples: ['Filtered kitchen tap', 'Filtered lab sink tap'],
+  BottleRefillStation: {
+    label: 'Bottle refill station',
+    examples: ['Elkay EZH2O bottle filler', 'Gooseneck bottle station', 'High bottle clearance'],
+    hints: ['May be standalone or combined with a fountain'],
   },
   Other: {
     label: 'Other',
-    examples: ['Unknown type', 'Temporary setup'],
+    examples: ['Unknown type', 'Temporary setup', 'Filtered tap only'],
   },
 };
+
+/** Maps original DB enum values (pre–category v2) to current fountain types. */
+export const ORIGINAL_CATEGORY_MIGRATION: Record<string, FixtureCategory> = {
+  BottleFiller: 'BottleRefillStation',
+  CombinationUnit: 'BottleRefillStation',
+  FilteredTap: 'Other',
+  Other: 'Other',
+  WallFountain: 'Other',
+};
+
+const CATEGORY_LABEL_ALIASES: Record<string, FixtureCategory> = {
+  'porcelain fountain': 'PorcelainFountain',
+  'metal fountain': 'MetalFountain',
+  'vending machine': 'VendingMachine',
+  'bottle refill station': 'BottleRefillStation',
+  'bottle filler': 'BottleRefillStation',
+  'bottle refill': 'BottleRefillStation',
+  'wall fountain': 'Other',
+  'combo unit': 'BottleRefillStation',
+  'combination unit': 'BottleRefillStation',
+  'filtered tap': 'Other',
+  'filtered tap / sink': 'Other',
+  'drinking fountain': 'Other',
+  'water fountain': 'Other',
+  other: 'Other',
+};
+
+export function normalizeFixtureCategory(category: string | null | undefined): FixtureCategory {
+  if (!category) return 'Other';
+  const trimmed = category.trim();
+  if (trimmed in fixtureCategoryMeta) return trimmed as FixtureCategory;
+  if (trimmed in ORIGINAL_CATEGORY_MIGRATION) return ORIGINAL_CATEGORY_MIGRATION[trimmed];
+
+  const lower = trimmed.toLowerCase();
+  if (lower in CATEGORY_LABEL_ALIASES) return CATEGORY_LABEL_ALIASES[lower];
+  for (const id of FIXTURE_CATEGORIES) {
+    if (fixtureCategoryMeta[id].label.toLowerCase() === lower) return id;
+  }
+  return 'Other';
+}
+
+export function getFixtureCategoryLabel(category: string): string {
+  return fixtureCategoryMeta[normalizeFixtureCategory(category)].label;
+}
 
 export interface QualityRating {
   pressure: number;
@@ -165,7 +226,11 @@ function mapFixture(r: FixtureRow, buildingName: string): Fixture {
     lastMaintenanceDate: r.last_maintenance_date,
     filterType: r.filter_type ?? '',
     installationDate: r.installation_date ?? undefined,
-    category: (r.category as FixtureCategory) ?? 'Other',
+    category:
+      resolveCategoryFromImportProvenance(
+        (r as FixtureRow & { import_metadata?: string | null }).import_metadata,
+        r.observations,
+      ) ?? normalizeFixtureCategory(r.category),
     qualityRating: { pressure: r.pressure_rating ?? 3, cleanliness: r.cleanliness_rating ?? 3 },
     observations: r.observations ?? undefined,
     issues: r.issues ?? undefined,
@@ -278,7 +343,43 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
       const campuses = (campusesRes.data ?? []).map(mapCampus);
       const buildings = (buildingsRes.data ?? []).map(mapBuilding);
       const buildingNameById = new Map(buildings.map((b) => [b.id, b.name]));
-      const fixtures = (fixturesRes.data ?? []).map((r) => mapFixture(r, buildingNameById.get(r.building_id) ?? ''));
+
+      const fixtureRows = fixturesRes.data ?? [];
+      await Promise.all(
+        fixtureRows.map(async (row) => {
+          const rowExt = row as FixtureRow & { import_metadata?: string | null };
+          let importMeta = rowExt.import_metadata?.trim() || '';
+
+          const split = splitImportFromObservations(row.observations);
+          if (!importMeta && split.importMetadata) importMeta = split.importMetadata;
+
+          const fromOriginal = resolveCategoryFromImportProvenance(importMeta || row.observations, row.observations);
+          const normalized = fromOriginal ?? normalizeFixtureCategory(row.category);
+
+          const originalFloor = parseOriginalFloorFromImportMetadata(importMeta);
+          const storedFloor = String(row.floor).trim();
+          const patch: Database['public']['Tables']['fixtures']['Update'] = {};
+
+          if (split.importMetadata && !rowExt.import_metadata?.trim()) {
+            patch.import_metadata = split.importMetadata;
+            patch.observations = split.observations ?? null;
+          }
+          if (row.category !== normalized) patch.category = normalized;
+          if (originalFloor && originalFloor !== storedFloor) patch.floor = originalFloor;
+
+          if (Object.keys(patch).length) {
+            const { error } = await supabase.from('fixtures').update(patch).eq('id', row.id);
+            if (!error) {
+              if (patch.import_metadata) rowExt.import_metadata = patch.import_metadata as string;
+              if (patch.observations !== undefined) row.observations = patch.observations ?? null;
+              if (patch.category) row.category = patch.category;
+              if (patch.floor) row.floor = patch.floor;
+            }
+          }
+        }),
+      );
+
+      const fixtures = fixtureRows.map((r) => mapFixture(r, buildingNameById.get(r.building_id) ?? ''));
       const floorProgress = (fpRes.data ?? []).map(mapFloorProgress);
 
       // Auto-create floor_progress rows for missing (building, floor) combos so the UI has something to show.
@@ -378,7 +479,7 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
         model: f.model,
         serial_number: f.serialNumber,
         filter_type: f.filterType,
-        category: f.category,
+        category: normalizeFixtureCategory(f.category),
         pressure_rating: f.qualityRating.pressure,
         cleanliness_rating: f.qualityRating.cleanliness,
         observations: f.observations ?? null,
@@ -427,7 +528,7 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
       model: f.model,
       serial_number: f.serialNumber,
       filter_type: f.filterType,
-      category: f.category,
+      category: normalizeFixtureCategory(f.category),
       pressure_rating: f.qualityRating.pressure,
       cleanliness_rating: f.qualityRating.cleanliness,
       observations: f.observations ?? null,
@@ -600,6 +701,15 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
       const modelPlatePhotoURL = f.modelPlatePhotoURL?.trim() || null;
       const photosProvided = [photoURL, modelPlatePhotoURL].filter(Boolean) as string[];
 
+      const categoryFromOriginal =
+        categoryFromSpreadsheetLabel(f.categoryLabel) ??
+        categoryFromOriginalLabel(f.categoryLabel) ??
+        normalizeFixtureCategory(f.category);
+      const importMetadata = buildImportMetadata({
+        originalFloorLabel: f.floor,
+        originalCategory: f.categoryLabel,
+      });
+
       const patch = {
         floor: f.floor,
         room_number: f.nearestRoom,
@@ -608,7 +718,8 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
         model: f.model || null,
         serial_number: f.serialNumber || null,
         filter_type: f.filterType || null,
-        category: f.category,
+        category: categoryFromOriginal,
+        import_metadata: importMetadata,
         pressure_rating: f.pressure,
         cleanliness_rating: f.cleanliness,
         observations: f.observations ?? null,

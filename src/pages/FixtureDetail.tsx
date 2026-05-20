@@ -1,6 +1,14 @@
 import { useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useFixtureStore, getFixtureStatus, getDaysSinceMaintenance, fixtureCategoryMeta } from '@/store/fixtureStore';
+import {
+  useFixtureStore,
+  getFixtureStatus,
+  getDaysSinceMaintenance,
+  fixtureCategoryMeta,
+  FIXTURE_CATEGORIES,
+  normalizeFixtureCategory,
+  getFixtureCategoryLabel,
+} from '@/store/fixtureStore';
 import type { FixtureCategory } from '@/store/fixtureStore';
 import { StatusBadge } from '@/components/StatusBadge';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -21,7 +29,9 @@ export default function FixtureDetail() {
   const [brand, setBrand] = useState(fixture?.brand || '');
   const [model, setModel] = useState(fixture?.model || '');
   const [filterType, setFilterType] = useState(fixture?.filterType || '');
-  const [category, setCategory] = useState<FixtureCategory>(fixture?.category || 'Other');
+  const [category, setCategory] = useState<FixtureCategory>(() =>
+    normalizeFixtureCategory(fixture?.category),
+  );
   const [pressure, setPressure] = useState(fixture?.qualityRating.pressure || 2);
   const [cleanliness, setCleanliness] = useState(fixture?.qualityRating.cleanliness || 2);
   const [observations, setObservations] = useState(fixture?.observations || '');
@@ -87,7 +97,7 @@ export default function FixtureDetail() {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-sm font-semibold text-foreground">
-              {fixtureCategoryMeta[fixture.category]?.label ?? fixture.category}
+              {getFixtureCategoryLabel(fixture.category)}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               {campus ? `${campus.school} • ${campus.name}` : 'Campus'}
@@ -232,7 +242,7 @@ export default function FixtureDetail() {
                   onChange={(e) => setCategory(e.target.value as FixtureCategory)}
                   className="mt-1 w-full rounded-lg border bg-background px-3 py-2 text-sm text-foreground"
                 >
-                  {(Object.keys(fixtureCategoryMeta) as FixtureCategory[]).map((id) => (
+                  {FIXTURE_CATEGORIES.map((id) => (
                     <option key={id} value={id}>
                       {fixtureCategoryMeta[id].label}
                     </option>
@@ -266,7 +276,7 @@ export default function FixtureDetail() {
                 <InfoTile label={FIELD_LABELS.productNumber} value={fixture.filterType || '—'} />
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <InfoTile label="Category" value={fixtureCategoryMeta[fixture.category]?.label ?? fixture.category} />
+                <InfoTile label="Fountain type" value={getFixtureCategoryLabel(fixture.category)} />
                 <InfoTile label="Nearest landmark" value={fixture.nearestRoom || fixture.roomNumber || '—'} />
               </div>
               {fixture.issues?.length ? (

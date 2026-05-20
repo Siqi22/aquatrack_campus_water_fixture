@@ -29,7 +29,7 @@ Built for the University of Washington campus water inventory program, with term
 | State | Zustand (`fixtureStore`) |
 | Backend | Supabase (Postgres, Auth, Storage, Edge Functions) |
 | Import | Custom CSV parser + lazy-loaded `read-excel-file` for Excel |
-| Scanning | `scan-fixture-label` Edge Function (Lovable AI Gateway / Gemini vision) |
+| Scanning | `scan-fixture-label` Edge Function (Claude Haiku vision OCR on model plates) |
 
 ---
 
@@ -103,15 +103,26 @@ npx supabase db push
 
 Key migrations include floor progress tracking, fixture audit columns, and **alphanumeric floor labels** (`floor` stored as `TEXT`).
 
-### 4. Edge Function (label scan)
+### 4. Edge Function (AI label scan — Claude Haiku)
 
-Deploy the scan function and set secrets in Supabase Dashboard → **Edge Functions → Secrets**:
+Add to `.env` (see `.env.example`):
 
-- `LOVABLE_API_KEY` — required for vision-based label extraction (server-side only)
+| Variable | Description |
+|----------|-------------|
+| `ANTHROPIC_API_KEY` | Claude API key from [Anthropic Console](https://console.anthropic.com/) |
+| `ANTHROPIC_MODEL` | Optional; default `claude-3-5-haiku-20241022` |
+
+Push the same values to Supabase (never commit real keys):
 
 ```bash
+npx supabase secrets set ANTHROPIC_API_KEY="your-key" --project-ref <your-project-ref>
+npx supabase secrets set ANTHROPIC_MODEL="claude-3-5-haiku-20241022" --project-ref <your-project-ref>
 npx supabase functions deploy scan-fixture-label
 ```
+
+The app calls this function when you tap **AI scan label** on the model-plate photo step. Keys stay on the server; the browser only sends the image.
+
+Legacy fallback: set `LOVABLE_API_KEY` instead of Anthropic if needed.
 
 ### 5. Run locally
 

@@ -112,6 +112,7 @@ export type Database = {
           filter_type: string | null
           floor: string
           id: string
+          import_metadata: string | null
           installation_date: string | null
           issues: string[] | null
           last_maintenance_date: string
@@ -143,6 +144,7 @@ export type Database = {
           filter_type?: string | null
           floor: string
           id?: string
+          import_metadata?: string | null
           installation_date?: string | null
           issues?: string[] | null
           last_maintenance_date?: string
@@ -172,8 +174,9 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           filter_type?: string | null
-          floor?: number
+          floor?: string
           id?: string
+          import_metadata?: string | null
           installation_date?: string | null
           issues?: string[] | null
           last_maintenance_date?: string
@@ -325,10 +328,10 @@ export type Database = {
     Enums: {
       app_role: "Surveyor" | "Facilities" | "Admin"
       fixture_category:
-        | "BottleFiller"
-        | "WallFountain"
-        | "CombinationUnit"
-        | "FilteredTap"
+        | "PorcelainFountain"
+        | "MetalFountain"
+        | "VendingMachine"
+        | "BottleRefillStation"
         | "Other"
       floor_status: "NotStarted" | "InProgress" | "Done" | "Restricted"
     }
@@ -460,10 +463,10 @@ export const Constants = {
     Enums: {
       app_role: ["Surveyor", "Facilities", "Admin"],
       fixture_category: [
-        "BottleFiller",
-        "WallFountain",
-        "CombinationUnit",
-        "FilteredTap",
+        "PorcelainFountain",
+        "MetalFountain",
+        "VendingMachine",
+        "BottleRefillStation",
         "Other",
       ],
       floor_status: ["NotStarted", "InProgress", "Done", "Restricted"],

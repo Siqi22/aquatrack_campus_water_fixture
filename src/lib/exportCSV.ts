@@ -1,4 +1,4 @@
-import { Fixture, getFixtureStatus, fixtureCategoryMeta } from '@/store/fixtureStore';
+import { Fixture, getFixtureStatus, getFixtureCategoryLabel } from '@/store/fixtureStore';
 import { FIELD_LABELS } from '@/lib/fieldLabels';
 
 export type ExportColumnKey =
@@ -34,7 +34,7 @@ export const EXPORT_COLUMNS: ExportColumn[] = [
   { key: 'floor', label: 'Floor', get: (f) => f.floor },
   { key: 'room', label: 'Room', get: (f) => f.roomNumber },
   { key: 'nearestRoom', label: 'Nearest Room', get: (f) => f.nearestRoom ?? '' },
-  { key: 'category', label: 'Category', get: (f) => fixtureCategoryMeta[f.category]?.label ?? f.category },
+  { key: 'category', label: 'Fountain type', get: (f) => getFixtureCategoryLabel(f.category) },
   { key: 'brand', label: FIELD_LABELS.companyName, get: (f) => f.brand },
   { key: 'model', label: FIELD_LABELS.model, get: (f) => f.model },
   { key: 'serialNumber', label: FIELD_LABELS.serialNumber, get: (f) => f.serialNumber },
