@@ -1,5 +1,11 @@
 {
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }
-  ]
+  ],
+  "functions": {
+    "api/scan-fixture-label.ts": {
+      "maxDuration": 30,
+      "memory": 1024
+    }
+  }
 }
