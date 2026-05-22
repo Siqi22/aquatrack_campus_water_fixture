@@ -16,7 +16,8 @@
     "cap:open:ios": "cap open ios",
     "cap:run:ios": "npm run build:ios && cap run ios",
     "prepare": "git rev-parse --git-dir >/dev/null 2>&1 && git config core.hooksPath .githooks || true",
-    "deploy:scan-function": "bash scripts/deploy-scan-fixture-label.sh"
+    "deploy:scan-function": "bash scripts/deploy-scan-fixture-label.sh",
+    "push:all": "bash scripts/push-all-remotes.sh"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

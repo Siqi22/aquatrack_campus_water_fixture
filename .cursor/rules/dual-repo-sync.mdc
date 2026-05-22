@@ -1,0 +1,31 @@
+---
+description: Push local changes to both GitHub remotes (Vercel + Lovable)
+alwaysApply: true
+---
+
+# Dual GitHub remotes
+
+This project uses **two GitHub repositories** for the same codebase:
+
+| Remote | Repository | Purpose |
+|--------|------------|---------|
+| `origin` | `Syantw/aqua-map-keeper` | **Primary** — Vercel production/preview deploy |
+| `lovable` | `Syantw/aqua-map-keeper-6c6db772` | Lovable editor sync / backend preview |
+
+## Agent workflow
+
+After commits the user approves, **always push to both remotes** on the current branch (default: `syantw/ui-polish-mapbox-loc`):
+
+```bash
+npm run push:all
+# or: git push origin HEAD && git push lovable HEAD
+```
+
+- Treat `origin` as source of truth for deployment.
+- Keep `lovable` in sync so Lovable preview matches Vercel.
+- Only force-push to `lovable` when the user explicitly asks to overwrite Lovable’s cloud copy.
+
+## Remotes
+
+- Do not remove or rename `origin` / `lovable` without user confirmation.
+- Vercel env vars and Supabase secrets stay configured on the **original** project; Lovable repo is for code sync only unless the user says otherwise.
