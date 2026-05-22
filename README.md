@@ -92,6 +92,8 @@ cp .env.example .env.local
 
 Never commit `.env`, `.env.local`, or real API keys. A pre-commit hook blocks common secret patterns.
 
+**Vercel:** import `env/vercel.import.env.example` (filled) via Dashboard → Environment Variables → Import `.env`, then **Redeploy**. `vercel.json` handles SPA routing; the build uses `base: /` on Vercel automatically.
+
 ### 3. Database migrations
 
 Apply schema to your Supabase project:

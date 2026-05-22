@@ -3,9 +3,12 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 
+// Vercel needs absolute asset paths (`/`); Capacitor local bundle uses relative (`./`).
+const base = process.env.VERCEL ? "/" : "./";
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  base: './',
+  base,
   server: {
     host: "::",
     port: 8080,
