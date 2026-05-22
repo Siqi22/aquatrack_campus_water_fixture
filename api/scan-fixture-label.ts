@@ -1,14 +1,32 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { handleScanFixtureLabelRequest } from "./lib/scanFixtureLabelHandler";
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "authorization, content-type",
-};
+function resolveCorsOrigin(req: VercelRequest): string {
+  const origin = typeof req.headers.origin === "string" ? req.headers.origin : "";
+  const allowed = (process.env.SCAN_API_ALLOWED_ORIGINS ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  if (origin && allowed.includes(origin)) return origin;
+
+  const vercelHost = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "";
+  if (origin && vercelHost && origin === vercelHost) return origin;
+
+  // Capacitor / local dev
+  if (origin && /^https:\/\/localhost(:\d+)?$/.test(origin)) return origin;
+
+  return vercelHost || allowed[0] || "";
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  Object.entries(CORS_HEADERS).forEach(([key, value]) => res.setHeader(key, value));
+  const corsOrigin = resolveCorsOrigin(req);
+  if (corsOrigin) {
+    res.setHeader("Access-Control-Allow-Origin", corsOrigin);
+    res.setHeader("Vary", "Origin");
+  }
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "authorization, content-type");
 
   if (req.method === "OPTIONS") {
     return res.status(204).end();

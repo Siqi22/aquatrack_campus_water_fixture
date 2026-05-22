@@ -3,6 +3,8 @@
  * Used by Vercel serverless API (primary) — not Lovable / Supabase Edge Functions.
  */
 
+import { createClient } from "@supabase/supabase-js";
+
 export const DEFAULT_ANTHROPIC_MODEL = "claude-3-5-haiku-20241022";
 
 const SYSTEM_PROMPT = `You are an OCR + vision assistant for commercial drinking-water fixture model plates and labels.
@@ -48,7 +50,6 @@ export function normalizeMediaType(raw: string | undefined): ScanImageMediaType 
 
 export interface ScanFixtureLabelPayload {
   imageBase64?: string;
-  imageUrl?: string;
   imageMimeType?: string;
 }
 
@@ -72,7 +73,6 @@ export async function verifySupabaseUser(authHeader: string | undefined): Promis
     return { status: 500, body: { error: "Server misconfigured" } };
   }
 
-  const { createClient } = await import("@supabase/supabase-js");
   const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     global: { headers: { Authorization: authHeader } },
   });
@@ -89,24 +89,17 @@ async function scanWithClaude(args: {
   apiKey: string;
   model: string;
   imageBase64: string;
-  imageUrl: string;
   mediaType: ScanImageMediaType;
 }): Promise<ScanHandlerResult> {
-  const { apiKey, model, imageBase64, imageUrl, mediaType } = args;
+  const { apiKey, model, imageBase64, mediaType } = args;
 
-  const userContent: unknown[] = [{ type: "text", text: "Extract the fixture metadata from this label." }];
-
-  if (imageBase64) {
-    userContent.unshift({
+  const userContent: unknown[] = [
+    {
       type: "image",
       source: { type: "base64", media_type: mediaType, data: imageBase64 },
-    });
-  } else if (imageUrl) {
-    userContent.unshift({
-      type: "image",
-      source: { type: "url", url: imageUrl },
-    });
-  }
+    },
+    { type: "text", text: "Extract the fixture metadata from this label." },
+  ];
 
   const aiResp = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -130,7 +123,7 @@ async function scanWithClaude(args: {
     console.error("Anthropic error", aiResp.status, t);
     return {
       status: aiResp.status === 429 ? 429 : 500,
-      body: { error: "Anthropic API error", details: t },
+      body: { error: "Anthropic API error" },
     };
   }
 
@@ -140,7 +133,7 @@ async function scanWithClaude(args: {
   const toolBlock = data?.content?.find((b) => b.type === "tool_use" && b.name === "extract_fixture");
   const input = toolBlock?.input;
   if (!input || typeof input !== "object") {
-    return { status: 502, body: { error: "No structured output from Claude", raw: data } };
+    return { status: 502, body: { error: "No structured output from Claude" } };
   }
 
   return { status: 200, body: input as Record<string, unknown> };
@@ -155,13 +148,17 @@ export async function handleScanFixtureLabelRequest(
   if (authError) return authError;
 
   const imageBase64 = typeof payload.imageBase64 === "string" ? payload.imageBase64 : "";
-  const imageUrl = typeof payload.imageUrl === "string" ? payload.imageUrl : "";
   const imageMimeType = normalizeMediaType(
     typeof payload.imageMimeType === "string" ? payload.imageMimeType : undefined,
   );
 
-  if (!imageBase64 && !imageUrl) {
-    return { status: 400, body: { error: "Provide imageBase64 or imageUrl" } };
+  if (!imageBase64) {
+    return { status: 400, body: { error: "Provide imageBase64" } };
+  }
+
+  // Cap payload size (~4 MB base64) to limit abuse / memory use.
+  if (imageBase64.length > 5_500_000) {
+    return { status: 413, body: { error: "Image too large" } };
   }
 
   const anthropicKey = getEnv("ANTHROPIC_API_KEY");
@@ -179,7 +176,6 @@ export async function handleScanFixtureLabelRequest(
     apiKey: anthropicKey,
     model,
     imageBase64,
-    imageUrl,
     mediaType: imageMimeType,
   });
 }
