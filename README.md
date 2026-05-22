@@ -119,8 +119,21 @@ Push the same values to Supabase (never commit real keys):
 ```bash
 npx supabase secrets set ANTHROPIC_API_KEY="your-key" --project-ref <your-project-ref>
 npx supabase secrets set ANTHROPIC_MODEL="claude-3-5-haiku-20241022" --project-ref <your-project-ref>
-npx supabase functions deploy scan-fixture-label
+npx supabase secrets unset LOVABLE_API_KEY --project-ref <your-project-ref>   # remove legacy Lovable gateway
 ```
+
+**Deploy** (pick one):
+
+```bash
+# A) Script (needs Supabase access token — Dashboard → Account → Access Tokens)
+export SUPABASE_ACCESS_TOKEN="sbp_..."
+npm run deploy:scan-function
+
+# B) CLI after supabase login
+npx supabase functions deploy scan-fixture-label --project-ref <your-project-ref>
+```
+
+**No CLI?** Supabase Dashboard → **Edge Functions** → `scan-fixture-label` → paste code from `supabase/functions/scan-fixture-label/index.ts` → **Deploy**. Turn on **Verify JWT**. In **Secrets**, keep `ANTHROPIC_API_KEY` only (delete `LOVABLE_API_KEY`).
 
 The app calls this function when you tap **AI scan label** on the model-plate photo step. Keys stay on the server; the browser only sends the image. **Anthropic only** — Lovable AI gateway is disabled.
 
