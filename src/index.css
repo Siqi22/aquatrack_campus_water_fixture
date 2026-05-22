@@ -82,6 +82,16 @@
     @apply bg-background text-foreground font-sans antialiased;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    touch-action: manipulation;
+  }
+
+  /* iOS Safari auto-zooms focused fields when font-size < 16px */
+  @media (hover: none) and (pointer: coarse) {
+    input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='hidden']):not([type='button']):not([type='submit']):not([type='reset']),
+    textarea,
+    select {
+      font-size: 16px !important;
+    }
   }
 }
 
@@ -189,7 +199,7 @@
   }
 
   .search-input {
-    @apply w-full rounded-xl border bg-card py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30;
+    @apply w-full rounded-xl border bg-card py-2.5 pl-10 pr-4 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 md:text-sm;
   }
 
   .list-row {
