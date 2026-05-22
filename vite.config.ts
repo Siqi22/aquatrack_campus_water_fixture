@@ -15,6 +15,17 @@ export default defineConfig(({ mode }) => ({
     hmr: {
       overlay: false,
     },
+    ...(process.env.VITE_VERCEL_APP_URL
+      ? {
+          proxy: {
+            "/api": {
+              target: process.env.VITE_VERCEL_APP_URL.replace(/\/$/, ""),
+              changeOrigin: true,
+              secure: true,
+            },
+          },
+        }
+      : {}),
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {

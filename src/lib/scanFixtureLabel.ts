@@ -19,38 +19,19 @@ function parseDataUrl(dataUrl: string): { base64: string; mimeType: string } {
   return { mimeType: 'image/jpeg', base64 };
 }
 
-/** Call Supabase Edge Function `scan-fixture-label` (Claude Haiku vision on the server). */
-export async function scanFixtureLabelFromPhoto(dataUrl: string): Promise<ScanFixtureLabelResult> {
-  const { base64, mimeType } = parseDataUrl(dataUrl);
-  if (!base64) throw new Error('Invalid image data');
+function resolveScanApiUrl(): string {
+  const explicit = import.meta.env.VITE_SCAN_API_URL?.trim();
+  if (explicit) return explicit;
 
-  const { data, error } = await supabase.functions.invoke('scan-fixture-label', {
-    body: { imageBase64: base64, imageMimeType: mimeType },
-  });
-
-  if (error) {
-    const ctx = error as { context?: Response; message?: string };
-    if (ctx.context) {
-      try {
-        const body = await ctx.context.json();
-        if (body && typeof body === 'object' && 'error' in body) {
-          throw new Error(String((body as { error: string }).error));
-        }
-      } catch {
-        /* use default message */
-      }
-    }
-    throw new Error(ctx.message || 'Edge function error');
+  const vercelApp = import.meta.env.VITE_VERCEL_APP_URL?.trim();
+  if (vercelApp) {
+    return `${vercelApp.replace(/\/$/, '')}/api/scan-fixture-label`;
   }
 
-  if (!data || typeof data !== 'object') {
-    throw new Error('No response from label scan');
-  }
-  if ('error' in data && data.error) {
-    throw new Error(String(data.error));
-  }
+  return '/api/scan-fixture-label';
+}
 
-  const row = data as Record<string, unknown>;
+function parseScanResponse(row: Record<string, unknown>): ScanFixtureLabelResult {
   return {
     brand: String(row.brand ?? '').trim(),
     model: String(row.model ?? '').trim(),
@@ -59,4 +40,38 @@ export async function scanFixtureLabelFromPhoto(dataUrl: string): Promise<ScanFi
     category: normalizeFixtureCategory(String(row.category ?? '')),
     confidence: typeof row.confidence === 'number' ? row.confidence : 0,
   };
+}
+
+/** Call Vercel API route (Claude Haiku on server). Bypasses Lovable-managed Supabase Edge Functions. */
+export async function scanFixtureLabelFromPhoto(dataUrl: string): Promise<ScanFixtureLabelResult> {
+  const { base64, mimeType } = parseDataUrl(dataUrl);
+  if (!base64) throw new Error('Invalid image data');
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) {
+    throw new Error('Sign in to use AI label scan');
+  }
+
+  const response = await fetch(resolveScanApiUrl(), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({ imageBase64: base64, imageMimeType: mimeType }),
+  });
+
+  let body: Record<string, unknown> = {};
+  try {
+    body = (await response.json()) as Record<string, unknown>;
+  } catch {
+    /* non-JSON error page */
+  }
+
+  if (!response.ok) {
+    const message = typeof body.error === 'string' ? body.error : `Label scan failed (${response.status})`;
+    throw new Error(message);
+  }
+
+  return parseScanResponse(body);
 }

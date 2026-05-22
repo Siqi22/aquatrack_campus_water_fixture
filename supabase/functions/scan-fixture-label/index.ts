@@ -1,7 +1,5 @@
-// Scan a fixture model-plate photo and extract brand/model/serial/filter/category (OCR + vision).
-//
-// Provider: Anthropic Claude only (server-side secret ANTHROPIC_API_KEY).
-// Lovable AI gateway is intentionally disabled — do not set LOVABLE_API_KEY.
+// Legacy copy for Lovable Cloud git sync — production uses Vercel /api/scan-fixture-label instead.
+// Provider: Anthropic Claude only (server-side secret ANTHROPIC_API_KEY on Vercel, not Lovable).
 //
 // Secrets: Supabase Dashboard → Edge Functions → Secrets, or:
 //   supabase secrets set ANTHROPIC_API_KEY=sk-ant-... --project-ref <ref>

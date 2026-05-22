@@ -29,7 +29,7 @@ Built for the University of Washington campus water inventory program, with term
 | State | Zustand (`fixtureStore`) |
 | Backend | Supabase (Postgres, Auth, Storage, Edge Functions) |
 | Import | Custom CSV parser + lazy-loaded `read-excel-file` for Excel |
-| Scanning | `scan-fixture-label` Edge Function (Claude Haiku vision OCR on model plates) |
+| Scanning | Vercel API `/api/scan-fixture-label` (Claude Haiku vision OCR on model plates) |
 
 ---
 
@@ -105,37 +105,28 @@ npx supabase db push
 
 Key migrations include floor progress tracking, fixture audit columns, and **alphanumeric floor labels** (`floor` stored as `TEXT`).
 
-### 4. Edge Function (AI label scan — Claude Haiku)
+### 4. AI label scan (Claude Haiku on Vercel — not Lovable Cloud)
 
-Add to `.env` (see `.env.example`):
+Lovable Cloud locks Supabase Edge Functions behind the platform. **Label scan runs on Vercel** at `/api/scan-fixture-label` using your own Anthropic key — no Lovable AI credits, no Supabase CLI.
+
+Add to **Vercel** environment variables (copy `env/vercel.import.env.example` → `.env.vercel` → Import in Dashboard → **Redeploy**):
 
 | Variable | Description |
 |----------|-------------|
-| `ANTHROPIC_API_KEY` | Claude API key from [Anthropic Console](https://console.anthropic.com/) |
+| `ANTHROPIC_API_KEY` | Claude API key from [Anthropic Console](https://console.anthropic.com/) — **no `VITE_` prefix** |
 | `ANTHROPIC_MODEL` | Optional; default `claude-3-5-haiku-20241022` |
+| `VITE_SUPABASE_*` | Same as frontend (API verifies signed-in user JWT) |
 
-Push the same values to Supabase (never commit real keys):
+Optional for Capacitor / local Vite dev:
 
-```bash
-npx supabase secrets set ANTHROPIC_API_KEY="your-key" --project-ref <your-project-ref>
-npx supabase secrets set ANTHROPIC_MODEL="claude-3-5-haiku-20241022" --project-ref <your-project-ref>
-npx supabase secrets unset LOVABLE_API_KEY --project-ref <your-project-ref>   # remove legacy Lovable gateway
-```
+| Variable | Description |
+|----------|-------------|
+| `VITE_VERCEL_APP_URL` | e.g. `https://aqua-map-keeper-7pw2.vercel.app` — proxies `/api/*` during `npm run dev` |
+| `VITE_SCAN_API_URL` | Full scan URL override for native builds |
 
-**Deploy** (pick one):
+The app calls `/api/scan-fixture-label` when you tap **AI scan label**. Keys stay on Vercel; the browser only sends the image + user session token. **Anthropic only** — Lovable gateway is not used.
 
-```bash
-# A) Script (needs Supabase access token — Dashboard → Account → Access Tokens)
-export SUPABASE_ACCESS_TOKEN="sbp_..."
-npm run deploy:scan-function
-
-# B) CLI after supabase login
-npx supabase functions deploy scan-fixture-label --project-ref <your-project-ref>
-```
-
-**No CLI?** Supabase Dashboard → **Edge Functions** → `scan-fixture-label` → paste code from `supabase/functions/scan-fixture-label/index.ts` → **Deploy**. Turn on **Verify JWT**. In **Secrets**, keep `ANTHROPIC_API_KEY` only (delete `LOVABLE_API_KEY`).
-
-The app calls this function when you tap **AI scan label** on the model-plate photo step. Keys stay on the server; the browser only sends the image. **Anthropic only** — Lovable AI gateway is disabled.
+`supabase/functions/scan-fixture-label/` remains in the repo for Lovable git sync but is **not** called by the app.
 
 ### 5. Run locally
 
@@ -237,18 +228,14 @@ Re-importing an AquaTrack **Export** CSV with ID column enables update-by-ID.
 
 - **Use a private GitHub repo** for campus inventory data (this project’s repo is currently public).
 - Client uses Supabase **anon / publishable key** only (`VITE_*`); it is embedded in the Vercel build by design — protect data with **RLS**, not key secrecy.
-- Never put the Supabase service role key or `ANTHROPIC_API_KEY` in Vercel or frontend env.
-- AI label scan runs in Supabase Edge Function `scan-fixture-label` — requires a **signed-in user JWT** (anonymous callers are rejected).
+- Never put the Supabase service role key or `ANTHROPIC_API_KEY` in frontend env (`VITE_*`). On Vercel, `ANTHROPIC_API_KEY` is server-only for `/api/scan-fixture-label`.
+- AI label scan runs on **Vercel Serverless** — requires a **signed-in Supabase user JWT** (anonymous callers get 401).
 - Store local secrets in `.env.local` / `.env.vercel` (gitignored); import Vercel vars via Dashboard only.
 - Pre-commit hook blocks `.env.local`, real JWTs, and common API token patterns.
 
-**Vercel checklist:** Production env vars = `VITE_SUPABASE_*` only. **Supabase Auth** redirect URLs must include your `*.vercel.app` domain.
+**Vercel checklist:** Production env vars = `VITE_SUPABASE_*` + server-only `ANTHROPIC_API_KEY`. **Supabase Auth** redirect URLs must include your `*.vercel.app` domain.
 
-**After pulling security updates:** redeploy the edge function:
-
-```bash
-npx supabase functions deploy scan-fixture-label --project-ref uamxdcridplfbjfyrrbb
-```
+After changing `api/` or scan logic, redeploy on Vercel (git push to `origin` triggers deploy automatically).
 
 ---
 

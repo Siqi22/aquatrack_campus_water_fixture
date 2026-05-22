@@ -28,4 +28,5 @@ npm run push:all
 ## Remotes
 
 - Do not remove or rename `origin` / `lovable` without user confirmation.
-- Vercel env vars and Supabase secrets stay configured on the **original** project; Lovable repo is for code sync only unless the user says otherwise.
+- Vercel env vars and Supabase Auth stay on the **original** project; Lovable repo is for code sync only unless the user says otherwise.
+- **AI label scan** uses Vercel `/api/scan-fixture-label` + `ANTHROPIC_API_KEY` on Vercel — do not rely on Lovable Cloud Edge Functions or Lovable AI chat for backend deploy.
