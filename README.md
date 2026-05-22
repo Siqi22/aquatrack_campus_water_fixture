@@ -122,9 +122,7 @@ npx supabase secrets set ANTHROPIC_MODEL="claude-3-5-haiku-20241022" --project-r
 npx supabase functions deploy scan-fixture-label
 ```
 
-The app calls this function when you tap **AI scan label** on the model-plate photo step. Keys stay on the server; the browser only sends the image.
-
-Legacy fallback: set `LOVABLE_API_KEY` instead of Anthropic if needed.
+The app calls this function when you tap **AI scan label** on the model-plate photo step. Keys stay on the server; the browser only sends the image. **Anthropic only** — Lovable AI gateway is disabled.
 
 ### 5. Run locally
 
@@ -226,7 +224,7 @@ Re-importing an AquaTrack **Export** CSV with ID column enables update-by-ID.
 
 - **Use a private GitHub repo** for campus inventory data (this project’s repo is currently public).
 - Client uses Supabase **anon / publishable key** only (`VITE_*`); it is embedded in the Vercel build by design — protect data with **RLS**, not key secrecy.
-- Never put the Supabase service role key, `ANTHROPIC_API_KEY`, or `LOVABLE_API_KEY` in Vercel or frontend env.
+- Never put the Supabase service role key or `ANTHROPIC_API_KEY` in Vercel or frontend env.
 - AI label scan runs in Supabase Edge Function `scan-fixture-label` — requires a **signed-in user JWT** (anonymous callers are rejected).
 - Store local secrets in `.env.local` / `.env.vercel` (gitignored); import Vercel vars via Dashboard only.
 - Pre-commit hook blocks `.env.local`, real JWTs, and common API token patterns.
