@@ -5,7 +5,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 
-export const DEFAULT_ANTHROPIC_MODEL = "claude-3-5-haiku-20241022";
+export const DEFAULT_ANTHROPIC_MODEL = "claude-haiku-4-5-20251001";
 
 const SYSTEM_PROMPT = `You are an OCR + vision assistant for commercial drinking-water fixture model plates and labels.
 
@@ -121,9 +121,15 @@ async function scanWithClaude(args: {
   if (!aiResp.ok) {
     const t = await aiResp.text();
     console.error("Anthropic error", aiResp.status, t);
+    if (aiResp.status === 429) {
+      return { status: 429, body: { error: "Too many scan requests. Wait a moment and try again." } };
+    }
+    if (aiResp.status === 401 || aiResp.status === 403) {
+      return { status: 503, body: { error: "Label scan is temporarily unavailable." } };
+    }
     return {
-      status: aiResp.status === 429 ? 429 : 500,
-      body: { error: "Anthropic API error" },
+      status: 500,
+      body: { error: "Label scan failed. Try again or enter details manually." },
     };
   }
 
@@ -133,7 +139,7 @@ async function scanWithClaude(args: {
   const toolBlock = data?.content?.find((b) => b.type === "tool_use" && b.name === "extract_fixture");
   const input = toolBlock?.input;
   if (!input || typeof input !== "object") {
-    return { status: 502, body: { error: "No structured output from Claude" } };
+    return { status: 502, body: { error: "Label scan failed. Try again or enter details manually." } };
   }
 
   return { status: 200, body: input as Record<string, unknown> };

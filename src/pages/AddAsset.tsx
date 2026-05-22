@@ -215,14 +215,14 @@ export default function AddAsset() {
       if (missing.length) {
         toast.warning(`Scan partial — couldn't read: ${missing.join(', ')}`);
       } else {
-        toast.success('Label scanned with Claude');
+        toast.success('Label scanned');
       }
     } catch (e) {
       console.error('scan failed', e);
       const msg = e instanceof Error ? e.message : 'Unknown error';
       setScanError(msg);
       setScanned(true);
-      toast.error(`AI scan failed: ${msg}`);
+      toast.error(`Scan failed: ${msg}`);
     } finally {
       setScanning(false);
     }
@@ -821,7 +821,7 @@ export default function AddAsset() {
               <div className="flex items-center gap-2">
                 <ScanLine className="h-4 w-4 text-accent" />
                 <div>
-                  <p className="text-sm font-semibold text-foreground">AI scan label (Claude Haiku)</p>
+                  <p className="text-sm font-semibold text-foreground">Scan label</p>
                   <p className="text-[11px] text-muted-foreground">Reads {FIELD_LABELS.companyName.toLowerCase()}, {FIELD_LABELS.model.toLowerCase()}, {FIELD_LABELS.serialNumber.toLowerCase()} from the label photo</p>
                 </div>
               </div>

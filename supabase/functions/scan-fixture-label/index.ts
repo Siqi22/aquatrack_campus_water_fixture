@@ -7,7 +7,7 @@
 //
 // Request JSON: { imageBase64?: string, imageUrl?: string, imageMimeType?: string }
 
-const DEFAULT_ANTHROPIC_MODEL = "claude-3-5-haiku-20241022";
+const DEFAULT_ANTHROPIC_MODEL = "claude-haiku-4-5-20251001";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

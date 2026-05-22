@@ -114,7 +114,7 @@ Add to **Vercel** environment variables (copy `env/vercel.import.env.example` â†
 | Variable | Description |
 |----------|-------------|
 | `ANTHROPIC_API_KEY` | Claude API key from [Anthropic Console](https://console.anthropic.com/) â€” **no `VITE_` prefix** |
-| `ANTHROPIC_MODEL` | Optional; default `claude-3-5-haiku-20241022` |
+| `ANTHROPIC_MODEL` | Optional; default `claude-haiku-4-5-20251001` |
 | `VITE_SUPABASE_*` | Same as frontend (API verifies signed-in user JWT) |
 
 Optional for Capacitor / local Vite dev:
