@@ -224,11 +224,20 @@ Re-importing an AquaTrack **Export** CSV with ID column enables update-by-ID.
 
 ## Security
 
-- **Private repository** recommended; never commit secrets
-- Client uses Supabase **anon key** only; service role keys stay out of the frontend
-- `LOVABLE_API_KEY` and other provider keys belong in Supabase Edge Function secrets
-- Git history was scrubbed of committed `.env` files; rotate any previously exposed tokens
-- Pre-commit hook rejects `.env` files and common token patterns
+- **Use a private GitHub repo** for campus inventory data (this project’s repo is currently public).
+- Client uses Supabase **anon / publishable key** only (`VITE_*`); it is embedded in the Vercel build by design — protect data with **RLS**, not key secrecy.
+- Never put the Supabase service role key, `ANTHROPIC_API_KEY`, or `LOVABLE_API_KEY` in Vercel or frontend env.
+- AI label scan runs in Supabase Edge Function `scan-fixture-label` — requires a **signed-in user JWT** (anonymous callers are rejected).
+- Store local secrets in `.env.local` / `.env.vercel` (gitignored); import Vercel vars via Dashboard only.
+- Pre-commit hook blocks `.env.local`, real JWTs, and common API token patterns.
+
+**Vercel checklist:** Production env vars = `VITE_SUPABASE_*` only. **Supabase Auth** redirect URLs must include your `*.vercel.app` domain.
+
+**After pulling security updates:** redeploy the edge function:
+
+```bash
+npx supabase functions deploy scan-fixture-label --project-ref uamxdcridplfbjfyrrbb
+```
 
 ---
 

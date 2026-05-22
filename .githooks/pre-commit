@@ -1,7 +1,7 @@
 #!/bin/sh
 # Block commits that may contain API keys or environment secrets.
 
-blocked_files=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '^\.env(\.|$)|.*\.env\.local$|credentials\.(json|yaml|yml)$' || true)
+blocked_files=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '^\.env($|\.local$|\.vercel$)|.*\.env\.local$|credentials\.(json|yaml|yml)$' || true)
 if [ -n "$blocked_files" ]; then
   echo "pre-commit: blocked — do not commit environment or credential files:" >&2
   echo "$blocked_files" >&2
@@ -9,10 +9,17 @@ if [ -n "$blocked_files" ]; then
 fi
 
 # Reject staged content that looks like real API tokens (not empty placeholders).
-staged_additions=$(git diff --cached -U0 | grep '^+' | grep -Fv '+++' || true)
-if [ -n "$staged_additions" ] && printf '%s\n' "$staged_additions" | grep -qE 'pk\.eyJ|sk-[A-Za-z0-9]{10,}|ghp_[A-Za-z0-9]{20,}|gho_[A-Za-z0-9]{20,}|AIza[0-9A-Za-z_-]{20,}'; then
+staged_additions=$(git diff --cached -U0 -- . ':(exclude).githooks/' | grep '^+' | grep -Fv '+++' || true)
+if [ -n "$staged_additions" ] && printf '%s\n' "$staged_additions" | grep -qE 'pk\.eyJ|sk-[A-Za-z0-9]{10,}|ghp_[A-Za-z0-9]{20,}|gho_[A-Za-z0-9]{20,}|AIza[0-9A-Za-z_-]{20,}|SUPABASE_SERVICE_ROLE|service_role['\''"]'; then
   echo "pre-commit: blocked — staged changes appear to contain an API token." >&2
   echo "Store secrets in .env.local (gitignored) only." >&2
+  exit 1
+fi
+
+# Block staged Supabase anon JWTs (eyJ... with role anon payload pattern in long tokens).
+if [ -n "$staged_additions" ] && printf '%s\n' "$staged_additions" | grep -qE 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.eyJ[A-Za-z0-9_-]{40,}'; then
+  echo "pre-commit: blocked — staged changes appear to contain a Supabase JWT." >&2
+  echo "Use placeholders in committed files; keep real keys in .env.local / Vercel env only." >&2
   exit 1
 fi
 

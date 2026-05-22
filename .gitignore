@@ -22,6 +22,7 @@ xcuserdata
 # Environment files (never commit secrets)
 .env
 .env.*
+.env.vercel
 !.env.example
 
 # Local CSV test imports (use in-app Import instead)

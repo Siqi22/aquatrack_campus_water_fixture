@@ -19,6 +19,41 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+/** Reject anonymous JWT / missing session — only signed-in users may trigger paid OCR. */
+async function requireAuthenticatedUser(req: Request): Promise<Response | null> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return new Response(JSON.stringify({ error: "Server misconfigured" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2.49.1");
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } },
+  });
+
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  return null;
+}
+
 const SYSTEM_PROMPT = `You are an OCR + vision assistant for commercial drinking-water fixture model plates and labels.
 
 Read every character visible on the sticker/plate photo: manufacturer name, model name/number, serial number, and filter or cartridge product number.
@@ -218,6 +253,9 @@ async function scanWithLovable(args: { apiKey: string; imagePart: { type: string
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  const authError = await requireAuthenticatedUser(req);
+  if (authError) return authError;
 
   try {
     const body = await req.json().catch(() => ({}));

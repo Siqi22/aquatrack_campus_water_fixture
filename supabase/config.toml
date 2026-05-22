@@ -1,1 +1,4 @@
 project_id = "uamxdcridplfbjfyrrbb"
+
+[functions.scan-fixture-label]
+verify_jwt = true
