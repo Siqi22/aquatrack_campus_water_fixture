@@ -205,6 +205,199 @@
   .list-row {
     @apply flex items-center justify-between gap-3 rounded-xl border bg-card px-3 py-3 transition-colors hover:bg-secondary/40;
   }
+
+  /* ── Typography helpers ── */
+  .text-micro {
+    @apply text-[10px];
+  }
+
+  .text-caption {
+    @apply text-[11px];
+  }
+
+  .list-row-title {
+    @apply truncate text-sm font-semibold text-foreground;
+  }
+
+  .list-row-subtitle {
+    @apply truncate text-xs text-muted-foreground;
+  }
+
+  /* ── Forms ── */
+  .field-label {
+    @apply text-xs font-medium text-muted-foreground;
+  }
+
+  .field-label-lg {
+    @apply text-sm font-medium text-foreground;
+  }
+
+  .field-input {
+    @apply w-full rounded-xl border bg-card px-3 py-2 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 md:text-sm;
+  }
+
+  .field-textarea {
+    @apply field-input min-h-[90px];
+  }
+
+  /* ── Info tiles ── */
+  .info-tile {
+    @apply rounded-xl border bg-card/70 p-3;
+  }
+
+  .info-tile-label {
+    @apply text-micro font-medium text-muted-foreground;
+  }
+
+  .info-tile-value {
+    @apply mt-1 truncate text-sm font-semibold text-foreground;
+  }
+
+  /* ── Links & actions ── */
+  .link-back {
+    @apply inline-flex items-center gap-1 text-xs font-medium text-primary;
+  }
+
+  .link-action {
+    @apply inline-flex items-center gap-1 text-xs font-semibold text-primary;
+  }
+
+  /* ── Buttons (extended) ── */
+  .btn-cta {
+    @apply flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50;
+  }
+
+  .btn-inverse {
+    @apply inline-flex items-center justify-center rounded-full bg-foreground px-3 py-1 text-caption font-semibold text-background disabled:opacity-50;
+  }
+
+  .btn-inverse-block {
+    @apply flex w-full items-center justify-center rounded-xl bg-foreground px-4 py-2.5 text-sm font-semibold text-background disabled:opacity-50;
+  }
+
+  /* ── Selectable cards ── */
+  .selectable-card {
+    @apply w-full rounded-2xl border bg-card p-3 text-left transition-colors hover:bg-secondary/30;
+  }
+
+  .selectable-card-active {
+    @apply selectable-card border-primary/30 bg-primary/10;
+  }
+
+  .selectable-card-sm {
+    @apply relative rounded-xl border bg-card;
+  }
+
+  .selectable-card-sm-active {
+    @apply selectable-card-sm border-primary/30 bg-primary/10;
+  }
+
+  /* ── Callouts ── */
+  .callout-warning {
+    @apply rounded-xl border border-status-warning/25 bg-status-warning/5 px-3 py-2 text-xs text-muted-foreground;
+  }
+
+  .callout-error {
+    @apply rounded-xl border border-status-urgent/40 bg-status-urgent/10 px-3 py-2 text-xs text-status-urgent;
+  }
+
+  .callout-accent {
+    @apply flex items-start gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2 text-caption text-muted-foreground;
+  }
+
+  .callout-info {
+    @apply rounded-xl border bg-secondary/30 p-3;
+  }
+
+  /* ── Empty states ── */
+  .empty-state {
+    @apply flex flex-col items-center py-10 text-center text-muted-foreground;
+  }
+
+  .empty-state-icon {
+    @apply mb-2 h-8 w-8 opacity-40;
+  }
+
+  /* ── Layout helpers ── */
+  .chip-row {
+    @apply flex gap-2 overflow-x-auto pb-1;
+  }
+
+  .card-section {
+    @apply overflow-hidden rounded-2xl border bg-card;
+  }
+
+  .panel-header {
+    @apply flex items-center justify-between border-b p-4;
+  }
+
+  .panel-body {
+    @apply p-4;
+  }
+
+  /* ── Overlays & dialogs ── */
+  .overlay-scrim {
+    @apply fixed inset-0 z-50 flex items-center justify-center bg-foreground/30 p-4 backdrop-blur-sm;
+  }
+
+  .overlay-panel {
+    @apply w-full max-w-sm rounded-2xl border bg-card p-5 shadow-xl;
+  }
+
+  .dialog-shell {
+    @apply flex max-h-[min(92dvh,calc(100dvh-2rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)))] flex-col gap-0 overflow-hidden p-0;
+  }
+
+  .dialog-shell-header {
+    @apply shrink-0 border-b px-5 pb-3 pt-1 text-left sm:px-6;
+  }
+
+  .dialog-shell-body {
+    @apply min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-5 py-4 sm:px-6;
+  }
+
+  .dialog-shell-footer {
+    @apply shrink-0 gap-2 border-t px-5 py-3 sm:flex-row sm:px-6 sm:py-4;
+  }
+
+  /* ── Segmented control (Auth toggle, etc.) ── */
+  .segmented-control {
+    @apply inline-flex w-full rounded-xl bg-secondary p-1;
+  }
+
+  .segmented-option {
+    @apply flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition-colors;
+  }
+
+  .segmented-option-active {
+    @apply segmented-option bg-card text-foreground shadow-sm;
+  }
+
+  .segmented-option-inactive {
+    @apply segmented-option text-muted-foreground;
+  }
+
+  /* ── Status pills ── */
+  .status-pill {
+    @apply inline-flex rounded-full px-2.5 py-1 text-micro font-semibold;
+  }
+
+  /* ── Progress & upload ── */
+  .progress-step {
+    @apply h-1.5 flex-1 rounded-full;
+  }
+
+  .progress-step-active {
+    @apply progress-step bg-primary;
+  }
+
+  .progress-step-inactive {
+    @apply progress-step bg-secondary;
+  }
+
+  .upload-zone {
+    @apply flex w-full flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 py-10 text-center transition-colors hover:border-primary hover:bg-primary/10;
+  }
 }
 
 @layer utilities {

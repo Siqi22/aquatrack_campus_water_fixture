@@ -71,10 +71,12 @@ function ExportDialogBody({
   sampleRow: Fixture | undefined;
   download: (keys: ExportColumnKey[]) => void;
 }) {
+  const previewRows = previewCols.slice(0, 6);
+
   return (
-    <div className="space-y-4 pb-1">
-      <div>
-        <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+    <div className="space-y-5 pb-1">
+      <section>
+        <p className="section-label mb-2.5 flex items-center gap-1.5">
           <Sparkles className="h-3 w-3" /> Quick templates
         </p>
         <div className="space-y-2">
@@ -83,77 +85,78 @@ function ExportDialogBody({
             return (
               <div
                 key={t.id}
-                className={`flex flex-col gap-2 rounded-lg border p-2.5 sm:flex-row sm:items-center sm:justify-between ${
-                  active ? 'border-accent bg-accent/5' : 'bg-card'
+                className={`rounded-xl border p-3 transition-colors ${
+                  active ? 'border-primary/30 bg-primary/5' : 'bg-card'
                 }`}
               >
-                <button type="button" onClick={() => applyTemplate(t.id)} className="min-w-0 flex-1 text-left">
-                  <p className="text-sm font-semibold text-foreground">{t.label}</p>
-                  <p className="text-[11px] text-muted-foreground">{t.description}</p>
-                </button>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    applyTemplate(t.id);
-                    download(t.keys);
-                  }}
-                  className="h-8 w-full shrink-0 gap-1 px-2.5 text-[11px] sm:w-auto"
-                >
-                  <Download className="h-3 w-3" /> CSV
-                </Button>
+                <div className="flex items-start gap-3">
+                  <button
+                    type="button"
+                    onClick={() => applyTemplate(t.id)}
+                    className="min-w-0 flex-1 text-left"
+                  >
+                    <p className="text-sm font-semibold text-foreground">{t.label}</p>
+                    <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{t.description}</p>
+                  </button>
+                  <Button
+                    size="sm"
+                    variant={active ? 'default' : 'outline'}
+                    onClick={() => {
+                      applyTemplate(t.id);
+                      download(t.keys);
+                    }}
+                    className="h-8 shrink-0 gap-1 px-2.5 text-[11px]"
+                  >
+                    <Download className="h-3 w-3" /> CSV
+                  </Button>
+                </div>
               </div>
             );
           })}
         </div>
-      </div>
+      </section>
 
-      <div className="border-t pt-3">
-        <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-          <FileText className="h-3 w-3" /> Preview ({previewCols.length} cols)
+      <section className="border-t pt-4">
+        <p className="section-label mb-2.5 flex items-center gap-1.5">
+          <FileText className="h-3 w-3" /> Preview · {previewCols.length} columns
         </p>
-        <div className="-mx-1 overflow-x-auto rounded-lg border bg-muted/30 px-1">
-          <table className="w-full min-w-max text-[10px]">
-            <thead>
-              <tr className="bg-muted/50">
-                {previewCols.map((c) => (
-                  <th
-                    key={c.key}
-                    className="whitespace-nowrap border-b px-2 py-1.5 text-left font-semibold text-foreground"
-                  >
-                    {c.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                {sampleValues
-                  ? sampleValues.map((v, i) => (
-                      <td key={i} className="max-w-[120px] truncate whitespace-nowrap px-2 py-1.5 text-muted-foreground">
-                        {v || '—'}
-                      </td>
-                    ))
-                  : previewCols.map((c) => (
-                      <td key={c.key} className="px-2 py-1.5 italic text-muted-foreground">
-                        sample
-                      </td>
-                    ))}
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        {sampleRow && <p className="mt-1 text-[10px] text-muted-foreground">First row shown as sample.</p>}
-      </div>
+        {previewCols.length === 0 ? (
+          <p className="rounded-xl border border-dashed bg-secondary/20 px-3 py-4 text-center text-xs text-muted-foreground">
+            Select at least one column to preview export data.
+          </p>
+        ) : (
+          <div className="overflow-hidden rounded-xl border bg-secondary/20">
+            <div className="divide-y">
+              {previewRows.map((c, i) => (
+                <div key={c.key} className="flex items-start justify-between gap-3 px-3 py-2.5">
+                  <span className="min-w-0 flex-1 text-[11px] font-medium text-muted-foreground">{c.label}</span>
+                  <span className="max-w-[55%] break-words text-right text-[11px] font-semibold text-foreground">
+                    {sampleValues ? sampleValues[i] || '—' : 'sample'}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {previewCols.length > previewRows.length && (
+              <p className="border-t px-3 py-2 text-[10px] text-muted-foreground">
+                + {previewCols.length - previewRows.length} more columns in the file
+              </p>
+            )}
+          </div>
+        )}
+        {sampleRow && previewCols.length > 0 && (
+          <p className="mt-1.5 text-[10px] text-muted-foreground">Sample from your first fixture.</p>
+        )}
+      </section>
 
-      <div className="space-y-2 border-t pt-3">
-        <p className="text-xs font-semibold text-muted-foreground">Filename</p>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <label className="text-[11px] text-muted-foreground">
+      <section className="space-y-3 border-t pt-4">
+        <p className="section-label">Filename</p>
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+          <label className="block text-[11px] font-medium text-muted-foreground">
             Campus
             <select
               value={campusToken}
               onChange={(e) => setCampusToken(e.target.value)}
-              className="mt-1 w-full rounded-md border bg-card px-2 py-2 text-base text-foreground md:text-sm"
+              className="mt-1.5 w-full field-input"
             >
               <option value="all">All campuses</option>
               {campusOptions.map((c) => (
@@ -163,17 +166,17 @@ function ExportDialogBody({
               ))}
             </select>
           </label>
-          <label className="text-[11px] text-muted-foreground">
+          <label className="block text-[11px] font-medium text-muted-foreground">
             Date
             <input
               type="date"
               value={dateToken}
               onChange={(e) => setDateToken(e.target.value)}
-              className="mt-1 w-full rounded-md border bg-card px-2 py-2 text-base text-foreground md:text-sm"
+              className="mt-1.5 w-full field-input"
             />
           </label>
         </div>
-        <label className="flex items-center gap-2 text-[11px] text-foreground">
+        <label className="flex items-center gap-2 text-xs text-foreground">
           <Checkbox checked={includeTemplate} onCheckedChange={(v) => setIncludeTemplate(!!v)} />
           Include template name ({templateId})
         </label>
@@ -181,23 +184,23 @@ function ExportDialogBody({
           value={customSuffix}
           onChange={(e) => setCustomSuffix(e.target.value)}
           placeholder="Custom suffix (optional)"
-          className="w-full rounded-md border bg-card px-2 py-2 text-base text-foreground md:text-sm"
+          className="w-full field-input"
         />
-        <div className="break-all rounded-md bg-muted/40 px-2 py-1.5 font-mono text-[11px] text-foreground">
-          {filename}
+        <div className="rounded-xl border bg-muted/30 px-3 py-2">
+          <p className="break-all font-mono text-[11px] text-foreground">{filename}</p>
+          <p className="mt-1 text-[10px] text-muted-foreground">
+            {filteredFixtures.length} of {fixtures.length} fixtures will be exported
+          </p>
         </div>
-        <p className="text-[10px] text-muted-foreground">
-          {filteredFixtures.length} of {fixtures.length} fixtures will be exported.
-        </p>
-      </div>
+      </section>
 
-      <div className="border-t pt-3">
-        <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
-          <span>{selected.length} columns selected</span>
-          <div className="flex gap-2">
+      <section className="border-t pt-4">
+        <div className="mb-2.5 flex items-center justify-between gap-2">
+          <p className="section-label">{selected.length} columns</p>
+          <div className="flex gap-2 text-xs">
             <button
               type="button"
-              className="font-medium text-accent"
+              className="font-semibold text-primary"
               onClick={() => {
                 setTemplateId('custom');
                 setSelected(EXPORT_COLUMNS.map((c) => c.key));
@@ -217,23 +220,25 @@ function ExportDialogBody({
             </button>
           </div>
         </div>
-        <div className="grid max-h-[32vh] grid-cols-1 gap-2 overflow-y-auto overscroll-contain sm:grid-cols-2 sm:max-h-[28vh]">
+        <div className="flex max-h-[28vh] flex-wrap gap-2 overflow-y-auto overscroll-contain pr-0.5">
           {EXPORT_COLUMNS.map((c) => {
             const checked = selected.includes(c.key);
             return (
               <label
                 key={c.key}
-                className={`flex cursor-pointer items-center gap-2 rounded-lg border p-2.5 text-sm ${
-                  checked ? 'border-accent bg-accent/10' : 'bg-card'
+                className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
+                  checked
+                    ? 'border-primary/30 bg-primary/10 text-foreground'
+                    : 'border-transparent bg-secondary text-secondary-foreground'
                 }`}
               >
-                <Checkbox checked={checked} onCheckedChange={() => toggle(c.key)} />
-                <span className="text-foreground">{c.label}</span>
+                <Checkbox checked={checked} onCheckedChange={() => toggle(c.key)} className="h-3.5 w-3.5" />
+                {c.label}
               </label>
             );
           })}
         </div>
-      </div>
+      </section>
     </div>
   );
 }
@@ -346,14 +351,15 @@ export function ExportDialog({ open, onOpenChange, fixtures, campuses }: Props) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[min(92dvh,760px)] w-[calc(100vw-1.25rem)] max-w-lg translate-y-[-50%] flex-col gap-0 overflow-hidden p-0 sm:w-full">
-        <DialogHeader className="shrink-0 border-b px-4 pb-3 pt-5 text-left sm:px-6 sm:pt-6">
+      <DialogContent className="dialog-shell">
+        <DialogHeader className="dialog-shell-header">
           <DialogTitle>Export to CSV</DialogTitle>
+          <p className="text-xs text-muted-foreground">Choose a template, review columns, then download.</p>
         </DialogHeader>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6">
+        <div className="dialog-shell-body">
           <ExportDialogBody {...bodyProps} />
         </div>
-        <DialogFooter className="shrink-0 gap-2 border-t px-4 py-3 sm:flex-row sm:px-6 sm:py-4">
+        <DialogFooter className="dialog-shell-footer">
           <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
             Cancel
           </Button>

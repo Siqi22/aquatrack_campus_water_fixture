@@ -89,7 +89,7 @@ export default function Maintenance() {
         <QuickStat label="Due soon" value={dueSoonCount} tone={dueSoonCount > 0 ? 'warning' : 'default'} />
       </div>
 
-      <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+      <div className="chip-row mt-4">
         {filterOptions.map((o) => (
           <button
             key={o.id}
@@ -103,9 +103,9 @@ export default function Maintenance() {
       </div>
 
       {groups.length === 0 ? (
-        <div className="mt-12 text-center text-muted-foreground">
-          <Calendar className="mx-auto h-8 w-8 opacity-40" />
-          <p className="mt-2 text-sm">Nothing due in this range</p>
+        <div className="empty-state mt-12">
+          <Calendar className="empty-state-icon" />
+          <p className="text-sm font-medium text-foreground">Nothing due in this range</p>
         </div>
       ) : (
         <div className="mt-4 space-y-5">

@@ -5,6 +5,7 @@ import { FloorPlanView } from '@/components/FloorPlanView';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { FLOOR_STATUS_LABELS } from '@/lib/fieldLabels';
 import { loadCampusNavState, saveCampusNavState } from '@/lib/campusNavState';
+import { floorStatusPillClass } from '@/lib/statusStyles';
 import { Building2, ChevronRight, ChevronDown, Layers } from 'lucide-react';
 
 export default function CampusNavigator() {
@@ -36,13 +37,6 @@ export default function CampusNavigator() {
   const campusBuildings = selectedCampus ? getBuildingsByCampus(selectedCampus) : [];
   const campusFixtureCount = selectedCampus ? getFixturesByCampus(selectedCampus).length : 0;
   const currentCampus = campuses.find((c) => c.id === selectedCampus);
-
-  const floorBadge: Record<string, string> = {
-    NotStarted: 'bg-secondary text-secondary-foreground',
-    InProgress: 'bg-status-warning/15 text-status-warning',
-    Done: 'bg-status-good/15 text-status-good',
-    Restricted: 'bg-status-urgent/15 text-status-urgent',
-  };
 
   function backFromFloor() {
     if (selectedFloor) {
@@ -81,7 +75,7 @@ export default function CampusNavigator() {
       />
 
       {campuses.length > 1 && (
-        <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
+        <div className="chip-row mb-4">
           {campuses.map((c) => (
             <button
               key={c.id}
@@ -175,7 +169,7 @@ export default function CampusNavigator() {
                       >
                         <Layers className="h-4 w-4 text-muted-foreground" />
                         <span className="flex-1 text-sm text-foreground">Floor {fp.floor}</span>
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${floorBadge[fp.status]}`}>
+                        <span className={`status-pill ${floorStatusPillClass[fp.status]}`}>
                           {FLOOR_STATUS_LABELS[fp.status] ?? fp.status}
                         </span>
                         <ChevronRight className="h-3 w-3 text-muted-foreground" />

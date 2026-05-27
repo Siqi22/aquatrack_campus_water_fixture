@@ -81,15 +81,13 @@ export default function Auth() {
         </div>
 
         <div className="card-soft p-5">
-          <div className="mb-4 inline-flex w-full rounded-xl bg-secondary p-1">
+          <div className="segmented-control mb-4">
             {(['signin', 'signup'] as const).map((m) => (
               <button
                 key={m}
                 type="button"
                 onClick={() => setMode(m)}
-                className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
-                  mode === m ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
-                }`}
+                className={mode === m ? 'segmented-option-active' : 'segmented-option-inactive'}
               >
                 {m === 'signin' ? 'Sign in' : 'Sign up'}
               </button>
@@ -99,35 +97,35 @@ export default function Auth() {
           <form onSubmit={handleEmailAuth} className="space-y-3">
             {mode === 'signup' && (
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Display name</label>
+                <label className="field-label">Display name</label>
                 <input
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  className="search-input mt-1 pl-3"
+                  className="field-input mt-1"
                   placeholder="Jane Doe"
                 />
               </div>
             )}
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Email</label>
+              <label className="field-label">Email</label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="search-input mt-1 pl-3"
+                className="field-input mt-1"
                 placeholder="you@example.edu"
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Password</label>
+              <label className="field-label">Password</label>
               <input
                 type="password"
                 required
                 minLength={6}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="search-input mt-1 pl-3"
+                className="field-input mt-1"
                 placeholder="At least 6 characters"
               />
             </div>

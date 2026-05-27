@@ -410,22 +410,20 @@ export default function AddAsset() {
   // Manage mode — map-based
   if (mode === 'manage') {
     return (
-      <div className="px-4 pt-6">
-        <button onClick={() => setMode('choose')} className="text-xs text-accent font-medium mb-3 flex items-center gap-1">
+      <div className="page-shell">
+        <button onClick={() => setMode('choose')} className="link-back mb-3">
           ← Back
         </button>
         <h1 className="text-xl font-bold text-foreground">Manage database</h1>
         <p className="text-sm text-muted-foreground">Search fixtures or browse by building and floor</p>
 
         {/* Campus selector */}
-        <div className="flex gap-2 mt-4 overflow-x-auto pb-1">
+        <div className="chip-row mt-4">
           {campuses.map((c) => (
             <button
               key={c.id}
               onClick={() => { setManageCampus(c.id); setManageBuilding(''); setManageFloor(null); }}
-              className={`rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors ${
-                manageCampus === c.id ? 'bg-accent text-accent-foreground' : 'bg-secondary text-secondary-foreground'
-              }`}
+              className={manageCampus === c.id ? 'chip-active whitespace-nowrap' : 'chip-inactive whitespace-nowrap'}
             >
               {c.name}
             </button>
@@ -439,7 +437,7 @@ export default function AddAsset() {
             value={manageQuery}
             onChange={(e) => setManageQuery(e.target.value)}
             placeholder="Search fixtures..."
-            className="w-full rounded-xl border bg-card py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+            className="search-input mt-3"
           />
         </div>
 
@@ -451,8 +449,8 @@ export default function AddAsset() {
               manageResults.map((f) => (
                 <Link key={f.id} to={`/fixture/${f.id}`} className="flex items-center justify-between rounded-xl border bg-card p-3">
                   <div>
-                    <p className="text-sm font-medium text-foreground">{f.buildingName} — Rm {f.roomNumber}</p>
-                    <p className="text-xs text-muted-foreground">{f.brand} {f.model}</p>
+                    <p className="list-row-title">{f.buildingName} — Rm {f.roomNumber}</p>
+                    <p className="list-row-subtitle">{f.brand} {f.model}</p>
                   </div>
                   <StatusBadge status={getFixtureStatus(f.lastMaintenanceDate)} />
                 </Link>
@@ -462,14 +460,12 @@ export default function AddAsset() {
         ) : (
           <>
             {/* Building selector */}
-            <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
+            <div className="chip-row mt-3">
               {manageCampusBuildings.map((b) => (
                 <button
                   key={b.id}
                   onClick={() => { setManageBuilding(b.id); setManageFloor('1'); }}
-                  className={`rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors ${
-                    manageBuilding === b.id ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'
-                  }`}
+                  className={manageBuilding === b.id ? 'chip-active whitespace-nowrap' : 'chip-inactive whitespace-nowrap'}
                 >
                   {b.name}
                 </button>
@@ -483,9 +479,7 @@ export default function AddAsset() {
                   <button
                     key={fl}
                     onClick={() => setManageFloor(fl)}
-                    className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                      manageFloor === fl ? 'bg-accent text-accent-foreground' : 'bg-secondary/60 text-muted-foreground'
-                    }`}
+                    className={manageFloor === fl ? 'chip-active' : 'chip-inactive'}
                   >
                     {fl}
                   </button>
@@ -505,10 +499,10 @@ export default function AddAsset() {
               </div>
             )}
 
-            {!manageBuilding && (
-              <div className="flex flex-col items-center py-12 text-muted-foreground">
-                <Map className="h-8 w-8 mb-2 opacity-40" />
-                <p className="text-sm">Select a building to browse floors</p>
+              {!manageBuilding && (
+              <div className="empty-state py-12">
+                <Map className="empty-state-icon" />
+                <p className="text-sm font-medium text-foreground">Select a building to browse floors</p>
               </div>
             )}
           </>
@@ -519,8 +513,8 @@ export default function AddAsset() {
 
   // Onboard mode
   return (
-    <div className="px-4 pt-6">
-      <button onClick={() => { setMode('choose'); setStep(1); }} className="text-xs text-accent font-medium mb-3 flex items-center gap-1">
+    <div className="page-shell">
+      <button onClick={() => { setMode('choose'); setStep(1); }} className="link-back mb-3">
         ← Back
       </button>
       <h1 className="text-xl font-bold text-foreground">Survey — Add Fixture</h1>
@@ -529,7 +523,7 @@ export default function AddAsset() {
       <div className="mt-4 flex gap-2">
         {STEP_LABELS.map((_, i) => {
           const s = i + 1;
-          return <div key={s} className={`h-1.5 flex-1 rounded-full ${s <= step ? 'bg-accent' : 'bg-secondary'}`} />;
+          return <div key={s} className={`h-1.5 flex-1 rounded-full ${s <= step ? 'progress-step-active' : 'progress-step-inactive'}`} />;
         })}
       </div>
       <p className="mt-2 text-xs text-muted-foreground">
@@ -540,7 +534,7 @@ export default function AddAsset() {
       {step === 1 && (
         <div className="mt-4 space-y-4">
           <div>
-            <label className="text-sm font-medium text-foreground">University / Campus</label>
+            <label className="field-label-lg">University / Campus</label>
 
             <div className="mt-2 space-y-2">
               {filteredCampuses.slice(0, 6).map((c) => {
@@ -550,7 +544,7 @@ export default function AddAsset() {
                     key={c.id}
                     onClick={() => { setSelectedCampusId(c.id); setSelectedBuildingId(''); }}
                     className={`w-full rounded-2xl border p-3 text-left transition-colors ${
-                      active ? 'border-accent bg-accent/10' : 'bg-card hover:bg-secondary/30'
+                      active ? 'border-primary/30 bg-primary/10' : 'bg-card hover:bg-secondary/30'
                     }`}
                   >
                     <p className="text-sm font-semibold text-foreground">{c.school}</p>
@@ -571,7 +565,7 @@ export default function AddAsset() {
                     value={universityName}
                     onChange={(e) => setUniversityName(e.target.value)}
                     placeholder="University name (e.g. University of Washington)"
-                    className="w-full rounded-lg border bg-card px-3 py-2 text-sm text-foreground"
+                    className="field-input"
                   />
                 </div>
 
@@ -579,13 +573,13 @@ export default function AddAsset() {
                   value={campusName}
                   onChange={(e) => setCampusName(e.target.value)}
                   placeholder="Campus name (e.g. Seattle Campus)"
-                  className="w-full rounded-lg border bg-card px-3 py-2 text-sm text-foreground"
+                  className="field-input"
                 />
                 <input
                   value={campusAddress}
                   onChange={(e) => setCampusAddress(e.target.value)}
                   placeholder="Address (optional)"
-                  className="w-full rounded-lg border bg-card px-3 py-2 text-sm text-foreground"
+                  className="field-input"
                 />
                 <button
                   onClick={handleCreateCampus}
@@ -599,7 +593,7 @@ export default function AddAsset() {
 
           {selectedCampusId && (
             <div>
-              <label className="text-sm font-medium text-foreground">Building</label>
+              <label className="field-label-lg">Building</label>
               <div className="mt-2 space-y-2">
                 {filteredBuildings.slice(0, 6).map((b) => {
                   const active = selectedBuildingId === b.id;
@@ -608,7 +602,7 @@ export default function AddAsset() {
                       key={b.id}
                       onClick={() => setSelectedBuildingId(b.id)}
                       className={`w-full rounded-2xl border p-3 text-left transition-colors ${
-                        active ? 'border-accent bg-accent/10' : 'bg-card hover:bg-secondary/30'
+                        active ? 'border-primary/30 bg-primary/10' : 'bg-card hover:bg-secondary/30'
                       }`}
                     >
                       <p className="text-sm font-semibold text-foreground">{b.name}</p>
@@ -627,9 +621,9 @@ export default function AddAsset() {
                 value={newBuildingName}
                 onChange={(e) => setNewBuildingName(e.target.value)}
                 placeholder="Building name"
-                className="w-full rounded-lg border bg-card px-3 py-2 text-sm text-foreground mb-2"
+                className="field-input mb-2"
               />
-              <input value={newBuildingFloors} onChange={(e) => setNewBuildingFloors(e.target.value)} placeholder="Number of floors" type="number" className="w-full rounded-lg border bg-card px-3 py-2 text-sm text-foreground mb-2" />
+              <input value={newBuildingFloors} onChange={(e) => setNewBuildingFloors(e.target.value)} placeholder="Number of floors" type="number" className="field-input mb-2" />
               <button onClick={handleCreateBuilding} className="rounded-lg bg-primary px-4 py-2 text-xs font-medium text-primary-foreground">
                 <Building2 className="inline h-3 w-3 mr-1" /> Create Building
               </button>
@@ -638,12 +632,12 @@ export default function AddAsset() {
 
           {selectedBuilding && (
             <div>
-              <label className="text-sm font-medium text-foreground">{FIELD_LABELS.floor}</label>
+              <label className="field-label-lg">{FIELD_LABELS.floor}</label>
               <input
                 value={floor}
                 onChange={(e) => setFloor(e.target.value)}
                 placeholder="e.g. 2, G, L1, B2"
-                className="mt-1 w-full rounded-lg border bg-card px-3 py-2.5 text-sm text-foreground"
+                className="mt-1 field-input py-2.5"
               />
               <p className="mt-1 text-[11px] text-muted-foreground">Letters and numbers are both OK (e.g. ground floor = G).</p>
               {floorLocked && (
@@ -656,12 +650,12 @@ export default function AddAsset() {
 
           {selectedBuilding && floor.trim() && !floorLocked && (
             <div>
-              <label className="text-sm font-medium text-foreground">{FIELD_LABELS.room}</label>
+              <label className="field-label-lg">{FIELD_LABELS.room}</label>
               <input
                 value={nearestRoom}
                 onChange={(e) => setNearestRoom(e.target.value)}
                 placeholder="e.g. 205, or 'hallway near restroom'"
-                className="mt-1 w-full rounded-lg border bg-card px-3 py-2.5 text-sm text-foreground"
+                className="mt-1 field-input py-2.5"
               />
               <p className="mt-1 text-[11px] text-muted-foreground">
                 Tip: drinking water sources are often by the restroom. Use at least 2 characters (e.g. 205 or hallway near restroom).
@@ -677,7 +671,7 @@ export default function AddAsset() {
       {/* Step 2: Photos + optional scan */}
       {step === 2 && (
         <div className="mt-4 space-y-4">
-          <div className="rounded-2xl border bg-accent/5 p-3">
+          <div className="rounded-2xl border bg-primary/5 p-3">
             <p className="text-sm font-semibold text-foreground">📸 What to photograph</p>
             <ul className="mt-1.5 text-[11px] text-muted-foreground space-y-1 list-disc pl-4">
               <li><strong>{FIELD_LABELS.generalPhoto}:</strong> the whole fixture so it can be identified.</li>
@@ -764,7 +758,7 @@ export default function AddAsset() {
                 return (
                   <div
                     key={id}
-                    className={`relative rounded-lg border ${active ? 'border-accent bg-accent/10' : 'bg-card'}`}
+                    className={`relative rounded-lg border ${active ? 'border-primary/30 bg-primary/10' : 'bg-card'}`}
                   >
                     <button
                       type="button"
@@ -777,7 +771,7 @@ export default function AddAsset() {
                       type="button"
                       onClick={(e) => { e.stopPropagation(); setCategoryRefHelp(id); }}
                       aria-label={`Reference image for ${fixtureCategoryMeta[id].label}`}
-                      className="absolute right-1 top-1 rounded-full p-1.5 text-accent hover:bg-accent/15"
+                      className="absolute right-1 top-1 rounded-full p-1.5 text-primary hover:bg-primary/15"
                     >
                       <Info className="h-3.5 w-3.5" />
                     </button>
@@ -789,8 +783,8 @@ export default function AddAsset() {
 
           {/* Reference-image modal */}
           {categoryRefHelp && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setCategoryRefHelp(null)}>
-              <div className="w-full max-w-sm rounded-2xl bg-card p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="overlay-scrim" onClick={() => setCategoryRefHelp(null)}>
+              <div className="overlay-panel" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-sm font-semibold text-foreground">{fixtureCategoryMeta[categoryRefHelp].label}</p>
@@ -808,7 +802,7 @@ export default function AddAsset() {
                 <button
                   type="button"
                   onClick={() => { setCategory(categoryRefHelp); setCategoryRefHelp(null); }}
-                  className="mt-3 w-full rounded-xl bg-accent px-4 py-2 text-xs font-semibold text-accent-foreground"
+                  className="btn-primary mt-3 w-full text-xs"
                 >
                   Pick this type
                 </button>
@@ -819,7 +813,7 @@ export default function AddAsset() {
           <div className="rounded-2xl border bg-card p-4">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <ScanLine className="h-4 w-4 text-accent" />
+                <ScanLine className="h-4 w-4 text-primary" />
                 <div>
                   <p className="text-sm font-semibold text-foreground">Scan label</p>
                   <p className="text-[11px] text-muted-foreground">Reads {FIELD_LABELS.companyName.toLowerCase()}, {FIELD_LABELS.model.toLowerCase()}, {FIELD_LABELS.serialNumber.toLowerCase()} from the label photo</p>
@@ -828,7 +822,7 @@ export default function AddAsset() {
               <button
                 onClick={handleScan}
                 disabled={scanning}
-                className="rounded-xl bg-accent px-4 py-2 text-xs font-semibold text-accent-foreground disabled:opacity-50"
+                className="btn-primary text-xs disabled:opacity-50"
               >
                 {scanning ? 'Scanning…' : scanned ? 'Re-scan' : 'Scan'}
               </button>
@@ -864,7 +858,7 @@ export default function AddAsset() {
                       <button onClick={() => platePhotoInputRef.current?.click()} className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold text-secondary-foreground">
                         Retake plate
                       </button>
-                      <button onClick={handleScan} disabled={scanning} className="rounded-full bg-foreground px-3 py-1 text-[11px] font-semibold text-background disabled:opacity-50">
+                      <button onClick={handleScan} disabled={scanning} className="btn-inverse">
                         {scanning ? 'Retrying…' : 'Try again'}
                       </button>
                     </div>
@@ -981,7 +975,7 @@ export default function AddAsset() {
                     value={value}
                     onChange={(e) => setter(e.target.value)}
                     placeholder={optional ? 'Leave blank if not on label' : ''}
-                    className="mt-1 w-full rounded-lg border bg-card px-3 py-2 text-sm text-foreground"
+                    className="mt-1 field-input"
                   />
                 </div>
               ))}
@@ -1013,7 +1007,7 @@ export default function AddAsset() {
                 <div
                   key={id}
                   className={`relative rounded-2xl border p-3 transition-colors ${
-                    active ? 'border-accent bg-accent/10' : 'bg-card hover:bg-secondary/20'
+                    active ? 'border-primary/30 bg-primary/10' : 'bg-card hover:bg-secondary/20'
                   }`}
                 >
                   {/* Help icon (separate hit target) */}
@@ -1028,7 +1022,7 @@ export default function AddAsset() {
 
                   {/* Selected indicator mirrors help placement for spatial consistency */}
                   {active && (
-                    <div className="absolute left-2 top-2 rounded-full bg-accent/15 p-2 text-accent" aria-hidden="true">
+                    <div className="absolute left-2 top-2 rounded-full bg-primary/15 p-2 text-primary" aria-hidden="true">
                       <CheckCircle2 className="h-4 w-4" />
                     </div>
                   )}
@@ -1097,16 +1091,16 @@ export default function AddAsset() {
             </div>
           </div>
           <div>
-            <label className="text-sm font-medium text-foreground">Water pressure</label>
+            <label className="field-label-lg">Water pressure</label>
             <SimpleRating compact value={pressure} onChange={setPressure} />
           </div>
           <div>
-            <label className="text-sm font-medium text-foreground">Cleanliness</label>
+            <label className="field-label-lg">Cleanliness</label>
             <SimpleRating compact value={cleanliness} onChange={setCleanliness} />
           </div>
 
           <div>
-            <label className="text-sm font-medium text-foreground">Quick issues</label>
+            <label className="field-label-lg">Quick issues</label>
             <div className="mt-2 flex flex-wrap gap-2">
               {ISSUE_OPTIONS.map(({ id, label }) => {
                 const active = issues.includes(id);
@@ -1115,7 +1109,7 @@ export default function AddAsset() {
                     key={id}
                     onClick={() => setIssues((prev) => (active ? prev.filter((x) => x !== id) : [...prev, id]))}
                     className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
-                      active ? 'bg-accent text-accent-foreground' : 'bg-secondary text-secondary-foreground'
+                      active ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'
                     }`}
                   >
                     {label}
@@ -1126,12 +1120,12 @@ export default function AddAsset() {
           </div>
 
           <div>
-            <label className="text-sm font-medium text-foreground">Observations</label>
+            <label className="field-label-lg">Observations</label>
             <textarea
               value={observations}
               onChange={(e) => setObservations(e.target.value)}
               placeholder="e.g. rusted fixture, low pressure, needs wipe..."
-              className="mt-1 w-full min-h-[90px] rounded-lg border bg-card px-3 py-2.5 text-sm text-foreground"
+              className="mt-1 field-textarea py-2.5"
             />
           </div>
         </div>
@@ -1140,7 +1134,7 @@ export default function AddAsset() {
       {/* Step 5: Final location confirmation (required) */}
       {step === 5 && (
         <div className="mt-4 space-y-4">
-          <div className="rounded-2xl border border-accent/40 bg-accent/5 p-4">
+          <div className="rounded-2xl border border-primary/40 bg-primary/5 p-4">
             <p className="text-sm font-semibold text-foreground">⚠ Confirm exact location</p>
             <p className="mt-1 text-[11px] text-muted-foreground">
               Verify everything below — once saved, this fixture is locked to this location.
@@ -1159,12 +1153,12 @@ export default function AddAsset() {
           </div>
 
           <div>
-            <label className="text-sm font-medium text-foreground">Nearest fixture ID <span className="text-muted-foreground font-normal">(for reference)</span></label>
+            <label className="field-label-lg">Nearest fixture ID <span className="text-muted-foreground font-normal">(for reference)</span></label>
             <input
               value={nearestFixtureId}
               onChange={(e) => setNearestFixtureId(e.target.value)}
               placeholder="e.g. F-0123 — the closest already-tagged fixture"
-              className="mt-1 w-full rounded-lg border bg-card px-3 py-2.5 text-sm text-foreground"
+              className="mt-1 field-input py-2.5"
             />
             <p className="mt-1 text-[11px] text-muted-foreground">Helps audit the position relative to known assets. Leave blank if none nearby.</p>
           </div>
@@ -1200,17 +1194,17 @@ export default function AddAsset() {
       {/* Navigation */}
       <div className="mt-6 flex gap-3">
         {step > 1 && (
-          <button onClick={() => setStep(step - 1)} className="flex items-center gap-1 rounded-lg border px-4 py-2.5 text-sm font-medium text-foreground">
+          <button onClick={() => setStep(step - 1)} className="btn-secondary flex items-center gap-1">
             <ChevronLeft className="h-4 w-4" /> Back
           </button>
         )}
         <div className="flex-1" />
         {step < 5 ? (
-          <button onClick={() => setStep(step + 1)} disabled={!canProceed[step]} className="flex items-center gap-1 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground disabled:opacity-40">
+          <button onClick={() => setStep(step + 1)} disabled={!canProceed[step]} className="btn-primary flex items-center gap-1 disabled:opacity-40">
             Next <ChevronRight className="h-4 w-4" />
           </button>
         ) : (
-          <button onClick={handleSubmit} disabled={!canProceed[5] || saving} className="flex items-center gap-1 rounded-lg bg-accent px-6 py-2.5 text-sm font-semibold text-accent-foreground disabled:opacity-40">
+          <button onClick={handleSubmit} disabled={!canProceed[5] || saving} className="btn-primary flex items-center gap-1 px-6 disabled:opacity-40">
             <CheckCircle2 className="h-4 w-4" /> {saving ? 'Saving…' : 'Save Fixture'}
           </button>
         )}
@@ -1218,8 +1212,8 @@ export default function AddAsset() {
 
       {/* Post-save: Are you done with this floor? */}
       {postSaveOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4" onClick={() => { setPostSaveOpen(false); navigate('/'); }}>
-          <div className="w-full max-w-sm rounded-2xl bg-card p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="overlay-scrim items-end sm:items-center" onClick={() => { setPostSaveOpen(false); navigate('/'); }}>
+          <div className="overlay-panel" onClick={(e) => e.stopPropagation()}>
             <p className="text-base font-semibold text-foreground">Fixture saved ✓</p>
             <p className="mt-1 text-sm text-muted-foreground">
               Are you done collecting fixtures on Floor {floor}?
@@ -1236,7 +1230,7 @@ export default function AddAsset() {
                   setStep(1);
                   setPostSaveOpen(false);
                 }}
-                className="rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground"
+                className="btn-primary w-full"
               >
                 Add another on Floor {floor}
               </button>
@@ -1249,13 +1243,13 @@ export default function AddAsset() {
                   setPostSaveOpen(false);
                   navigate('/campus');
                 }}
-                className="rounded-xl bg-foreground px-4 py-2.5 text-sm font-semibold text-background"
+                className="btn-inverse-block"
               >
                 Yes — mark Floor {floor} done
               </button>
               <button
                 onClick={() => { setPostSaveOpen(false); navigate('/'); }}
-                className="rounded-xl bg-secondary px-4 py-2.5 text-sm font-semibold text-secondary-foreground"
+                className="btn-secondary w-full"
               >
                 Back to dashboard
               </button>

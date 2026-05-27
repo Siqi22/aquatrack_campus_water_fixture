@@ -37,7 +37,7 @@ export function SimpleRating({ value, onChange, readonly, compact }: SimpleRatin
               compact ? 'px-2 py-0.5 text-[10px]' : 'px-3 py-1.5 text-xs'
             } ${
               active
-                ? 'bg-accent text-accent-foreground'
+                ? 'bg-primary text-primary-foreground'
                 : readonly
                   ? 'cursor-default bg-secondary/50 text-muted-foreground'
                   : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'

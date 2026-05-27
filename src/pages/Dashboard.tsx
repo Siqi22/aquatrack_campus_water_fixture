@@ -112,7 +112,7 @@ export default function Dashboard() {
       )}
 
       {showSharedNotice && (
-        <p className="mt-4 rounded-xl border border-status-warning/25 bg-status-warning/5 px-3 py-2 text-xs text-muted-foreground">
+        <p className="callout-warning mt-4">
           Workspace has existing records from other imports. Use Import to add yours, or start surveying.
         </p>
       )}
@@ -143,10 +143,10 @@ export default function Dashboard() {
                 results.map((f) => (
                   <Link key={f.id} to={`/fixture/${f.id}`} className="list-row">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-foreground">
+                      <p className="list-row-title">
                         {f.buildingName} · Fl {f.floor} · {f.roomNumber}
                       </p>
-                      <p className="truncate text-xs text-muted-foreground">
+                      <p className="list-row-subtitle">
                         {[f.brand, f.model].filter(Boolean).join(' ') || 'Details pending'}
                       </p>
                     </div>
@@ -161,7 +161,7 @@ export default function Dashboard() {
             <section className="mt-6">
               <div className="mb-2 flex items-center justify-between">
                 <h2 className="section-label">Needs attention</h2>
-                <Link to="/maintenance" className="flex items-center gap-1 text-xs font-semibold text-primary">
+                <Link to="/maintenance" className="link-action">
                   All <ArrowRight className="h-3 w-3" />
                 </Link>
               </div>
@@ -169,7 +169,7 @@ export default function Dashboard() {
                 {tasks.slice(0, 2).map((f) => (
                   <Link key={f.id} to={`/fixture/${f.id}`} className="list-row">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-foreground">
+                      <p className="list-row-title">
                         {f.buildingName} · {f.roomNumber}
                       </p>
                       <p className="text-xs text-muted-foreground">

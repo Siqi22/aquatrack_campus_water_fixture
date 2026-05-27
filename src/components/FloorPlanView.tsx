@@ -1,16 +1,10 @@
 import { Link } from 'react-router-dom';
 import { useFixtureStore, getFixtureStatus } from '@/store/fixtureStore';
-import type { FixtureStatus } from '@/store/fixtureStore';
 import { StatusBadge } from '@/components/StatusBadge';
 import { FIELD_LABELS, FLOOR_STATUS_LABELS } from '@/lib/fieldLabels';
 import { canManageFloorProgress, canMarkFloorLocked } from '@/lib/roles';
+import { floorStatusPillClass, fixtureStatusDotClass } from '@/lib/statusStyles';
 import { Droplets, Lock, PlusCircle } from 'lucide-react';
-
-const statusColors: Record<FixtureStatus, string> = {
-  Good: 'bg-status-good',
-  Warning: 'bg-status-warning',
-  Urgent: 'bg-status-urgent',
-};
 
 interface FloorPlanViewProps {
   buildingId: string;
@@ -27,12 +21,7 @@ export function FloorPlanView({ buildingId, floor, buildingName, campusId }: Flo
   const floorProgress = getFloorProgress(buildingId, floor);
   const isLocked = floorProgress.status === 'Restricted';
 
-  const statusPill: Record<typeof floorProgress.status, string> = {
-    NotStarted: 'bg-secondary text-secondary-foreground',
-    InProgress: 'bg-status-warning/15 text-status-warning',
-    Done: 'bg-status-good/15 text-status-good',
-    Restricted: 'bg-status-urgent/15 text-status-urgent',
-  };
+  const statusPill = floorStatusPillClass;
 
   const addHref = `/add?mode=onboard&buildingId=${encodeURIComponent(buildingId)}&floor=${encodeURIComponent(floor)}${campusId ? `&campusId=${encodeURIComponent(campusId)}` : ''}`;
 
@@ -46,7 +35,7 @@ export function FloorPlanView({ buildingId, floor, buildingName, campusId }: Flo
             </p>
             <p className="text-[10px] text-muted-foreground">{fixtures.length} fixture{fixtures.length === 1 ? '' : 's'} recorded</p>
           </div>
-          <div className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${statusPill[floorProgress.status]}`}>
+          <div className={`status-pill ${statusPill[floorProgress.status]}`}>
             {FLOOR_STATUS_LABELS[floorProgress.status] ?? floorProgress.status}
           </div>
         </div>
@@ -106,14 +95,11 @@ export function FloorPlanView({ buildingId, floor, buildingName, campusId }: Flo
           </div>
         </div>
       ) : fixtures.length === 0 ? (
-        <div className="flex flex-col items-center px-4 py-10 text-center">
-          <Droplets className="mb-2 h-8 w-8 text-muted-foreground opacity-40" />
+        <div className="empty-state px-4 py-10">
+          <Droplets className="empty-state-icon" />
           <p className="text-sm font-medium text-foreground">No fixtures on this floor yet</p>
-          <p className="mt-1 text-[11px] text-muted-foreground">Record fixtures here, or mark the floor locked if there is no access.</p>
-          <Link
-            to={addHref}
-            className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground"
-          >
+          <p className="mt-1 text-caption text-muted-foreground">Record fixtures here, or mark the floor locked if there is no access.</p>
+          <Link to={addHref} className="btn-primary mt-4 inline-flex text-xs">
             <PlusCircle className="h-3.5 w-3.5" />
             Add first fixture
           </Link>
@@ -128,7 +114,7 @@ export function FloorPlanView({ buildingId, floor, buildingName, campusId }: Flo
                 to={`/fixture/${f.id}`}
                 className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-secondary/20"
               >
-                <div className={`h-2.5 w-2.5 shrink-0 rounded-full ${statusColors[status]}`} />
+                <div className={`h-2.5 w-2.5 shrink-0 rounded-full ${fixtureStatusDotClass[status]}`} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-foreground">
                     {FIELD_LABELS.room}: {f.nearestRoom || f.roomNumber}

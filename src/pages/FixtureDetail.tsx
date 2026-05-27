@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   useFixtureStore,
@@ -14,7 +14,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { SimpleRating, ratingLabel } from '@/components/SimpleRating';
 import { FIELD_LABELS, issueLabel } from '@/lib/fieldLabels';
-import { MapPin, Wrench, CheckCircle2, Edit3, Save, X, ExternalLink, Image as ImageIcon, Hash, Tag, Download } from 'lucide-react';
+import { MapPin, CheckCircle2, Edit3, Save, X, ExternalLink, Image as ImageIcon, Hash, Download, Building2, GraduationCap } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function FixtureDetail() {
@@ -39,21 +39,11 @@ export default function FixtureDetail() {
   const campus = fixture ? campuses.find((c) => c.id === fixture.campusId) : undefined;
   const building = fixture ? buildings.find((b) => b.id === fixture.buildingId) : undefined;
 
-  const locationLabel = useMemo(() => {
-    if (!fixture) return '';
-    const parts: string[] = [];
-    if (fixture.buildingName) parts.push(fixture.buildingName);
-    if (campus?.school) parts.push(campus.school);
-    if (campus?.name) parts.push(campus.name);
-    if (campus?.address) parts.push(campus.address);
-    return parts.filter(Boolean).join(', ');
-  }, [campus?.address, campus?.name, campus?.school, fixture]);
-
   if (!fixture) {
     return (
-      <div className="px-4 pt-6 text-center">
+      <div className="page-shell pt-6 text-center">
         <p className="text-muted-foreground">Fixture not found.</p>
-        <button onClick={() => navigate(-1)} className="mt-4 text-sm text-accent">Go back</button>
+        <button onClick={() => navigate(-1)} className="link-action mt-4 text-sm">Go back</button>
       </div>
     );
   }
@@ -154,15 +144,15 @@ export default function FixtureDetail() {
 
       {/* Photos + location */}
       <div className="grid grid-cols-1 gap-3 mb-4">
-        <div className="rounded-2xl border bg-card overflow-hidden">
-          <div className="flex items-center justify-between p-4 border-b">
+        <div className="card-section mb-4">
+          <div className="panel-header">
             <div className="flex items-center gap-2">
               <ImageIcon className="h-4 w-4 text-muted-foreground" />
               <h2 className="text-sm font-semibold text-foreground">Photos</h2>
             </div>
           </div>
 
-          <div className="p-4">
+          <div className="panel-body">
             {fixture.photoURL || fixture.modelPlatePhotoURL ? (
               <div className="grid grid-cols-2 gap-3">
                 <PhotoCard label="General" url={fixture.photoURL} filename={`${fixture.id}-general.jpg`} />
@@ -177,27 +167,68 @@ export default function FixtureDetail() {
           </div>
         </div>
 
-        <div className="rounded-2xl border bg-card overflow-hidden">
-          <div className="flex items-center justify-between p-4 border-b">
+        <div className="card-section mb-4">
+          <div className="panel-header">
             <div className="flex items-center gap-2">
               <MapPin className="h-4 w-4 text-muted-foreground" />
               <h2 className="text-sm font-semibold text-foreground">Location</h2>
             </div>
           </div>
 
-          <div className="p-4">
-            {locationLabel ? (
-              <div className="rounded-xl border bg-secondary/30 p-4">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Tag className="h-3 w-3 shrink-0" />
-                  <span>{locationLabel}</span>
-                </div>
-                {campus?.address ? (
-                  <p className="mt-2 text-[11px] text-muted-foreground">{campus.address}</p>
+          <div className="panel-body">
+            {fixture.buildingName || campus ? (
+              <div className="space-y-3">
+                {fixture.buildingName ? (
+                  <div className="flex items-start gap-3 rounded-xl border bg-secondary/20 p-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-card text-primary">
+                      <Building2 className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Building</p>
+                      <p className="mt-0.5 text-sm font-semibold text-foreground">{fixture.buildingName}</p>
+                      {building ? (
+                        <p className="mt-0.5 text-[11px] text-muted-foreground">{building.floors} floors</p>
+                      ) : null}
+                    </div>
+                  </div>
                 ) : null}
-                <p className="mt-2 text-[11px] text-muted-foreground">
-                  Update the campus address in Assets for more accurate directions.
-                </p>
+
+                {campus ? (
+                  <div className="flex items-start gap-3 rounded-xl border bg-secondary/20 p-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-card text-primary">
+                      <GraduationCap className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Campus</p>
+                      <p className="mt-0.5 text-sm font-semibold text-foreground">{campus.name}</p>
+                      {campus.school ? (
+                        <p className="mt-0.5 text-[11px] text-muted-foreground">{campus.school}</p>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-xl border bg-card/70 px-3 py-2.5">
+                    <p className="text-[10px] font-medium text-muted-foreground">Floor</p>
+                    <p className="mt-0.5 text-sm font-semibold text-foreground">{fixture.floor}</p>
+                  </div>
+                  <div className="rounded-xl border bg-card/70 px-3 py-2.5">
+                    <p className="text-[10px] font-medium text-muted-foreground">Room</p>
+                    <p className="mt-0.5 text-sm font-semibold text-foreground">{fixture.roomNumber}</p>
+                  </div>
+                </div>
+
+                {campus?.address ? (
+                  <div className="rounded-xl border bg-card/70 px-3 py-2.5">
+                    <p className="text-[10px] font-medium text-muted-foreground">Address</p>
+                    <p className="mt-1 text-sm leading-snug text-foreground">{campus.address}</p>
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground">
+                    Add a campus address in Assets for more accurate directions.
+                  </p>
+                )}
               </div>
             ) : (
               <div className="rounded-xl border bg-secondary/30 p-4 text-center text-muted-foreground">
@@ -214,7 +245,7 @@ export default function FixtureDetail() {
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold text-foreground">Fixture Details</h2>
           {!editing ? (
-            <button onClick={() => setEditing(true)} className="flex items-center gap-1 text-xs text-accent font-medium">
+            <button onClick={() => setEditing(true)} className="link-action">
               <Edit3 className="h-3 w-3" /> Edit
             </button>
           ) : (
@@ -222,7 +253,7 @@ export default function FixtureDetail() {
               <button onClick={() => setEditing(false)} className="flex items-center gap-1 text-xs text-muted-foreground">
                 <X className="h-3 w-3" /> Cancel
               </button>
-              <button onClick={handleSave} className="flex items-center gap-1 text-xs text-accent font-medium">
+              <button onClick={handleSave} className="link-action">
                 <Save className="h-3 w-3" /> Save
               </button>
             </div>
@@ -242,7 +273,7 @@ export default function FixtureDetail() {
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value as FixtureCategory)}
-                  className="mt-1 w-full rounded-lg border bg-background px-3 py-2 text-sm text-foreground"
+                  className="mt-1 w-full field-input"
                 >
                   {FIXTURE_CATEGORIES.map((id) => (
                     <option key={id} value={id}>
@@ -266,7 +297,7 @@ export default function FixtureDetail() {
                 <textarea
                   value={observations}
                   onChange={(e) => setObservations(e.target.value)}
-                  className="mt-1 w-full min-h-[90px] rounded-lg border bg-background px-3 py-2 text-sm text-foreground"
+                  className="mt-1 w-full field-textarea"
                   placeholder="e.g. rusted fixture, low pressure, noisy..."
                 />
               </div>
@@ -309,7 +340,7 @@ export default function FixtureDetail() {
       {/* Complete Service */}
       <button
         onClick={handleComplete}
-        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-accent py-3.5 text-sm font-semibold text-accent-foreground"
+        className="btn-cta"
       >
         <CheckCircle2 className="h-5 w-5" />
         Complete Maintenance
@@ -325,7 +356,7 @@ function Field({ label, value, onChange }: { label: string; value: string; onCha
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 w-full rounded-lg border bg-background px-3 py-2 text-sm text-foreground"
+        className="mt-1 w-full field-input"
       />
     </div>
   );
@@ -342,9 +373,9 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 
 function InfoTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border bg-card/60 p-3">
-      <p className="text-[10px] font-medium text-muted-foreground">{label}</p>
-      <p className="mt-1 text-sm font-semibold text-foreground truncate">{value}</p>
+    <div className="info-tile">
+      <p className="info-tile-label">{label}</p>
+      <p className="info-tile-value">{value}</p>
     </div>
   );
 }

@@ -14,6 +14,13 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+      },
+      fontSize: {
+        micro: ['10px', { lineHeight: '14px' }],
+        caption: ['11px', { lineHeight: '16px' }],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
