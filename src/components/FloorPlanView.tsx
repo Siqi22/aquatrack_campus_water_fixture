@@ -19,7 +19,7 @@ function MarkCompleteButton({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-status-good/50 bg-status-good/5 py-2.5 text-xs font-semibold text-status-good"
+      className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-primary/25 bg-primary/5 py-2.5 text-xs font-semibold text-primary"
     >
       <CheckCircle2 className="h-3.5 w-3.5" />
       Mark floor complete
