@@ -155,7 +155,10 @@ export default function AddAsset() {
       name: newBuildingName,
       floors: parseInt(newBuildingFloors),
     });
-    if (created) setSelectedBuildingId(created.id);
+    if (created) {
+      setSelectedBuildingId(created.id);
+      toast.success('Building created');
+    }
     setNewBuildingName('');
     setNewBuildingFloors('');
   }
@@ -165,7 +168,10 @@ export default function AddAsset() {
     const name = campusName.trim();
     if (!school || !name) return;
     const created = await addCampus({ school, name, address: campusAddress.trim() || '—' });
-    if (created) setSelectedCampusId(created.id);
+    if (created) {
+      setSelectedCampusId(created.id);
+      toast.success('Campus created');
+    }
     setCampusQuery('');
     setUniversityName('');
     setCampusName('');
@@ -554,6 +560,7 @@ export default function AddAsset() {
               })}
             </div>
 
+            {!selectedCampusId && (
             <div className="mt-3 rounded-2xl border bg-secondary/30 p-3">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <University className="h-4 w-4" />
@@ -589,6 +596,7 @@ export default function AddAsset() {
                 </button>
               </div>
             </div>
+            )}
           </div>
 
           {selectedCampusId && (
@@ -614,7 +622,7 @@ export default function AddAsset() {
             </div>
           )}
 
-          {selectedCampusId && (
+          {selectedCampusId && !selectedBuildingId && (
             <div className="rounded-lg border bg-secondary/50 p-3">
               <p className="text-xs font-medium text-foreground mb-2">Or create new building</p>
               <input

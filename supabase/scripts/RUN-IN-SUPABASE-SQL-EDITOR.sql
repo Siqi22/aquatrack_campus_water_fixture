@@ -2,6 +2,9 @@
 -- COPY THIS ENTIRE FILE → Supabase Dashboard → SQL Editor → Run
 -- Project: uamxdcridplfbjfyrrbb (Aqua Map Keeper)
 -- Safe to re-run where marked IF NOT EXISTS / DO blocks
+--
+-- Covers incremental migrations #3–#8 (see repo supabase/migrations/).
+-- NOT included (already on a live project): initial schema + tables (#1).
 -- =============================================================================
 
 -- ── A) Columns the app expects on fixtures (survey / add fixture) ─────────────
@@ -94,6 +97,31 @@ WHERE observations IS NOT NULL
   AND trim(observations) ~ '^Imported\.'
   AND (import_metadata IS NULL OR trim(import_metadata) = '');
 
+-- ── E2) Backfill category from "Original category: …" in import text ──────────
+UPDATE public.fixtures
+SET category = CASE
+  WHEN src ~* 'original category:.*porcelain' THEN 'PorcelainFountain'::public.fixture_category
+  WHEN src ~* 'original category:.*metal' THEN 'MetalFountain'::public.fixture_category
+  WHEN src ~* 'original category:.*vending' THEN 'VendingMachine'::public.fixture_category
+  WHEN src ~* 'original category:.*(bottle|refill|combo|combination)' THEN 'BottleRefillStation'::public.fixture_category
+  ELSE category
+END
+FROM (
+  SELECT
+    id,
+    COALESCE(import_metadata, '') || ' ' || COALESCE(observations, '') AS src
+  FROM public.fixtures
+) AS x
+WHERE fixtures.id = x.id
+  AND x.src ~* 'original category:'
+  AND fixtures.category IS DISTINCT FROM CASE
+    WHEN x.src ~* 'original category:.*porcelain' THEN 'PorcelainFountain'::public.fixture_category
+    WHEN x.src ~* 'original category:.*metal' THEN 'MetalFountain'::public.fixture_category
+    WHEN x.src ~* 'original category:.*vending' THEN 'VendingMachine'::public.fixture_category
+    WHEN x.src ~* 'original category:.*(bottle|refill|combo|combination)' THEN 'BottleRefillStation'::public.fixture_category
+    ELSE fixtures.category
+  END;
+
 -- ── F) Refresh API schema cache (important after enum change) ───────────────
 NOTIFY pgrst, 'reload schema';
 
@@ -111,7 +139,17 @@ WHERE table_schema = 'public' AND table_name = 'fixtures'
   AND column_name IN ('category', 'nearest_room', 'room_number', 'floor', 'import_metadata', 'location_confirmed')
 ORDER BY column_name;
 
--- ── H) User-scoped RLS (each account sees only its own campuses/data) ─────────
+-- ── H) Storage: require auth to read fixture photos ─────────────────────────
+UPDATE storage.buckets SET public = false WHERE id = 'fixture-photos';
+
+DROP POLICY IF EXISTS "Public read fixture photos" ON storage.objects;
+DROP POLICY IF EXISTS "Auth read fixture photos" ON storage.objects;
+
+CREATE POLICY "Auth read fixture photos"
+  ON storage.objects FOR SELECT TO authenticated
+  USING (bucket_id = 'fixture-photos');
+
+-- ── I) User-scoped RLS (each account sees only its own campuses/data) ─────────
 -- Re-run safe: drops old global policies first.
 
 DROP POLICY IF EXISTS "Auth read campuses" ON public.campuses;
