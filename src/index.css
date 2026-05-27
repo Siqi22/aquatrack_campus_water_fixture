@@ -240,8 +240,8 @@
     @apply field-input min-h-[90px];
   }
 
-  .field-input-date {
-    @apply w-auto max-w-[9.75rem];
+  .field-input[type="date"] {
+    @apply block w-full;
   }
 
   .field-input::placeholder,
@@ -367,6 +367,12 @@
 
   .dialog-shell-body {
     @apply min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-5 py-4 sm:px-6;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .dialog-shell-body::-webkit-scrollbar {
+    display: none;
   }
 
   .dialog-shell-footer {

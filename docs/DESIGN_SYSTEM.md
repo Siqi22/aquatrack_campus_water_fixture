@@ -283,7 +283,7 @@ Base token: `--radius: 0.75rem` (12px).
 
 **Input rules:**
 - Value: `text-sm`; placeholder: fixed 11px via `::placeholder`
-- Date-only fields: `.field-input-date` — constrained width, not full bleed
+- Date fields use the same full-width `.field-input` layout as other controls (label on one line, input below)
 - Never use `text-base` on placeholders — they should read lighter and slightly smaller than typed text
 
 ### 8.5 Selectable cards
@@ -316,7 +316,7 @@ Structure (Export, Import, and future modals):
 
 - Shell uses **`!flex flex-col`** (overrides shadcn `grid` on `DialogContent`) so the body can scroll
 - Header: **always left-aligned** (`.dialog-shell-header`, `pr-12` for close button)
-- Body: `.dialog-shell-body` — `flex-1 min-h-0 overflow-y-auto overflow-x-hidden`
+- Body: `.dialog-shell-body` — `flex-1 min-h-0 overflow-y-auto overflow-x-hidden`; scrollbar hidden (touch/trackpad scroll still works)
 - No horizontal scroll tables — use stacked key-value preview
 - Footer: `.dialog-shell-footer` — full-width buttons on mobile
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -54,6 +54,8 @@ function ExportDialogBody({
   fixtures,
   applyTemplate,
   toggle,
+  selectAllColumns,
+  selectNoColumns,
   previewCols,
   sampleValues,
   sampleRow,
@@ -79,6 +81,8 @@ function ExportDialogBody({
   fixtures: Fixture[];
   applyTemplate: (id: string) => void;
   toggle: (k: ExportColumnKey) => void;
+  selectAllColumns: () => void;
+  selectNoColumns: () => void;
   previewCols: typeof EXPORT_COLUMNS;
   sampleValues: string[] | null;
   sampleRow: Fixture | undefined;
@@ -126,6 +130,92 @@ function ExportDialogBody({
         </div>
       </section>
 
+      <section className="space-y-2.5 border-t pt-4">
+        <p className="section-label">Filename</p>
+        <label className="field-label block">
+          <span className="block">Campus</span>
+          <select
+            value={campusToken}
+            onChange={(e) => setCampusToken(e.target.value)}
+            className="field-input mt-1 block w-full"
+          >
+            <option value="all">All campuses</option>
+            {campusOptions.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field-label block">
+          <span className="block">Date</span>
+          <input
+            type="date"
+            value={dateToken}
+            onChange={(e) => setDateToken(e.target.value)}
+            className="field-input mt-1 block w-full"
+          />
+        </label>
+        <label className="flex items-center gap-2 text-xs text-foreground">
+          <Checkbox
+            checked={includeTemplate}
+            onCheckedChange={(v) => setIncludeTemplate(!!v)}
+          />
+          Include template ({templateId})
+        </label>
+        <input
+          value={customSuffix}
+          onChange={(e) => setCustomSuffix(e.target.value)}
+          placeholder="Custom suffix (optional)"
+          className="field-input"
+        />
+        <div className="rounded-xl border px-3 py-2">
+          <p className="break-all font-mono text-caption text-foreground">{filename}</p>
+          <p className="mt-0.5 text-micro text-muted-foreground">
+            {filteredFixtures.length} of {fixtures.length} fixtures
+          </p>
+        </div>
+      </section>
+
+      <section className="border-t pt-4">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <p className="section-label">{selected.length} columns</p>
+          <div className="flex gap-2 text-xs">
+            <button
+              type="button"
+              className="font-semibold text-primary"
+              onClick={selectAllColumns}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              className="font-medium text-muted-foreground"
+              onClick={selectNoColumns}
+            >
+              None
+            </button>
+          </div>
+        </div>
+        <div className="overflow-hidden rounded-xl border divide-y">
+          {EXPORT_COLUMNS.map((c) => {
+            const checked = selected.includes(c.key);
+            return (
+              <label
+                key={c.key}
+                className={`flex cursor-pointer items-center gap-2.5 px-3 py-2 text-xs ${
+                  checked ? "bg-primary/[0.03]" : ""
+                }`}
+                onMouseDown={(e) => e.preventDefault()}
+              >
+                <Checkbox checked={checked} onCheckedChange={() => toggle(c.key)} />
+                <span className="font-medium text-foreground">{c.label}</span>
+              </label>
+            );
+          })}
+        </div>
+      </section>
+
       <section className="border-t pt-4">
         <p className="section-label mb-2 flex items-center gap-1.5">
           <FileText className="h-3 w-3" /> Preview · {previewCols.length} cols
@@ -159,97 +249,6 @@ function ExportDialogBody({
         {sampleRow && previewCols.length > 0 && (
           <p className="mt-1 text-micro text-muted-foreground">Sample from first fixture.</p>
         )}
-      </section>
-
-      <section className="space-y-2.5 border-t pt-4">
-        <p className="section-label">Filename</p>
-        <label className="field-label block">
-          Campus
-          <select
-            value={campusToken}
-            onChange={(e) => setCampusToken(e.target.value)}
-            className="field-input mt-1"
-          >
-            <option value="all">All campuses</option>
-            {campusOptions.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field-label block">
-          Date
-          <input
-            type="date"
-            value={dateToken}
-            onChange={(e) => setDateToken(e.target.value)}
-            className="field-input field-input-date mt-1"
-          />
-        </label>
-        <label className="flex items-center gap-2 text-xs text-foreground">
-          <Checkbox
-            checked={includeTemplate}
-            onCheckedChange={(v) => setIncludeTemplate(!!v)}
-          />
-          Include template ({templateId})
-        </label>
-        <input
-          value={customSuffix}
-          onChange={(e) => setCustomSuffix(e.target.value)}
-          placeholder="Custom suffix (optional)"
-          className="field-input"
-        />
-        <div className="rounded-xl border px-3 py-2">
-          <p className="break-all font-mono text-caption text-foreground">{filename}</p>
-          <p className="mt-0.5 text-micro text-muted-foreground">
-            {filteredFixtures.length} of {fixtures.length} fixtures
-          </p>
-        </div>
-      </section>
-
-      <section className="border-t pt-4">
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <p className="section-label">{selected.length} columns</p>
-          <div className="flex gap-2 text-xs">
-            <button
-              type="button"
-              className="font-semibold text-primary"
-              onClick={() => {
-                setTemplateId("custom");
-                setSelected(EXPORT_COLUMNS.map((c) => c.key));
-              }}
-            >
-              All
-            </button>
-            <button
-              type="button"
-              className="font-medium text-muted-foreground"
-              onClick={() => {
-                setTemplateId("custom");
-                setSelected([]);
-              }}
-            >
-              None
-            </button>
-          </div>
-        </div>
-        <div className="overflow-hidden rounded-xl border divide-y">
-          {EXPORT_COLUMNS.map((c) => {
-            const checked = selected.includes(c.key);
-            return (
-              <label
-                key={c.key}
-                className={`flex cursor-pointer items-center gap-2.5 px-3 py-2 text-xs ${
-                  checked ? "bg-primary/[0.03]" : ""
-                }`}
-              >
-                <Checkbox checked={checked} onCheckedChange={() => toggle(c.key)} />
-                <span className="font-medium text-foreground">{c.label}</span>
-              </label>
-            );
-          })}
-        </div>
       </section>
     </div>
   );
@@ -297,17 +296,48 @@ export function ExportDialog({
     return m;
   }, [campuses]);
 
+  const bodyScrollRef = useRef<HTMLDivElement>(null);
+  const scrollTopRef = useRef(0);
+
+  const preserveScroll = (action: () => void) => {
+    scrollTopRef.current = bodyScrollRef.current?.scrollTop ?? 0;
+    action();
+  };
+
+  useLayoutEffect(() => {
+    const el = bodyScrollRef.current;
+    if (el) el.scrollTop = scrollTopRef.current;
+  }, [selected]);
+
   const applyTemplate = (id: string) => {
-    setTemplateId(id);
-    const tpl = EXPORT_TEMPLATES.find((t) => t.id === id);
-    if (tpl) setSelected(tpl.keys);
+    preserveScroll(() => {
+      setTemplateId(id);
+      const tpl = EXPORT_TEMPLATES.find((t) => t.id === id);
+      if (tpl) setSelected(tpl.keys);
+    });
   };
 
   const toggle = (k: ExportColumnKey) => {
-    setTemplateId("custom");
-    setSelected((prev) =>
-      prev.includes(k) ? prev.filter((x) => x !== k) : [...prev, k],
-    );
+    preserveScroll(() => {
+      setTemplateId("custom");
+      setSelected((prev) =>
+        prev.includes(k) ? prev.filter((x) => x !== k) : [...prev, k],
+      );
+    });
+  };
+
+  const selectAllColumns = () => {
+    preserveScroll(() => {
+      setTemplateId("custom");
+      setSelected(EXPORT_COLUMNS.map((c) => c.key));
+    });
+  };
+
+  const selectNoColumns = () => {
+    preserveScroll(() => {
+      setTemplateId("custom");
+      setSelected([]);
+    });
   };
 
   const previewCols = useMemo(
@@ -386,6 +416,8 @@ export function ExportDialog({
     fixtures,
     applyTemplate,
     toggle,
+    selectAllColumns,
+    selectNoColumns,
     previewCols,
     sampleValues,
     sampleRow,
@@ -401,7 +433,7 @@ export function ExportDialog({
             Choose a template, adjust columns, download.
           </p>
         </DialogHeader>
-        <div className="dialog-shell-body">
+        <div ref={bodyScrollRef} className="dialog-shell-body">
           <ExportDialogBody {...bodyProps} />
         </div>
         <DialogFooter className="dialog-shell-footer">
