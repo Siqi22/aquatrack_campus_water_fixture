@@ -2,6 +2,9 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
+import { loadPublicSupabaseEnv } from "./src/lib/loadPublicEnv";
+
+loadPublicSupabaseEnv();
 
 // Vercel needs absolute asset paths (`/`); Capacitor local bundle uses relative (`./`).
 const base = process.env.VERCEL ? "/" : "./";

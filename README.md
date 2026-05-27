@@ -90,7 +90,9 @@ cp .env.example .env.local
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | Anon / publishable key (client-safe) |
 | `VITE_SUPABASE_PROJECT_ID` | Project reference ID |
 
-Never commit `.env`, `.env.local`, or real API keys. A pre-commit hook blocks common secret patterns.
+Never commit `.env`, `.env.local`, or real API keys. A pre-commit hook blocks common secret patterns (client anon keys in `env/supabase.public.env` are allowed — see below).
+
+**Lovable preview / sync repo:** Git does not include `.env.local`. The app loads `env/supabase.public.env` at build time so Lovable preview works after `git push lovable`. You can still override in Lovable **Cloud → Secrets** or local `.env.local`.
 
 **Vercel:** import `env/vercel.import.env.example` (filled) via Dashboard → Environment Variables → Import `.env`, then **Redeploy**. `vercel.json` handles SPA routing; the build uses `base: /` on Vercel automatically.
 

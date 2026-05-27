@@ -17,9 +17,12 @@ if [ -n "$staged_additions" ] && printf '%s\n' "$staged_additions" | grep -qE 'p
 fi
 
 # Block staged Supabase anon JWTs (eyJ... with role anon payload pattern in long tokens).
-if [ -n "$staged_additions" ] && printf '%s\n' "$staged_additions" | grep -qE 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.eyJ[A-Za-z0-9_-]{40,}'; then
+# Exception: env/supabase.public.env holds the client-safe anon key for Lovable/git-sync builds.
+staged_non_public=$(git diff --cached -U0 -- . ':(exclude).githooks/' ':(exclude)env/supabase.public.env' | grep '^+' | grep -Fv '+++' || true)
+if [ -n "$staged_non_public" ] && printf '%s\n' "$staged_non_public" | grep -qE 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.eyJ[A-Za-z0-9_-]{40,}'; then
   echo "pre-commit: blocked — staged changes appear to contain a Supabase JWT." >&2
   echo "Use placeholders in committed files; keep real keys in .env.local / Vercel env only." >&2
+  echo "Client anon keys for Lovable belong in env/supabase.public.env only." >&2
   exit 1
 fi
 

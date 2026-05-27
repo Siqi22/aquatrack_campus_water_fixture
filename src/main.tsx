@@ -1,11 +1,9 @@
 import { createRoot } from "react-dom/client";
 import "./index.css";
+import { hasSupabaseEnv } from "@/lib/supabaseEnv";
 
 const rootEl = document.getElementById("root");
 if (!rootEl) throw new Error("Root element #root not found");
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 function renderMissingConfig() {
   createRoot(rootEl!).render(
@@ -25,15 +23,16 @@ function renderMissingConfig() {
         <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Missing Supabase configuration</h1>
         <p style={{ fontSize: 14, lineHeight: 1.5, color: "#475569" }}>
           Copy <code>.env.example</code> to <code>.env.local</code>, fill in{" "}
-          <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_PUBLISHABLE_KEY</code> from your
-          Supabase project settings, then restart <code>npm run dev</code>.
+          <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_PUBLISHABLE_KEY</code>, then restart{" "}
+          <code>npm run dev</code>. On Lovable, also check Cloud → Secrets or ensure{" "}
+          <code>env/supabase.public.env</code> is present after git sync.
         </p>
       </div>
     </div>,
   );
 }
 
-if (!supabaseUrl?.trim() || !supabaseKey?.trim()) {
+if (!hasSupabaseEnv()) {
   renderMissingConfig();
 } else {
   import("./App.tsx").then(async ({ default: App }) => {
