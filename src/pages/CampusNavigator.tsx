@@ -6,11 +6,20 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { FLOOR_STATUS_LABELS } from '@/lib/fieldLabels';
 import { loadCampusNavState, saveCampusNavState } from '@/lib/campusNavState';
 import { floorStatusPillClass } from '@/lib/statusStyles';
-import { Building2, ChevronRight, ChevronDown, Layers } from 'lucide-react';
+import { canMarkFloorComplete } from '@/lib/roles';
+import { Building2, ChevronRight, ChevronDown, Layers, CheckCircle2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function CampusNavigator() {
-  const { campuses, getBuildingsByCampus, getFixturesByBuilding, getFixturesByCampus, getFloorsByBuilding } =
-    useFixtureStore();
+  const {
+    campuses,
+    getBuildingsByCampus,
+    getFixturesByBuilding,
+    getFixturesByCampus,
+    getFloorsByBuilding,
+    setFloorStatus,
+    primaryRole,
+  } = useFixtureStore();
   const navigate = useNavigate();
 
   const defaultCampusId = campuses[0]?.id || '';
@@ -37,6 +46,17 @@ export default function CampusNavigator() {
   const campusBuildings = selectedCampus ? getBuildingsByCampus(selectedCampus) : [];
   const campusFixtureCount = selectedCampus ? getFixturesByCampus(selectedCampus).length : 0;
   const currentCampus = campuses.find((c) => c.id === selectedCampus);
+  const canCompleteFloors = canMarkFloorComplete(primaryRole);
+
+  async function handleMarkFloorComplete(buildingId: string, floor: string) {
+    try {
+      await setFloorStatus(buildingId, floor, 'Done');
+      toast.success(`Floor ${floor} marked complete`);
+    } catch (error) {
+      console.error(error);
+      toast.error(error instanceof Error ? error.message : 'Could not update floor status');
+    }
+  }
 
   function backFromFloor() {
     if (selectedFloor) {
@@ -158,22 +178,36 @@ export default function CampusNavigator() {
                 {isOpen && (
                   <div className="border-t px-2 pb-2">
                     {floors.map((fp) => (
-                      <button
+                      <div
                         key={fp.floor}
-                        type="button"
-                        onClick={() => {
-                          setExpandedBuilding(b.id);
-                          setSelectedFloor({ buildingId: b.id, floor: fp.floor });
-                        }}
-                        className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-secondary/50"
+                        className="flex items-center gap-2 rounded-xl px-3 py-2.5 transition-colors hover:bg-secondary/50"
                       >
-                        <Layers className="h-4 w-4 text-muted-foreground" />
-                        <span className="flex-1 text-sm text-foreground">Floor {fp.floor}</span>
-                        <span className={`status-pill ${floorStatusPillClass[fp.status]}`}>
-                          {FLOOR_STATUS_LABELS[fp.status] ?? fp.status}
-                        </span>
-                        <ChevronRight className="h-3 w-3 text-muted-foreground" />
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setExpandedBuilding(b.id);
+                            setSelectedFloor({ buildingId: b.id, floor: fp.floor });
+                          }}
+                          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                        >
+                          <Layers className="h-4 w-4 text-muted-foreground" />
+                          <span className="flex-1 text-sm text-foreground">Floor {fp.floor}</span>
+                          <span className={`status-pill ${floorStatusPillClass[fp.status]}`}>
+                            {FLOOR_STATUS_LABELS[fp.status] ?? fp.status}
+                          </span>
+                          <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                        </button>
+                        {canCompleteFloors && fp.status === 'InProgress' && (
+                          <button
+                            type="button"
+                            onClick={() => handleMarkFloorComplete(b.id, fp.floor)}
+                            className="shrink-0 rounded-full bg-primary px-2.5 py-1 text-[10px] font-semibold text-primary-foreground"
+                            title={`Mark floor ${fp.floor} complete`}
+                          >
+                            <CheckCircle2 className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
                     ))}
                   </div>
                 )}

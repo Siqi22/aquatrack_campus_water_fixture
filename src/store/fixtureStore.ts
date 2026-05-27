@@ -676,15 +676,50 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
       started_at: status !== 'NotStarted' ? today : null,
       ended_at: status === 'Done' || status === 'Restricted' ? today : null,
     };
-    const { error } = await supabase.from('floor_progress').update(patch).eq('building_id', buildingId).eq('floor', dbFloor);
-    if (error) { console.error(error); return; }
-    set((s) => ({
-      floorProgress: s.floorProgress.map((p) =>
-        p.buildingId === buildingId && normalizeFloorKey(p.floor) === normalizeFloorKey(dbFloor)
-          ? { ...p, status, restrictedReason: patch.restricted_reason ?? undefined, startedAt: patch.started_at ?? undefined, endedAt: patch.ended_at ?? undefined }
-          : p,
-      ),
-    }));
+
+    if (existing) {
+      const { error } = await supabase
+        .from('floor_progress')
+        .update(patch)
+        .eq('building_id', buildingId)
+        .eq('floor', dbFloor);
+      if (error) {
+        console.error(error);
+        throw new Error(formatSupabaseError(error));
+      }
+      set((s) => ({
+        floorProgress: s.floorProgress.map((p) =>
+          p.buildingId === buildingId && normalizeFloorKey(p.floor) === normalizeFloorKey(dbFloor)
+            ? {
+                ...p,
+                status,
+                restrictedReason: patch.restricted_reason ?? undefined,
+                startedAt: patch.started_at ?? undefined,
+                endedAt: patch.ended_at ?? undefined,
+              }
+            : p,
+        ),
+      }));
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('floor_progress')
+      .insert({
+        building_id: buildingId,
+        floor: dbFloor,
+        status,
+        restricted_reason: patch.restricted_reason ?? null,
+        started_at: patch.started_at ?? null,
+        ended_at: patch.ended_at ?? null,
+      })
+      .select('*')
+      .single();
+    if (error || !data) {
+      console.error(error);
+      throw new Error(formatSupabaseError(error));
+    }
+    set((s) => ({ floorProgress: [...s.floorProgress, mapFloorProgress(data)] }));
   },
 
   getFloorProgress: (buildingId, floor) => {

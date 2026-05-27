@@ -44,7 +44,12 @@ export function hasMinRole(role: AppRole, minimum: AppRole): boolean {
   return ROLE_RANK[role] >= ROLE_RANK[minimum];
 }
 
-/** Mark floor complete / unlock — building coordinator and above. */
+/** Mark floor complete after surveying — all authenticated collectors. */
+export function canMarkFloorComplete(_role: AppRole): boolean {
+  return true;
+}
+
+/** Unlock floor / coordinator-only progress controls — building coordinator and above. */
 export function canManageFloorProgress(role: AppRole): boolean {
   return hasMinRole(role, 'Facilities');
 }

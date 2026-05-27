@@ -2,9 +2,10 @@ import { Link } from 'react-router-dom';
 import { useFixtureStore, getFixtureStatus } from '@/store/fixtureStore';
 import { StatusBadge } from '@/components/StatusBadge';
 import { FIELD_LABELS, FLOOR_STATUS_LABELS } from '@/lib/fieldLabels';
-import { canManageFloorProgress, canMarkFloorLocked } from '@/lib/roles';
+import { canMarkFloorComplete, canManageFloorProgress, canMarkFloorLocked } from '@/lib/roles';
 import { floorStatusPillClass, fixtureStatusDotClass } from '@/lib/statusStyles';
-import { Droplets, Lock, PlusCircle } from 'lucide-react';
+import { Droplets, Lock, PlusCircle, CheckCircle2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface FloorPlanViewProps {
   buildingId: string;
@@ -15,15 +16,49 @@ interface FloorPlanViewProps {
 
 export function FloorPlanView({ buildingId, floor, buildingName, campusId }: FloorPlanViewProps) {
   const { getFixturesByBuildingAndFloor, getFloorProgress, setFloorStatus, primaryRole } = useFixtureStore();
+  const canComplete = canMarkFloorComplete(primaryRole);
   const canManageProgress = canManageFloorProgress(primaryRole);
   const canLock = canMarkFloorLocked(primaryRole);
   const fixtures = getFixturesByBuildingAndFloor(buildingId, floor);
   const floorProgress = getFloorProgress(buildingId, floor);
   const isLocked = floorProgress.status === 'Restricted';
+  const isDone = floorProgress.status === 'Done';
 
   const statusPill = floorStatusPillClass;
 
   const addHref = `/add?mode=onboard&buildingId=${encodeURIComponent(buildingId)}&floor=${encodeURIComponent(floor)}${campusId ? `&campusId=${encodeURIComponent(campusId)}` : ''}`;
+
+  async function handleMarkComplete() {
+    try {
+      await setFloorStatus(buildingId, floor, 'Done');
+      toast.success(`Floor ${floor} marked complete`);
+    } catch (error) {
+      console.error(error);
+      toast.error(error instanceof Error ? error.message : 'Could not update floor status');
+    }
+  }
+
+  async function handleUnlock() {
+    try {
+      await setFloorStatus(buildingId, floor, 'InProgress');
+      toast.success(`Floor ${floor} unlocked`);
+    } catch (error) {
+      console.error(error);
+      toast.error(error instanceof Error ? error.message : 'Could not update floor status');
+    }
+  }
+
+  async function handleLock() {
+    const reason = window.prompt('Why is this floor locked? (e.g. needs key/card)', floorProgress.restrictedReason ?? '');
+    if (reason === null) return;
+    try {
+      await setFloorStatus(buildingId, floor, 'Restricted', { restrictedReason: reason });
+      toast.success(`Floor ${floor} marked locked`);
+    } catch (error) {
+      console.error(error);
+      toast.error(error instanceof Error ? error.message : 'Could not update floor status');
+    }
+  }
 
   return (
     <div className="card-soft overflow-hidden">
@@ -42,26 +77,26 @@ export function FloorPlanView({ buildingId, floor, buildingName, campusId }: Flo
 
         <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
           <div
-            className={`h-full transition-all ${fixtures.length > 0 ? 'bg-status-good/80' : 'bg-muted'}`}
-            style={{ width: fixtures.length > 0 ? '100%' : '8%' }}
+            className={`h-full transition-all ${isDone ? 'bg-status-good' : fixtures.length > 0 ? 'bg-status-good/80' : 'bg-muted'}`}
+            style={{ width: isDone || fixtures.length > 0 ? '100%' : '8%' }}
           />
         </div>
 
         <div className="mt-2 flex flex-wrap gap-2">
-          {canManageProgress && !isLocked && fixtures.length > 0 && floorProgress.status !== 'Done' && (
+          {canComplete && !isLocked && !isDone && (
             <button
-              onClick={() => setFloorStatus(buildingId, floor, 'Done')}
-              className="rounded-full bg-secondary px-3 py-1 text-[10px] font-semibold text-secondary-foreground"
+              type="button"
+              onClick={handleMarkComplete}
+              className="rounded-full bg-primary px-3 py-1 text-[10px] font-semibold text-primary-foreground"
             >
+              <CheckCircle2 className="mr-1 inline h-3 w-3" />
               Mark floor complete
             </button>
           )}
-          {canLock && !isLocked && (
+          {canLock && !isLocked && !isDone && (
             <button
-              onClick={() => {
-                const reason = window.prompt('Why is this floor locked? (e.g. needs key/card)', floorProgress.restrictedReason ?? '');
-                if (reason !== null) setFloorStatus(buildingId, floor, 'Restricted', { restrictedReason: reason });
-              }}
+              type="button"
+              onClick={handleLock}
               className="rounded-full bg-secondary px-3 py-1 text-[10px] font-semibold text-secondary-foreground"
             >
               <Lock className="mr-1 inline h-3 w-3" />
@@ -70,7 +105,8 @@ export function FloorPlanView({ buildingId, floor, buildingName, campusId }: Flo
           )}
           {canManageProgress && isLocked && (
             <button
-              onClick={() => setFloorStatus(buildingId, floor, 'InProgress')}
+              type="button"
+              onClick={handleUnlock}
               className="rounded-full bg-secondary px-3 py-1 text-[10px] font-semibold text-secondary-foreground"
             >
               Unlock floor
@@ -96,45 +132,71 @@ export function FloorPlanView({ buildingId, floor, buildingName, campusId }: Flo
         </div>
       ) : fixtures.length === 0 ? (
         <div className="empty-state px-4 py-10">
+          {isDone ? (
+            <div className="mb-4 rounded-2xl border bg-status-good/5 p-4 text-left">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-status-good" />
+                <p className="text-sm font-semibold text-foreground">Floor complete</p>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">No fixtures were recorded on this floor.</p>
+            </div>
+          ) : null}
           <Droplets className="empty-state-icon" />
           <p className="text-sm font-medium text-foreground">No fixtures on this floor yet</p>
-          <p className="mt-1 text-caption text-muted-foreground">Record fixtures here, or mark the floor locked if there is no access.</p>
-          <Link to={addHref} className="btn-primary mt-4 inline-flex text-xs">
-            <PlusCircle className="h-3.5 w-3.5" />
-            Add first fixture
-          </Link>
+          <p className="mt-1 text-caption text-muted-foreground">
+            Record fixtures here, mark the floor complete if finished, or mark it locked if there is no access.
+          </p>
+          {!isDone ? (
+            <Link to={addHref} className="btn-primary mt-4 inline-flex text-xs">
+              <PlusCircle className="h-3.5 w-3.5" />
+              Add first fixture
+            </Link>
+          ) : null}
         </div>
       ) : (
-        <div className="divide-y">
-          {fixtures.map((f) => {
-            const status = getFixtureStatus(f.lastMaintenanceDate);
-            return (
-              <Link
-                key={f.id}
-                to={`/fixture/${f.id}`}
-                className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-secondary/20"
-              >
-                <div className={`h-2.5 w-2.5 shrink-0 rounded-full ${fixtureStatusDotClass[status]}`} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-foreground">
-                    {FIELD_LABELS.room}: {f.nearestRoom || f.roomNumber}
-                  </p>
-                  <p className="truncate text-[11px] text-muted-foreground">
-                    {[f.brand, f.model, f.serialNumber].filter(Boolean).join(' · ') || 'Details pending'}
-                  </p>
-                </div>
-                <StatusBadge status={status} />
-              </Link>
-            );
-          })}
-          <div className="p-3">
-            <Link
-              to={addHref}
-              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-primary/40 py-2.5 text-xs font-semibold text-primary"
-            >
-              <PlusCircle className="h-3.5 w-3.5" />
-              Add another fixture
-            </Link>
+        <div>
+          {isDone ? (
+            <div className="border-b bg-status-good/5 px-4 py-3">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-status-good" />
+                <p className="text-sm font-semibold text-foreground">Floor complete</p>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">Survey finished — fixtures below are read-only for review.</p>
+            </div>
+          ) : null}
+          <div className="divide-y">
+            {fixtures.map((f) => {
+              const status = getFixtureStatus(f.lastMaintenanceDate);
+              return (
+                <Link
+                  key={f.id}
+                  to={`/fixture/${f.id}`}
+                  className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-secondary/20"
+                >
+                  <div className={`h-2.5 w-2.5 shrink-0 rounded-full ${fixtureStatusDotClass[status]}`} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-foreground">
+                      {FIELD_LABELS.room}: {f.nearestRoom || f.roomNumber}
+                    </p>
+                    <p className="truncate text-[11px] text-muted-foreground">
+                      {[f.brand, f.model, f.serialNumber].filter(Boolean).join(' · ') || 'Details pending'}
+                    </p>
+                  </div>
+                  <StatusBadge status={status} />
+                </Link>
+              );
+            })}
+            {!isDone ? (
+              <div className="p-3">
+                <Link
+                  to={addHref}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-primary/40 py-2.5 text-xs font-semibold text-primary"
+                >
+                  <PlusCircle className="h-3.5 w-3.5" />
+                  Add another fixture
+                </Link>
+              </div>
+            ) : null}
           </div>
         </div>
       )}

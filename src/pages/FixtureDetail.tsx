@@ -194,6 +194,9 @@ export default function FixtureDetail() {
   const displayBuilding = editing ? buildings.find((b) => b.id === buildingId) : building;
   const displayFloor = editing ? floor : fixture.floor;
   const displayRoom = editing ? nearestRoom || roomNumber : fixture.nearestRoom || fixture.roomNumber;
+  const fixtureIdentity = editing
+    ? [brand, model].filter(Boolean).join(' · ')
+    : [fixture.brand, fixture.model].filter(Boolean).join(' · ');
 
   return (
     <div className="page-shell pb-8">
@@ -239,10 +242,9 @@ export default function FixtureDetail() {
             <p className="text-sm font-semibold text-foreground">
               {editing ? fixtureCategoryMeta[category].label : getFixtureCategoryLabel(fixture.category)}
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {displayCampus ? `${displayCampus.school} • ${displayCampus.name}` : 'Campus'}
-              {displayBuilding ? ` • ${displayBuilding.floors} floors` : ''}
-            </p>
+            {fixtureIdentity ? (
+              <p className="mt-1 truncate text-xs text-muted-foreground">{fixtureIdentity}</p>
+            ) : null}
           </div>
           <div className="flex flex-wrap justify-end gap-2">
             <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold text-secondary-foreground">
