@@ -527,7 +527,12 @@ export function estimateBuildingFloors(
   for (const l of locks) {
     if (l.campusLabel === campusLabel && l.buildingName === buildingName) floors.add(l.floor);
   }
-  return Math.max(floors.size, 1);
+  let maxNumeric = 1;
+  for (const floor of floors) {
+    const n = parseInt(floor, 10);
+    if (!Number.isNaN(n)) maxNumeric = Math.max(maxNumeric, n);
+  }
+  return Math.max(maxNumeric, floors.size, 1);
 }
 
 export function mappingLabel(key: ImportFieldKey): string {

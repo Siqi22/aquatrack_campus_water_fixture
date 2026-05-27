@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   useFixtureStore,
@@ -9,41 +9,107 @@ import {
   normalizeFixtureCategory,
   getFixtureCategoryLabel,
 } from '@/store/fixtureStore';
-import type { FixtureCategory } from '@/store/fixtureStore';
+import type { Fixture, FixtureCategory } from '@/store/fixtureStore';
 import { StatusBadge } from '@/components/StatusBadge';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { SimpleRating, ratingLabel } from '@/components/SimpleRating';
-import { FIELD_LABELS, issueLabel } from '@/lib/fieldLabels';
-import { MapPin, CheckCircle2, Edit3, Save, X, ExternalLink, Image as ImageIcon, Hash, Download, Building2, GraduationCap } from 'lucide-react';
+import { FIELD_LABELS, ISSUE_OPTIONS, issueLabel } from '@/lib/fieldLabels';
+import { uploadFixturePhoto } from '@/lib/uploadPhoto';
+import {
+  MapPin,
+  CheckCircle2,
+  Edit3,
+  Save,
+  X,
+  ExternalLink,
+  Image as ImageIcon,
+  Hash,
+  Download,
+  Building2,
+  GraduationCap,
+  Camera,
+  ImagePlus,
+  Loader2,
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function FixtureDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { campuses, buildings, getFixtureById, updateFixture, completeService } = useFixtureStore();
+  const { campuses, buildings, getFixtureById, getBuildingsByCampus, updateFixture, completeService } =
+    useFixtureStore();
   const fixture = getFixtureById(id || '');
+
   const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const [roomNumber, setRoomNumber] = useState(fixture?.roomNumber || '');
-  const [nearestRoom, setNearestRoom] = useState(fixture?.nearestRoom || fixture?.roomNumber || '');
-  const [brand, setBrand] = useState(fixture?.brand || '');
-  const [model, setModel] = useState(fixture?.model || '');
-  const [filterType, setFilterType] = useState(fixture?.filterType || '');
-  const [category, setCategory] = useState<FixtureCategory>(() =>
-    normalizeFixtureCategory(fixture?.category),
+  const [campusId, setCampusId] = useState('');
+  const [buildingId, setBuildingId] = useState('');
+  const [floor, setFloor] = useState('');
+  const [roomNumber, setRoomNumber] = useState('');
+  const [nearestRoom, setNearestRoom] = useState('');
+  const [brand, setBrand] = useState('');
+  const [model, setModel] = useState('');
+  const [serialNumber, setSerialNumber] = useState('');
+  const [filterType, setFilterType] = useState('');
+  const [installationDate, setInstallationDate] = useState('');
+  const [category, setCategory] = useState<FixtureCategory>('Other');
+  const [pressure, setPressure] = useState(2);
+  const [cleanliness, setCleanliness] = useState(2);
+  const [observations, setObservations] = useState('');
+  const [issues, setIssues] = useState<string[]>([]);
+  const [photoURL, setPhotoURL] = useState('');
+  const [modelPlatePhotoURL, setModelPlatePhotoURL] = useState('');
+
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
+  const platePhotoInputRef = useRef<HTMLInputElement | null>(null);
+
+  const campusBuildings = useMemo(
+    () => (campusId ? getBuildingsByCampus(campusId) : []),
+    [campusId, getBuildingsByCampus],
   );
-  const [pressure, setPressure] = useState(fixture?.qualityRating.pressure || 2);
-  const [cleanliness, setCleanliness] = useState(fixture?.qualityRating.cleanliness || 2);
-  const [observations, setObservations] = useState(fixture?.observations || '');
+  const campus = fixture ? campuses.find((c) => c.id === (editing ? campusId : fixture.campusId)) : undefined;
+  const building = buildings.find((b) => b.id === (editing ? buildingId : fixture?.buildingId));
 
-  const campus = fixture ? campuses.find((c) => c.id === fixture.campusId) : undefined;
-  const building = fixture ? buildings.find((b) => b.id === fixture.buildingId) : undefined;
+  function resetFormFromFixture(source: Fixture) {
+    setCampusId(source.campusId);
+    setBuildingId(source.buildingId);
+    setFloor(source.floor);
+    setRoomNumber(source.roomNumber);
+    setNearestRoom(source.nearestRoom || source.roomNumber);
+    setBrand(source.brand);
+    setModel(source.model);
+    setSerialNumber(source.serialNumber);
+    setFilterType(source.filterType);
+    setInstallationDate(source.installationDate ?? '');
+    setCategory(normalizeFixtureCategory(source.category));
+    setPressure(source.qualityRating.pressure);
+    setCleanliness(source.qualityRating.cleanliness);
+    setObservations(source.observations || '');
+    setIssues(source.issues ?? []);
+    setPhotoURL(source.photoURL);
+    setModelPlatePhotoURL(source.modelPlatePhotoURL);
+  }
+
+  useEffect(() => {
+    if (!fixture) return;
+    resetFormFromFixture(fixture);
+  }, [fixture?.id]);
+
+  useEffect(() => {
+    if (!editing || !buildingId) return;
+    if (!campusBuildings.some((b) => b.id === buildingId)) {
+      setBuildingId(campusBuildings[0]?.id ?? '');
+    }
+  }, [editing, campusId, campusBuildings, buildingId]);
 
   if (!fixture) {
     return (
       <div className="page-shell pt-6 text-center">
         <p className="text-muted-foreground">Fixture not found.</p>
-        <button onClick={() => navigate(-1)} className="link-action mt-4 text-sm">Go back</button>
+        <button onClick={() => navigate(-1)} className="link-action mt-4 text-sm">
+          Go back
+        </button>
       </div>
     );
   }
@@ -52,20 +118,69 @@ export default function FixtureDetail() {
   const days = getDaysSinceMaintenance(fixture.lastMaintenanceDate);
   const remaining = Math.max(0, 180 - days);
 
-  function handleSave() {
-    updateFixture({
-      ...fixture,
-      roomNumber,
-      nearestRoom,
-      brand,
-      model,
-      filterType,
-      category,
-      qualityRating: { pressure, cleanliness },
-      observations: observations || undefined,
-    });
+  function handleFileUpload(file: File, setter: (value: string) => void) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : '';
+      setter(result);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function handleCancelEdit() {
+    resetFormFromFixture(fixture);
     setEditing(false);
-    toast.success('Fixture updated');
+  }
+
+  async function handleSave() {
+    const trimmedRoom = (nearestRoom || roomNumber).trim();
+    if (!campusId || !buildingId || !floor.trim() || trimmedRoom.length < 2) {
+      toast.error('Campus, building, floor, and room (min 2 chars) are required.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const [nextPhotoURL, nextPlateURL] = await Promise.all([
+        photoURL.startsWith('data:') ? uploadFixturePhoto(photoURL, 'general') : Promise.resolve(photoURL),
+        modelPlatePhotoURL.startsWith('data:')
+          ? uploadFixturePhoto(modelPlatePhotoURL, 'plate')
+          : Promise.resolve(modelPlatePhotoURL),
+      ]);
+
+      const photosProvided: string[] = [];
+      if (nextPhotoURL) photosProvided.push('general');
+      if (nextPlateURL) photosProvided.push('plate');
+
+      await updateFixture({
+        ...fixture,
+        campusId,
+        buildingId,
+        floor: floor.trim(),
+        roomNumber: trimmedRoom,
+        nearestRoom: trimmedRoom,
+        brand,
+        model,
+        serialNumber,
+        filterType,
+        installationDate: installationDate || undefined,
+        category,
+        qualityRating: { pressure, cleanliness },
+        observations: observations.trim() || undefined,
+        issues: issues.length ? issues : undefined,
+        photoURL: nextPhotoURL,
+        modelPlatePhotoURL: nextPlateURL,
+        photosProvided,
+        locationConfirmed: true,
+      });
+      setEditing(false);
+      toast.success('Fixture updated');
+    } catch (error) {
+      console.error(error);
+      toast.error(error instanceof Error ? error.message : 'Could not save fixture');
+    } finally {
+      setSaving(false);
+    }
   }
 
   function handleComplete() {
@@ -73,31 +188,66 @@ export default function FixtureDetail() {
     toast.success('Service completed — timer reset!');
   }
 
+  const displayPhotoURL = editing ? photoURL : fixture.photoURL;
+  const displayPlateURL = editing ? modelPlatePhotoURL : fixture.modelPlatePhotoURL;
+  const displayCampus = editing ? campuses.find((c) => c.id === campusId) : campus;
+  const displayBuilding = editing ? buildings.find((b) => b.id === buildingId) : building;
+  const displayFloor = editing ? floor : fixture.floor;
+  const displayRoom = editing ? nearestRoom || roomNumber : fixture.nearestRoom || fixture.roomNumber;
+
   return (
     <div className="page-shell pb-8">
       <PageHeader
-        title={fixture.buildingName}
-        subtitle={`Floor ${fixture.floor} · Room ${fixture.roomNumber}`}
+        title={editing ? displayBuilding?.name || fixture.buildingName : fixture.buildingName}
+        subtitle={`Floor ${displayFloor} · Room ${displayRoom}`}
         onBack={() => navigate(-1)}
-        action={<StatusBadge status={status} />}
+        action={
+          editing ? (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleCancelEdit}
+                disabled={saving}
+                className="flex items-center gap-1 text-xs text-muted-foreground"
+              >
+                <X className="h-3 w-3" /> Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving}
+                className="link-action"
+              >
+                {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                Save
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <StatusBadge status={status} />
+              <button type="button" onClick={() => setEditing(true)} className="link-action">
+                <Edit3 className="h-3 w-3" /> Edit
+              </button>
+            </div>
+          )
+        }
       />
 
-      {/* Quick summary */}
       <div className="card-soft p-4 mb-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-sm font-semibold text-foreground">
-              {getFixtureCategoryLabel(fixture.category)}
+              {editing ? fixtureCategoryMeta[category].label : getFixtureCategoryLabel(fixture.category)}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {campus ? `${campus.school} • ${campus.name}` : 'Campus'}
-              {building ? ` • ${building.floors} floors` : ''}
+              {displayCampus ? `${displayCampus.school} • ${displayCampus.name}` : 'Campus'}
+              {displayBuilding ? ` • ${displayBuilding.floors} floors` : ''}
             </p>
           </div>
           <div className="flex flex-wrap justify-end gap-2">
             <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold text-secondary-foreground">
               <MapPin className="h-3 w-3" />
-              F{fixture.floor} · Rm {fixture.roomNumber}
+              F{displayFloor} · Rm {displayRoom}
             </span>
             <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold text-secondary-foreground">
               <Hash className="h-3 w-3" />
@@ -131,18 +281,21 @@ export default function FixtureDetail() {
             <div className="mt-2 space-y-1.5 text-[11px]">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-muted-foreground">Pressure</span>
-                <span className="font-semibold text-foreground">{ratingLabel(fixture.qualityRating.pressure)}</span>
+                <span className="font-semibold text-foreground">
+                  {ratingLabel(editing ? pressure : fixture.qualityRating.pressure)}
+                </span>
               </div>
               <div className="flex items-center justify-between gap-2">
                 <span className="text-muted-foreground">Cleanliness</span>
-                <span className="font-semibold text-foreground">{ratingLabel(fixture.qualityRating.cleanliness)}</span>
+                <span className="font-semibold text-foreground">
+                  {ratingLabel(editing ? cleanliness : fixture.qualityRating.cleanliness)}
+                </span>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Photos + location */}
       <div className="grid grid-cols-1 gap-3 mb-4">
         <div className="card-section mb-4">
           <div className="panel-header">
@@ -153,15 +306,62 @@ export default function FixtureDetail() {
           </div>
 
           <div className="panel-body">
-            {fixture.photoURL || fixture.modelPlatePhotoURL ? (
+            {editing ? (
+              <>
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleFileUpload(file, setPhotoURL);
+                    e.currentTarget.value = '';
+                  }}
+                />
+                <input
+                  ref={platePhotoInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleFileUpload(file, setModelPlatePhotoURL);
+                    e.currentTarget.value = '';
+                  }}
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <PhotoEditor
+                    label={FIELD_LABELS.generalPhoto}
+                    url={photoURL}
+                    emptyIcon={Camera}
+                    onUpload={() => photoInputRef.current?.click()}
+                    onRemove={() => setPhotoURL('')}
+                  />
+                  <PhotoEditor
+                    label={FIELD_LABELS.modelLabel}
+                    url={modelPlatePhotoURL}
+                    emptyIcon={ImagePlus}
+                    onUpload={() => platePhotoInputRef.current?.click()}
+                    onRemove={() => setModelPlatePhotoURL('')}
+                  />
+                </div>
+              </>
+            ) : displayPhotoURL || displayPlateURL ? (
               <div className="grid grid-cols-2 gap-3">
-                <PhotoCard label="General" url={fixture.photoURL} filename={`${fixture.id}-general.jpg`} />
-                <PhotoCard label={FIELD_LABELS.modelLabel} url={fixture.modelPlatePhotoURL} filename={`${fixture.id}-plate.jpg`} />
+                <PhotoCard label="General" url={displayPhotoURL} filename={`${fixture.id}-general.jpg`} />
+                <PhotoCard
+                  label={FIELD_LABELS.modelLabel}
+                  url={displayPlateURL}
+                  filename={`${fixture.id}-plate.jpg`}
+                />
               </div>
             ) : (
               <div className="rounded-xl border bg-secondary/30 p-4 text-center text-muted-foreground">
                 <p className="text-sm font-medium">No photos attached</p>
-                <p className="mt-1 text-[11px]">Add photos from the Assets flow for faster identification.</p>
+                <p className="mt-1 text-[11px]">Tap Edit to upload fixture photos.</p>
               </div>
             )}
           </div>
@@ -176,33 +376,54 @@ export default function FixtureDetail() {
           </div>
 
           <div className="panel-body">
-            {fixture.buildingName || campus ? (
+            {editing ? (
               <div className="space-y-3">
-                {fixture.buildingName ? (
+                <Field label="Campus" as="select" value={campusId} onChange={setCampusId}>
+                  <option value="">Select campus</option>
+                  {campuses.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.school} — {c.name}
+                    </option>
+                  ))}
+                </Field>
+                <Field label="Building" as="select" value={buildingId} onChange={setBuildingId} disabled={!campusId}>
+                  <option value="">Select building</option>
+                  {campusBuildings.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </Field>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label={FIELD_LABELS.floor} value={floor} onChange={setFloor} />
+                  <Field label={FIELD_LABELS.room} value={nearestRoom} onChange={setNearestRoom} />
+                </div>
+              </div>
+            ) : displayCampus || displayBuilding ? (
+              <div className="space-y-3">
+                {displayBuilding ? (
                   <div className="flex items-start gap-3 rounded-xl border bg-secondary/20 p-3">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-card text-primary">
                       <Building2 className="h-4 w-4" />
                     </div>
                     <div className="min-w-0">
                       <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Building</p>
-                      <p className="mt-0.5 text-sm font-semibold text-foreground">{fixture.buildingName}</p>
-                      {building ? (
-                        <p className="mt-0.5 text-[11px] text-muted-foreground">{building.floors} floors</p>
-                      ) : null}
+                      <p className="mt-0.5 text-sm font-semibold text-foreground">{displayBuilding.name}</p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">{displayBuilding.floors} floors</p>
                     </div>
                   </div>
                 ) : null}
 
-                {campus ? (
+                {displayCampus ? (
                   <div className="flex items-start gap-3 rounded-xl border bg-secondary/20 p-3">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-card text-primary">
                       <GraduationCap className="h-4 w-4" />
                     </div>
                     <div className="min-w-0">
                       <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Campus</p>
-                      <p className="mt-0.5 text-sm font-semibold text-foreground">{campus.name}</p>
-                      {campus.school ? (
-                        <p className="mt-0.5 text-[11px] text-muted-foreground">{campus.school}</p>
+                      <p className="mt-0.5 text-sm font-semibold text-foreground">{displayCampus.name}</p>
+                      {displayCampus.school ? (
+                        <p className="mt-0.5 text-[11px] text-muted-foreground">{displayCampus.school}</p>
                       ) : null}
                     </div>
                   </div>
@@ -211,18 +432,18 @@ export default function FixtureDetail() {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="rounded-xl border bg-card/70 px-3 py-2.5">
                     <p className="text-[10px] font-medium text-muted-foreground">Floor</p>
-                    <p className="mt-0.5 text-sm font-semibold text-foreground">{fixture.floor}</p>
+                    <p className="mt-0.5 text-sm font-semibold text-foreground">{displayFloor}</p>
                   </div>
                   <div className="rounded-xl border bg-card/70 px-3 py-2.5">
                     <p className="text-[10px] font-medium text-muted-foreground">Room</p>
-                    <p className="mt-0.5 text-sm font-semibold text-foreground">{fixture.roomNumber}</p>
+                    <p className="mt-0.5 text-sm font-semibold text-foreground">{displayRoom}</p>
                   </div>
                 </div>
 
-                {campus?.address ? (
+                {displayCampus?.address ? (
                   <div className="rounded-xl border bg-card/70 px-3 py-2.5">
                     <p className="text-[10px] font-medium text-muted-foreground">Address</p>
-                    <p className="mt-1 text-sm leading-snug text-foreground">{campus.address}</p>
+                    <p className="mt-1 text-sm leading-snug text-foreground">{displayCampus.address}</p>
                   </div>
                 ) : (
                   <p className="text-[11px] text-muted-foreground">
@@ -233,43 +454,35 @@ export default function FixtureDetail() {
             ) : (
               <div className="rounded-xl border bg-secondary/30 p-4 text-center text-muted-foreground">
                 <p className="text-sm font-medium">No location details</p>
-                <p className="mt-1 text-[11px]">Add a campus address when onboarding this fixture.</p>
+                <p className="mt-1 text-[11px]">Tap Edit to set campus, building, floor, and room.</p>
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* Details */}
       <div className="rounded-2xl border bg-card p-4 mb-4">
-        <div className="flex items-center justify-between mb-3">
+        <div className="mb-3">
           <h2 className="text-sm font-semibold text-foreground">Fixture Details</h2>
-          {!editing ? (
-            <button onClick={() => setEditing(true)} className="link-action">
-              <Edit3 className="h-3 w-3" /> Edit
-            </button>
-          ) : (
-            <div className="flex gap-2">
-              <button onClick={() => setEditing(false)} className="flex items-center gap-1 text-xs text-muted-foreground">
-                <X className="h-3 w-3" /> Cancel
-              </button>
-              <button onClick={handleSave} className="link-action">
-                <Save className="h-3 w-3" /> Save
-              </button>
-            </div>
-          )}
         </div>
 
         <div className="space-y-3">
           {editing ? (
             <>
-              <Field label={FIELD_LABELS.room} value={roomNumber} onChange={setRoomNumber} />
-              <Field label="Nearest landmark" value={nearestRoom} onChange={setNearestRoom} />
-              <Field label={FIELD_LABELS.companyName} value={brand} onChange={setBrand} />
-              <Field label={FIELD_LABELS.model} value={model} onChange={setModel} />
-              <Field label={FIELD_LABELS.productNumber} value={filterType} onChange={setFilterType} />
+              <div className="grid grid-cols-2 gap-3">
+                <Field label={FIELD_LABELS.companyName} value={brand} onChange={setBrand} />
+                <Field label={FIELD_LABELS.model} value={model} onChange={setModel} />
+                <Field label={FIELD_LABELS.serialNumber} value={serialNumber} onChange={setSerialNumber} />
+                <Field label={FIELD_LABELS.productNumber} value={filterType} onChange={setFilterType} />
+              </div>
+              <Field
+                label="Installation date"
+                type="date"
+                value={installationDate}
+                onChange={setInstallationDate}
+              />
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Category</label>
+                <label className="text-xs font-medium text-muted-foreground">Fountain type</label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value as FixtureCategory)}
@@ -293,6 +506,30 @@ export default function FixtureDetail() {
                 </div>
               </div>
               <div>
+                <label className="text-xs font-medium text-muted-foreground">Quick issues</label>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {ISSUE_OPTIONS.map(({ id: issueId, label }) => {
+                    const active = issues.includes(issueId);
+                    return (
+                      <button
+                        key={issueId}
+                        type="button"
+                        onClick={() =>
+                          setIssues((prev) =>
+                            active ? prev.filter((item) => item !== issueId) : [...prev, issueId],
+                          )
+                        }
+                        className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+                          active ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div>
                 <label className="text-xs font-medium text-muted-foreground">Observations</label>
                 <textarea
                   value={observations}
@@ -313,14 +550,18 @@ export default function FixtureDetail() {
               <div className="grid grid-cols-2 gap-3">
                 <InfoTile label="Fountain type" value={getFixtureCategoryLabel(fixture.category)} />
                 <InfoTile label="Nearest landmark" value={fixture.nearestRoom || fixture.roomNumber || '—'} />
+                <InfoTile label="Installation date" value={fixture.installationDate || '—'} />
               </div>
               {fixture.issues?.length ? (
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">Issues</p>
                   <div className="mt-2 flex flex-wrap gap-2">
-                    {fixture.issues.map((i) => (
-                      <span key={i} className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold text-secondary-foreground">
-                        {issueLabel(i)}
+                    {fixture.issues.map((issue) => (
+                      <span
+                        key={issue}
+                        className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold text-secondary-foreground"
+                      >
+                        {issueLabel(issue)}
                       </span>
                     ))}
                   </div>
@@ -337,36 +578,59 @@ export default function FixtureDetail() {
         </div>
       </div>
 
-      {/* Complete Service */}
-      <button
-        onClick={handleComplete}
-        className="btn-cta"
-      >
-        <CheckCircle2 className="h-5 w-5" />
-        Complete Maintenance
-      </button>
+      {!editing ? (
+        <button onClick={handleComplete} className="btn-cta">
+          <CheckCircle2 className="h-5 w-5" />
+          Complete Maintenance
+        </button>
+      ) : null}
     </div>
   );
 }
 
-function Field({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+function Field({
+  label,
+  value,
+  onChange,
+  type = 'text',
+  as,
+  disabled,
+  children,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  type?: string;
+  as?: 'select';
+  disabled?: boolean;
+  children?: ReactNode;
+}) {
+  if (as === 'select') {
+    return (
+      <div>
+        <label className="text-xs font-medium text-muted-foreground">{label}</label>
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          disabled={disabled}
+          className="mt-1 w-full field-input"
+        >
+          {children}
+        </select>
+      </div>
+    );
+  }
+
   return (
     <div>
       <label className="text-xs font-medium text-muted-foreground">{label}</label>
       <input
+        type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
         className="mt-1 w-full field-input"
       />
-    </div>
-  );
-}
-
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="text-xs font-medium text-foreground">{value}</span>
     </div>
   );
 }
@@ -376,6 +640,55 @@ function InfoTile({ label, value }: { label: string; value: string }) {
     <div className="info-tile">
       <p className="info-tile-label">{label}</p>
       <p className="info-tile-value">{value}</p>
+    </div>
+  );
+}
+
+function PhotoEditor({
+  label,
+  url,
+  emptyIcon: EmptyIcon,
+  onUpload,
+  onRemove,
+}: {
+  label: string;
+  url: string;
+  emptyIcon: typeof Camera;
+  onUpload: () => void;
+  onRemove: () => void;
+}) {
+  return (
+    <div className="rounded-xl border-2 border-dashed p-3">
+      {url ? (
+        <>
+          <img src={url} alt={label} className="h-24 w-full rounded-lg object-cover" />
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              onClick={onUpload}
+              className="flex-1 rounded-md bg-secondary px-2 py-1 text-[11px] font-semibold text-secondary-foreground"
+            >
+              Replace
+            </button>
+            <button
+              type="button"
+              onClick={onRemove}
+              className="rounded-md bg-secondary px-2 py-1 text-[11px] font-semibold text-secondary-foreground"
+            >
+              Remove
+            </button>
+          </div>
+        </>
+      ) : (
+        <button
+          type="button"
+          onClick={onUpload}
+          className="flex w-full flex-col items-center gap-1.5 py-3 text-muted-foreground"
+        >
+          <EmptyIcon className="h-6 w-6" />
+          <span className="text-xs font-medium">{label}</span>
+        </button>
+      )}
     </div>
   );
 }
@@ -421,4 +734,3 @@ function PhotoCard({ label, url, filename }: { label: string; url: string; filen
     </div>
   );
 }
-

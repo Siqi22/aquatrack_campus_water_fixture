@@ -18,6 +18,7 @@ import {
   resolveCategoryFromImportProvenance,
   splitImportFromObservations,
 } from '@/lib/importMetadata';
+import { compareFloorKeys, floorProgressKey, normalizeFloorKey } from '@/lib/floorUtils';
 
 export type FixtureStatus = 'Good' | 'Warning' | 'Urgent';
 export type { AppRole };
@@ -254,6 +255,86 @@ function mapFloorProgress(r: FloorProgressRow): BuildingFloorProgress {
   };
 }
 
+function findFloorProgressRow(
+  floorProgress: BuildingFloorProgress[],
+  buildingId: string,
+  floor: string,
+): BuildingFloorProgress | undefined {
+  const key = normalizeFloorKey(floor);
+  return floorProgress.find(
+    (p) => p.buildingId === buildingId && normalizeFloorKey(p.floor) === key,
+  );
+}
+
+function effectiveFloorStatus(status: FloorStatus, fixtureCount: number): FloorStatus {
+  if (status === 'Done' || status === 'Restricted') return status;
+  if (fixtureCount > 0 && status === 'NotStarted') return 'InProgress';
+  return status;
+}
+
+function countFixturesOnFloor(fixtures: Fixture[], buildingId: string, floor: string): number {
+  const key = normalizeFloorKey(floor);
+  return fixtures.filter(
+    (f) => f.buildingId === buildingId && normalizeFloorKey(f.floor) === key,
+  ).length;
+}
+
+async function syncFloorProgressWithFixtures(
+  fixtures: Fixture[],
+  floorProgress: BuildingFloorProgress[],
+): Promise<BuildingFloorProgress[]> {
+  const today = new Date().toISOString().slice(0, 10);
+  const fixtureCountByKey = new Map<string, number>();
+
+  for (const fixture of fixtures) {
+    const key = floorProgressKey(fixture.buildingId, fixture.floor);
+    fixtureCountByKey.set(key, (fixtureCountByKey.get(key) ?? 0) + 1);
+  }
+
+  const inserts: Database['public']['Tables']['floor_progress']['Insert'][] = [];
+  const updates: Array<{ buildingId: string; dbFloor: string }> = [];
+
+  for (const [key, count] of fixtureCountByKey) {
+    if (count === 0) continue;
+    const colon = key.indexOf(':');
+    const buildingId = key.slice(0, colon);
+    const floor = key.slice(colon + 1);
+    const existing = findFloorProgressRow(floorProgress, buildingId, floor);
+    if (!existing) {
+      inserts.push({ building_id: buildingId, floor, status: 'InProgress', started_at: today });
+    } else if (existing.status === 'NotStarted') {
+      updates.push({ buildingId, dbFloor: existing.floor });
+    }
+  }
+
+  let next = [...floorProgress];
+
+  if (inserts.length) {
+    const { data, error } = await supabase.from('floor_progress').insert(inserts).select('*');
+    if (error) console.error('syncFloorProgressWithFixtures insert failed', error);
+    else if (data) next.push(...data.map(mapFloorProgress));
+  }
+
+  for (const { buildingId, dbFloor } of updates) {
+    const { error } = await supabase
+      .from('floor_progress')
+      .update({ status: 'InProgress', started_at: today })
+      .eq('building_id', buildingId)
+      .eq('floor', dbFloor);
+    if (error) {
+      console.error('syncFloorProgressWithFixtures update failed', error);
+      continue;
+    }
+    next = next.map((p) =>
+      p.buildingId === buildingId && p.floor === dbFloor
+        ? { ...p, status: 'InProgress', startedAt: today }
+        : p,
+    );
+  }
+
+  return next;
+}
+
 // ============================================================
 // Store
 // ============================================================
@@ -381,21 +462,33 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
       );
 
       const fixtures = fixtureRows.map((r) => mapFixture(r, buildingNameById.get(r.building_id) ?? ''));
-      const floorProgress = (fpRes.data ?? []).map(mapFloorProgress);
+      let floorProgress = (fpRes.data ?? []).map(mapFloorProgress);
 
       // Auto-create floor_progress rows for missing (building, floor) combos so the UI has something to show.
-      const existing = new Set(floorProgress.map((p) => `${p.buildingId}:${p.floor}`));
+      const existing = new Set(floorProgress.map((p) => floorProgressKey(p.buildingId, p.floor)));
       const missing: { building_id: string; floor: string; status: FloorStatus }[] = [];
       for (const b of buildings) {
         for (let fl = 1; fl <= b.floors; fl++) {
-          const key = String(fl);
-          if (!existing.has(`${b.id}:${key}`)) missing.push({ building_id: b.id, floor: key, status: 'NotStarted' });
+          const key = floorProgressKey(b.id, String(fl));
+          if (!existing.has(key)) {
+            missing.push({ building_id: b.id, floor: String(fl), status: 'NotStarted' });
+            existing.add(key);
+          }
+        }
+      }
+      for (const f of fixtures) {
+        const key = floorProgressKey(f.buildingId, f.floor);
+        if (!existing.has(key)) {
+          missing.push({ building_id: f.buildingId, floor: normalizeFloorKey(f.floor), status: 'NotStarted' });
+          existing.add(key);
         }
       }
       if (missing.length) {
         const { data: inserted } = await supabase.from('floor_progress').insert(missing).select('*');
         if (inserted) floorProgress.push(...inserted.map(mapFloorProgress));
       }
+
+      floorProgress = await syncFloorProgressWithFixtures(fixtures, floorProgress);
 
       // First-run seed: if user has no campuses at all, seed a starter campus.
       if (campuses.length === 0) {
@@ -448,8 +541,8 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
   },
 
   addFixture: async (f) => {
-    const floorKey = String(f.floor).trim();
-    const existingFp = get().floorProgress.find((p) => p.buildingId === f.buildingId && p.floor === floorKey);
+    const floorKey = normalizeFloorKey(f.floor);
+    const existingFp = findFloorProgressRow(get().floorProgress, f.buildingId, floorKey);
     if (!existingFp) {
       const { data: inserted } = await supabase
         .from('floor_progress')
@@ -506,16 +599,16 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
     const next = mapFixture(data, buildingName);
 
     // Auto-advance floor status NotStarted -> InProgress
-    const fp = get().floorProgress.find((p) => p.buildingId === f.buildingId && p.floor === floorKey);
+    const fp = findFloorProgressRow(get().floorProgress, f.buildingId, floorKey);
     if (fp && fp.status === 'NotStarted') {
       const today = new Date().toISOString().slice(0, 10);
       await supabase.from('floor_progress')
         .update({ status: 'InProgress', started_at: today })
         .eq('building_id', f.buildingId)
-        .eq('floor', floorKey);
+        .eq('floor', fp.floor);
       set((s) => ({
         floorProgress: s.floorProgress.map((p) =>
-          p.buildingId === f.buildingId && p.floor === floorKey ? { ...p, status: 'InProgress', startedAt: today } : p,
+          p.buildingId === f.buildingId && p.floor === fp.floor ? { ...p, status: 'InProgress', startedAt: today } : p,
         ),
       }));
     }
@@ -525,22 +618,43 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
   },
 
   updateFixture: async (f) => {
+    const buildingName = get().buildings.find((b) => b.id === f.buildingId)?.name ?? f.buildingName;
+    const floorKey = normalizeFloorKey(f.floor);
+    const room = (f.nearestRoom ?? f.roomNumber).trim();
     const { error } = await supabase.from('fixtures').update({
-      nearest_room: (f.nearestRoom ?? f.roomNumber).trim(),
-      brand: f.brand,
-      model: f.model,
-      serial_number: f.serialNumber,
-      filter_type: f.filterType,
+      campus_id: f.campusId,
+      building_id: f.buildingId,
+      floor: floorKey,
+      nearest_room: room,
+      brand: f.brand || null,
+      model: f.model || null,
+      serial_number: f.serialNumber || null,
+      filter_type: f.filterType || null,
       category: normalizeFixtureCategory(f.category),
       pressure_rating: f.qualityRating.pressure,
       cleanliness_rating: f.qualityRating.cleanliness,
       observations: f.observations ?? null,
-      issues: f.issues ?? null,
+      issues: f.issues?.length ? f.issues : null,
       photo_url: f.photoURL || null,
       model_plate_photo_url: f.modelPlatePhotoURL || null,
+      installation_date: f.installationDate ?? null,
+      no_label_reason: f.noLabelReason ?? null,
+      no_label_reason_other: f.noLabelReasonOther ?? null,
+      photos_provided: f.photosProvided?.length ? f.photosProvided : null,
+      location_confirmed: f.locationConfirmed ?? false,
     }).eq('id', f.id);
-    if (error) { console.error(error); return; }
-    set((s) => ({ fixtures: s.fixtures.map((x) => (x.id === f.id ? f : x)) }));
+    if (error) {
+      console.error(error);
+      throw new Error(formatSupabaseError(error));
+    }
+    const updated: Fixture = {
+      ...f,
+      buildingName,
+      floor: floorKey,
+      roomNumber: room,
+      nearestRoom: room,
+    };
+    set((s) => ({ fixtures: s.fixtures.map((x) => (x.id === f.id ? updated : x)) }));
   },
 
   completeService: async (fixtureId) => {
@@ -553,6 +667,8 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
   },
 
   setFloorStatus: async (buildingId, floor, status, opts) => {
+    const existing = findFloorProgressRow(get().floorProgress, buildingId, floor);
+    const dbFloor = existing?.floor ?? normalizeFloorKey(floor);
     const today = new Date().toISOString().slice(0, 10);
     const patch: Database['public']['Tables']['floor_progress']['Update'] = {
       status,
@@ -560,11 +676,11 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
       started_at: status !== 'NotStarted' ? today : null,
       ended_at: status === 'Done' || status === 'Restricted' ? today : null,
     };
-    const { error } = await supabase.from('floor_progress').update(patch).eq('building_id', buildingId).eq('floor', floor);
+    const { error } = await supabase.from('floor_progress').update(patch).eq('building_id', buildingId).eq('floor', dbFloor);
     if (error) { console.error(error); return; }
     set((s) => ({
       floorProgress: s.floorProgress.map((p) =>
-        p.buildingId === buildingId && p.floor === floor
+        p.buildingId === buildingId && normalizeFloorKey(p.floor) === normalizeFloorKey(dbFloor)
           ? { ...p, status, restrictedReason: patch.restricted_reason ?? undefined, startedAt: patch.started_at ?? undefined, endedAt: patch.ended_at ?? undefined }
           : p,
       ),
@@ -572,15 +688,47 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
   },
 
   getFloorProgress: (buildingId, floor) => {
-    const key = String(floor).trim();
-    return get().floorProgress.find((p) => p.buildingId === buildingId && p.floor === key) ?? {
-      buildingId, floor: key, status: 'NotStarted',
+    const key = normalizeFloorKey(floor);
+    const stored = findFloorProgressRow(get().floorProgress, buildingId, key) ?? {
+      buildingId,
+      floor: key,
+      status: 'NotStarted' as FloorStatus,
+    };
+    const fixtureCount = countFixturesOnFloor(get().fixtures, buildingId, key);
+    return {
+      ...stored,
+      floor: key,
+      status: effectiveFloorStatus(stored.status, fixtureCount),
     };
   },
-  getFloorsByBuilding: (buildingId) =>
-    get().floorProgress
-      .filter((p) => p.buildingId === buildingId)
-      .sort((a, c) => a.floor.localeCompare(c.floor, undefined, { numeric: true })),
+  getFloorsByBuilding: (buildingId) => {
+    const { fixtures, floorProgress } = get();
+    const buildingFixtures = fixtures.filter((f) => f.buildingId === buildingId);
+    const buildingProgress = floorProgress.filter((p) => p.buildingId === buildingId);
+    const floorMap = new Map<string, BuildingFloorProgress>();
+
+    for (const progress of buildingProgress) {
+      const key = normalizeFloorKey(progress.floor);
+      floorMap.set(key, { ...progress, floor: key });
+    }
+
+    for (const fixture of buildingFixtures) {
+      const key = normalizeFloorKey(fixture.floor);
+      if (!floorMap.has(key)) {
+        floorMap.set(key, { buildingId, floor: key, status: 'InProgress' });
+      }
+    }
+
+    return Array.from(floorMap.values())
+      .map((progress) => ({
+        ...progress,
+        status: effectiveFloorStatus(
+          progress.status,
+          countFixturesOnFloor(buildingFixtures, buildingId, progress.floor),
+        ),
+      }))
+      .sort((a, b) => compareFloorKeys(a.floor, b.floor));
+  },
   searchFixtures: (query) => {
     const q = query.toLowerCase();
     return get().fixtures.filter(
@@ -593,8 +741,12 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
     );
   },
   getFixturesByBuilding: (buildingId) => get().fixtures.filter((f) => f.buildingId === buildingId),
-  getFixturesByBuildingAndFloor: (buildingId, floor) =>
-    get().fixtures.filter((f) => f.buildingId === buildingId && f.floor === floor),
+  getFixturesByBuildingAndFloor: (buildingId, floor) => {
+    const key = normalizeFloorKey(floor);
+    return get().fixtures.filter(
+      (f) => f.buildingId === buildingId && normalizeFloorKey(f.floor) === key,
+    );
+  },
   getBuildingsByCampus: (campusId) => get().buildings.filter((b) => b.campusId === campusId),
   getFixturesByCampus: (campusId) => get().fixtures.filter((f) => f.campusId === campusId),
   getMaintenanceTasks: () => get().fixtures.filter((f) => getDaysSinceMaintenance(f.lastMaintenanceDate) > 150),
@@ -671,16 +823,17 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
       }
     }
 
-    const existingFp = new Set(get().floorProgress.map((p) => `${p.buildingId}:${p.floor}`));
+    const existingFp = new Set(get().floorProgress.map((p) => floorProgressKey(p.buildingId, p.floor)));
     const fpToInsert: { building_id: string; floor: string; status: FloorStatus }[] = [];
 
     const registerFloor = (campusLabel: string, buildingName: string, floor: string) => {
       const bId = buildingIdByKey.get(buildingKey(campusLabel, buildingName));
       if (!bId) return;
-      const fpKey = `${bId}:${floor}`;
+      const floorKey = normalizeFloorKey(floor);
+      const fpKey = floorProgressKey(bId, floorKey);
       if (existingFp.has(fpKey)) return;
       existingFp.add(fpKey);
-      fpToInsert.push({ building_id: bId, floor, status: 'NotStarted' });
+      fpToInsert.push({ building_id: bId, floor: floorKey, status: 'NotStarted' });
     };
 
     for (const f of analysis.fixtures) registerFloor(f.campusLabel, f.buildingName, f.floor);
@@ -714,7 +867,7 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
       });
 
       const patch = {
-        floor: f.floor,
+        floor: normalizeFloorKey(f.floor),
         nearest_room: f.nearestRoom.trim(),
         brand: f.brand || null,
         model: f.model || null,
