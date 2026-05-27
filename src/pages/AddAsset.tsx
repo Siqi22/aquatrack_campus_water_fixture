@@ -8,7 +8,7 @@ import {
   normalizeFixtureCategory,
 } from '@/store/fixtureStore';
 import type { FixtureCategory } from '@/store/fixtureStore';
-import { Camera, ScanLine, CheckCircle2, Building2, ChevronLeft, ChevronRight, ImagePlus, PlusCircle, ListChecks, Search, Droplets, Map, Tags, MessageSquareWarning, HelpCircle, University, Info, X, FileSpreadsheet } from 'lucide-react';
+import { Camera, ScanLine, CheckCircle2, Building2, ChevronLeft, ChevronRight, ImagePlus, PlusCircle, ListChecks, Search, Map, MessageSquareWarning, University, Info, X, FileSpreadsheet } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { SimpleRating } from '@/components/SimpleRating';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -71,8 +71,6 @@ export default function AddAsset() {
   const [noLabelReasonOther, setNoLabelReasonOther] = useState('');
   const [nearestRoom, setNearestRoom] = useState('');
   const [category, setCategory] = useState<FixtureCategory | null>(null);
-  const [suggestedCategory, setSuggestedCategory] = useState<FixtureCategory | null>(null);
-  const [categoryHelp, setCategoryHelp] = useState<FixtureCategory | null>(null);
   const [categoryRefHelp, setCategoryRefHelp] = useState<FixtureCategory | null>(null);
   const [pressure, setPressure] = useState(2);
   const [cleanliness, setCleanliness] = useState(2);
@@ -115,7 +113,7 @@ export default function AddAsset() {
     : null;
   const floorLocked = floorProgress?.status === 'Restricted';
 
-  const STEP_LABELS = ['Location', 'Photos & label', 'Fixture type', 'Condition', 'Confirm'];
+  const STEP_LABELS = ['Location', 'Photos & label', 'Condition', 'Confirm'];
 
   // Deep link support from Campus → Assets (pre-fill).
   useEffect(() => {
@@ -212,7 +210,6 @@ export default function AddAsset() {
       setModel(result.model);
       setSerialNumber(result.serialNumber);
       setFilterType(result.filterType);
-      setSuggestedCategory(result.category);
       setCategory((prev) => prev ?? result.category);
       setScanned(true);
       const missing: string[] = [];
@@ -333,10 +330,9 @@ export default function AddAsset() {
 
   const canProceed: Record<number, boolean> = {
     1: !!selectedCampusId && !!selectedBuildingId && !!floor.trim() && roomLooksValid && !floorLocked,
-    2: true,
-    3: !!category,
-    4: true,
-    5: locationConfirmed && step5Ready,
+    2: !!category,
+    3: true,
+    4: locationConfirmed && step5Ready,
   };
 
   // Mode chooser
@@ -759,7 +755,7 @@ export default function AddAsset() {
           {/* Quick fixture-type pick after taking photos */}
           <div className="rounded-2xl border bg-card p-4">
             <p className="text-sm font-semibold text-foreground">What type of fixture is this?</p>
-            <p className="text-[11px] text-muted-foreground">You can change this on the next step. Tap <Info className="inline h-3 w-3 -mt-0.5" /> for a reference photo.</p>
+            <p className="text-[11px] text-muted-foreground">Pick the fixture type before continuing. Tap <Info className="inline h-3 w-3 -mt-0.5" /> for a reference photo.</p>
             <div className="mt-2 grid grid-cols-2 gap-2">
               {FIXTURE_CATEGORIES.map((id) => {
                 const active = category === id;
@@ -992,105 +988,8 @@ export default function AddAsset() {
         </div>
       )}
 
-      {/* Step 3: Confirm fixture type (double-check) */}
+      {/* Step 3: Rate + observations (quick) */}
       {step === 3 && (
-        <div className="mt-4 space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold text-foreground">Confirm fixture type</p>
-              <p className="text-xs text-muted-foreground">
-                {suggestedCategory ? `Suggested: ${fixtureCategoryMeta[suggestedCategory].label}` : 'Pick the best match.'}
-              </p>
-            </div>
-            <div className="text-[11px] text-muted-foreground">
-              {scanned ? 'From analysis' : 'Manual'}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            {FIXTURE_CATEGORIES.map((id) => {
-              const meta = fixtureCategoryMeta[id];
-              const active = category === id;
-              return (
-                <div
-                  key={id}
-                  className={`relative rounded-2xl border p-3 transition-colors ${
-                    active ? 'border-primary/30 bg-primary/10' : 'bg-card hover:bg-secondary/20'
-                  }`}
-                >
-                  {/* Help icon (separate hit target) */}
-                  <button
-                    type="button"
-                    onClick={() => setCategoryHelp(id)}
-                    className="absolute right-2 top-2 rounded-full p-2 text-muted-foreground hover:text-foreground hover:bg-secondary"
-                    aria-label={`Help: ${meta.label}`}
-                  >
-                    <HelpCircle className="h-4 w-4" />
-                  </button>
-
-                  {/* Selected indicator mirrors help placement for spatial consistency */}
-                  {active && (
-                    <div className="absolute left-2 top-2 rounded-full bg-primary/15 p-2 text-primary" aria-hidden="true">
-                      <CheckCircle2 className="h-4 w-4" />
-                    </div>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={() => setCategory(id)}
-                    aria-pressed={active}
-                    className="block w-full text-left"
-                  >
-                    <div className="pr-10 pt-6">
-                      <div className="text-sm font-semibold text-foreground">{meta.label}</div>
-                      <div className="mt-1 text-[11px] text-muted-foreground">{meta.examples[0]}</div>
-                    </div>
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-
-          {categoryHelp && (
-            <div className="rounded-2xl border bg-card p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">{fixtureCategoryMeta[categoryHelp].label}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Examples: {fixtureCategoryMeta[categoryHelp].examples.join(' • ')}
-                  </p>
-                  {fixtureCategoryMeta[categoryHelp].hints?.length ? (
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      Hint: {fixtureCategoryMeta[categoryHelp].hints?.join(' • ')}
-                    </p>
-                  ) : null}
-                </div>
-                <button
-                  onClick={() => setCategoryHelp(null)}
-                  className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-secondary-foreground"
-                >
-                  Close
-                </button>
-              </div>
-
-              <div className="mt-3 grid grid-cols-2 gap-3">
-                {fixtureCategoryMeta[categoryHelp].examples.slice(0, 2).map((ex) => (
-                  <div key={ex} className="overflow-hidden rounded-xl border bg-secondary/20">
-                    <img
-                      alt={ex}
-                      className="h-28 w-full object-cover"
-                      src={`https://placehold.co/600x400/111827/ffffff?text=${encodeURIComponent(ex)}`}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Step 4: Rate + observations (quick) */}
-      {step === 4 && (
         <div className="mt-4 space-y-4">
           <div>
             <div className="flex items-center gap-2 text-muted-foreground">
@@ -1139,8 +1038,8 @@ export default function AddAsset() {
         </div>
       )}
 
-      {/* Step 5: Final location confirmation (required) */}
-      {step === 5 && (
+      {/* Step 4: Final location confirmation (required) */}
+      {step === 4 && (
         <div className="mt-4 space-y-4">
           <div className="rounded-2xl border border-primary/40 bg-primary/5 p-4">
             <p className="text-sm font-semibold text-foreground">⚠ Confirm exact location</p>
@@ -1207,12 +1106,12 @@ export default function AddAsset() {
           </button>
         )}
         <div className="flex-1" />
-        {step < 5 ? (
+        {step < 4 ? (
           <button onClick={() => setStep(step + 1)} disabled={!canProceed[step]} className="btn-primary flex items-center gap-1 disabled:opacity-40">
             Next <ChevronRight className="h-4 w-4" />
           </button>
         ) : (
-          <button onClick={handleSubmit} disabled={!canProceed[5] || saving} className="btn-primary flex items-center gap-1 px-6 disabled:opacity-40">
+          <button onClick={handleSubmit} disabled={!canProceed[4] || saving} className="btn-primary flex items-center gap-1 px-6 disabled:opacity-40">
             <CheckCircle2 className="h-4 w-4" /> {saving ? 'Saving…' : 'Save Fixture'}
           </button>
         )}
@@ -1231,7 +1130,7 @@ export default function AddAsset() {
                 onClick={() => {
                   // Stay in onboard mode for another fixture on the same floor
                   setPhoto(null); setPlatePhoto(null); setBrand(''); setModel(''); setSerialNumber('');
-                  setFilterType(''); setScanned(false); setScanError(null); setScanResult(null); setCategory(null); setSuggestedCategory(null);
+                  setFilterType(''); setScanned(false); setScanError(null); setScanResult(null); setCategory(null);
                   setObservations(''); setIssues([]); setNearestRoom('');
                   setNoLabel(false); setNoLabelReason(''); setNoLabelReasonOther(''); setNearestFixtureId(''); setLocationConfirmed(false);
                   setStep(1);
