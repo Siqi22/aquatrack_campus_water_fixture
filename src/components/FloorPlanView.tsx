@@ -28,10 +28,10 @@ function MarkCompleteButton({ onClick }: { onClick: () => void }) {
 }
 
 export function FloorPlanView({ buildingId, floor, buildingName, campusId }: FloorPlanViewProps) {
-  const { getFixturesByBuildingAndFloor, getFloorProgress, setFloorStatus, primaryRole } = useFixtureStore();
-  const canComplete = canMarkFloorComplete(primaryRole);
-  const canManageProgress = canManageFloorProgress(primaryRole);
-  const canLock = canMarkFloorLocked(primaryRole);
+  const { getFixturesByBuildingAndFloor, getFloorProgress, setFloorStatus } = useFixtureStore();
+  const canComplete = canMarkFloorComplete();
+  const canManageProgress = canManageFloorProgress();
+  const canLock = canMarkFloorLocked();
   const fixtures = getFixturesByBuildingAndFloor(buildingId, floor);
   const floorProgress = getFloorProgress(buildingId, floor);
   const isLocked = floorProgress.status === 'Restricted';

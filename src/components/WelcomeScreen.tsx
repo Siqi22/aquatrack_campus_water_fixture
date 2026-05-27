@@ -1,44 +1,38 @@
 import { useNavigate } from 'react-router-dom';
-import { Building2, ClipboardList, Droplets, FileSpreadsheet, Shield, Wrench, X } from 'lucide-react';
-import { ROLE_META, getRoleQuickStart, type AppRole } from '@/lib/roles';
+import { Building2, ClipboardList, Droplets, FileSpreadsheet, Wrench, X } from 'lucide-react';
+import { getQuickStart } from '@/lib/roles';
 import { ActionTile } from '@/components/layout/ActionTile';
 
-const WELCOME_KEY = 'aquaTrack:welcomeDismissed';
+const welcomeKey = (userId: string) => `aquaTrack:welcomeDismissed:${userId}`;
 
-export function wasWelcomeDismissed(): boolean {
+export function wasWelcomeDismissed(userId: string | undefined): boolean {
+  if (!userId) return true;
   try {
-    return sessionStorage.getItem(WELCOME_KEY) === '1';
+    return localStorage.getItem(welcomeKey(userId)) === '1';
   } catch {
     return false;
   }
 }
 
-export function dismissWelcome(): void {
+export function dismissWelcome(userId: string | undefined): void {
+  if (!userId) return;
   try {
-    sessionStorage.setItem(WELCOME_KEY, '1');
+    localStorage.setItem(welcomeKey(userId), '1');
   } catch {
     /* ignore */
   }
 }
 
-const roleIcons: Record<AppRole, typeof Droplets> = {
-  Surveyor: ClipboardList,
-  Facilities: Building2,
-  Admin: Shield,
-};
-
 interface Props {
-  role: AppRole;
+  userId: string;
   fixtureCount: number;
   onDismiss: () => void;
   onImport: () => void;
 }
 
-export function WelcomeScreen({ role, fixtureCount, onDismiss, onImport }: Props) {
+export function WelcomeScreen({ userId, fixtureCount, onDismiss, onImport }: Props) {
   const navigate = useNavigate();
-  const meta = ROLE_META[role];
-  const RoleIcon = roleIcons[role];
-  const steps = getRoleQuickStart(role, fixtureCount > 0);
+  const steps = getQuickStart(fixtureCount > 0);
 
   return (
     <div className="welcome-overlay">
@@ -48,15 +42,17 @@ export function WelcomeScreen({ role, fixtureCount, onDismiss, onImport }: Props
         </button>
 
         <div className="welcome-badge">
-          <RoleIcon className="h-5 w-5 text-primary" />
-          <span>{meta.label}</span>
+          <Droplets className="h-5 w-5 text-primary" />
+          <span>AquaTrack</span>
         </div>
 
         <h2 className="mt-4 text-lg font-bold text-foreground">Welcome to AquaTrack</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{meta.description}</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Survey fixtures on site, import spreadsheets, or browse your campus inventory.
+        </p>
 
         <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Recommended next steps
+          What would you like to do?
         </p>
         <div className="mt-2 space-y-2">
           {steps.map((step, i) => (
@@ -75,6 +71,7 @@ export function WelcomeScreen({ role, fixtureCount, onDismiss, onImport }: Props
               description={step.description}
               primary={i === 0}
               onClick={() => {
+                dismissWelcome(userId);
                 onDismiss();
                 if (step.id === 'import') onImport();
                 else navigate(step.to);

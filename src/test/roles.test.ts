@@ -4,27 +4,22 @@ import {
   canImportSpreadsheets,
   canManageFloorProgress,
   canMarkFloorComplete,
-  getRoleQuickStart,
-  resolvePrimaryRole,
+  getQuickStart,
 } from '@/lib/roles';
 
 describe('roles', () => {
-  it('resolves highest role when user has multiple', () => {
-    expect(resolvePrimaryRole(['Surveyor', 'Facilities'])).toBe('Facilities');
-    expect(resolvePrimaryRole(['Surveyor', 'Admin'])).toBe('Admin');
-    expect(resolvePrimaryRole([])).toBe('Surveyor');
+  it('allows all permissions for every user', () => {
+    expect(canImportSpreadsheets()).toBe(true);
+    expect(canExportData()).toBe(true);
+    expect(canManageFloorProgress()).toBe(true);
+    expect(canMarkFloorComplete()).toBe(true);
   });
 
-  it('allows import/export for all roles; floor management for coordinator+', () => {
-    expect(canImportSpreadsheets('Admin')).toBe(true);
-    expect(canImportSpreadsheets('Surveyor')).toBe(true);
-    expect(canExportData('Facilities')).toBe(true);
-    expect(canExportData('Surveyor')).toBe(true);
-    expect(canManageFloorProgress('Facilities')).toBe(true);
-    expect(canManageFloorProgress('Surveyor')).toBe(false);
-    expect(canMarkFloorComplete('Surveyor')).toBe(true);
-    expect(canMarkFloorComplete('Facilities')).toBe(true);
-    expect(getRoleQuickStart('Surveyor', false)[0].id).toBe('survey');
-    expect(getRoleQuickStart('Admin', false)[0].id).toBe('import');
+  it('returns survey-first quick start when empty', () => {
+    expect(getQuickStart(false)[0].id).toBe('survey');
+  });
+
+  it('returns campus-first quick start when fixtures exist', () => {
+    expect(getQuickStart(true)[0].id).toBe('campus');
   });
 });

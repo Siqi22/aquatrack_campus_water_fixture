@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useFixtureStore, getFixtureStatus, getDaysSinceMaintenance } from '@/store/fixtureStore';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -15,8 +15,7 @@ import {
   FileSpreadsheet,
   ClipboardList,
 } from 'lucide-react';
-import { getRoleQuickStart } from '@/lib/roles';
-import { useAuth } from '@/contexts/AuthContext';
+import { getQuickStart } from '@/lib/roles';
 import type { LucideIcon } from 'lucide-react';
 
 const stepIcons: Record<string, LucideIcon> = {
@@ -28,14 +27,12 @@ const stepIcons: Record<string, LucideIcon> = {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const {
     fixtures,
     campuses,
     buildings,
     loading,
     loaded,
-    primaryRole,
     searchFixtures,
     getMaintenanceTasks,
   } = useFixtureStore();
@@ -43,21 +40,14 @@ export default function Dashboard() {
   const [exportOpen, setExportOpen] = useState(false);
 
   const hasFixtures = fixtures.length > 0;
-  const quickStart = getRoleQuickStart(primaryRole, hasFixtures);
+  const quickStart = getQuickStart(hasFixtures);
   const tasks = getMaintenanceTasks();
   const urgentCount = fixtures.filter((f) => getFixtureStatus(f.lastMaintenanceDate) === 'Urgent').length;
-
-  const myFixtureCount = useMemo(
-    () => (user?.id ? fixtures.filter((f) => f.createdBy === user.id).length : 0),
-    [fixtures, user?.id],
-  );
 
   const results = useMemo(() => {
     if (!query.trim()) return [];
     return searchFixtures(query).slice(0, 8);
   }, [query, searchFixtures]);
-
-  const showSharedNotice = loaded && hasFixtures && user?.id && myFixtureCount === 0;
 
   function openImport() {
     navigate('/?import=1');
@@ -109,12 +99,6 @@ export default function Dashboard() {
 
       {!loaded && loading && (
         <p className="mt-8 text-center text-sm text-muted-foreground">Loading workspace…</p>
-      )}
-
-      {showSharedNotice && (
-        <p className="callout-warning mt-4">
-          Workspace has existing records from other imports. Use Import to add yours, or start surveying.
-        </p>
       )}
 
       {loaded && hasFixtures && (

@@ -3,7 +3,6 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 import { Building2, ClipboardList, Droplets, Home, LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFixtureStore } from '@/store/fixtureStore';
-import { RoleBadge } from '@/components/RoleBadge';
 import { WelcomeScreen, dismissWelcome, wasWelcomeDismissed } from '@/components/WelcomeScreen';
 import { ImportDialog } from '@/components/ImportDialog';
 import { toast } from 'sonner';
@@ -19,7 +18,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, signOut } = useAuth();
-  const { primaryRole, loaded, fixtures } = useFixtureStore();
+  const { loaded, fixtures } = useFixtureStore();
   const [welcomeOpen, setWelcomeOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
 
@@ -33,13 +32,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [searchParams, setSearchParams]);
 
   useEffect(() => {
-    if (loaded && pathname === '/' && !wasWelcomeDismissed()) {
+    if (loaded && user?.id && pathname === '/' && !wasWelcomeDismissed(user.id)) {
       setWelcomeOpen(true);
     }
-  }, [loaded, pathname]);
+  }, [loaded, pathname, user?.id]);
 
   function closeWelcome() {
-    dismissWelcome();
+    dismissWelcome(user?.id);
     setWelcomeOpen(false);
   }
 
@@ -56,21 +55,18 @@ export function AppShell({ children }: { children: ReactNode }) {
               <p className="truncate text-[10px] text-muted-foreground">{user?.email}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <RoleBadge role={primaryRole} compact />
-            <button
-              type="button"
-              onClick={async () => {
-                await signOut();
-                toast.success('Signed out');
-                navigate('/auth', { replace: true });
-              }}
-              className="btn-icon"
-              aria-label="Sign out"
-            >
-              <LogOut className="h-4 w-4" />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={async () => {
+              await signOut();
+              toast.success('Signed out');
+              navigate('/auth', { replace: true });
+            }}
+            className="btn-icon"
+            aria-label="Sign out"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
         </div>
       </header>
 
@@ -97,9 +93,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </nav>
 
-      {welcomeOpen && (
+      {welcomeOpen && user?.id && (
         <WelcomeScreen
-          role={primaryRole}
+          userId={user.id}
           fixtureCount={fixtures.length}
           onDismiss={closeWelcome}
           onImport={() => {
