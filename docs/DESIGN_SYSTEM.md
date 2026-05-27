@@ -282,7 +282,8 @@ Base token: `--radius: 0.75rem` (12px).
 | `.search-input` | Search with left icon padding (`pl-10`) |
 
 **Input rules:**
-- Value: `text-sm`; placeholder: `text-caption text-muted-foreground`
+- Value: `text-sm`; placeholder: fixed 11px via `::placeholder`
+- Date-only fields: `.field-input-date` — constrained width, not full bleed
 - Never use `text-base` on placeholders — they should read lighter and slightly smaller than typed text
 
 ### 8.5 Selectable cards

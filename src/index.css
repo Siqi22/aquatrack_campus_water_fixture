@@ -240,6 +240,10 @@
     @apply field-input min-h-[90px];
   }
 
+  .field-input-date {
+    @apply w-auto max-w-[9.75rem];
+  }
+
   .field-input::placeholder,
   .field-textarea::placeholder,
   .search-input::placeholder {
