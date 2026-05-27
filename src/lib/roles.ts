@@ -74,24 +74,24 @@ export function getRoleQuickStart(role: AppRole, hasFixtures: boolean): RoleQuic
   if (role === 'Admin' || role === 'Facilities') {
     return hasFixtures
       ? [
-          { id: 'campus', label: 'Review campus progress', description: 'Buildings, floors, and survey status', to: '/campus' },
-          { id: 'maintenance', label: 'Check maintenance', description: 'Fixtures due for filter service', to: '/maintenance' },
-          { id: 'import', label: 'Import spreadsheet', description: 'Bulk load or update inventory', to: '/?import=1' },
+          { id: 'campus', label: 'Review campus progress', description: 'Buildings, floors, survey status', to: '/campus' },
+          { id: 'maintenance', label: 'Check maintenance', description: 'Fixtures due for service', to: '/maintenance' },
+          { id: 'import', label: 'Import spreadsheet', description: 'Bulk load or update', to: '/?import=1' },
         ]
       : [
-          { id: 'import', label: 'Import spreadsheet', description: 'Upload CSV or Excel to seed inventory', to: '/?import=1' },
-          { id: 'survey', label: 'Survey on site', description: 'Record fixtures floor by floor', to: '/add' },
-          { id: 'campus', label: 'Set up campus', description: 'Browse buildings after first import', to: '/campus' },
+          { id: 'import', label: 'Import spreadsheet', description: 'Upload CSV or Excel', to: '/?import=1' },
+          { id: 'survey', label: 'Survey on site', description: 'Record fixtures by floor', to: '/add' },
+          { id: 'campus', label: 'Set up campus', description: 'Browse buildings after import', to: '/campus' },
         ];
   }
 
   return hasFixtures
     ? [
-        { id: 'survey', label: 'Continue surveying', description: 'Pick up where you left off', to: '/add' },
-        { id: 'campus', label: 'Browse campus', description: 'Select a building and floor', to: '/campus' },
+        { id: 'survey', label: 'Continue surveying', description: 'Resume your last floor', to: '/add' },
+        { id: 'campus', label: 'Browse campus', description: 'Pick a building and floor', to: '/campus' },
       ]
     : [
-        { id: 'survey', label: 'Start a survey', description: 'Record your first fixture on site', to: '/add' },
-        { id: 'import', label: 'Import existing data', description: 'Upload a spreadsheet you already have', to: '/?import=1' },
+        { id: 'survey', label: 'Start a survey', description: 'Record your first fixture', to: '/add' },
+        { id: 'import', label: 'Import existing data', description: 'Upload CSV or Excel', to: '/?import=1' },
       ];
 }

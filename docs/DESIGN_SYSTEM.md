@@ -116,7 +116,15 @@ Page subtitle: `.page-subtitle` → `text-sm text-muted-foreground`.
 - **Field labels (standard forms):** `.field-label` — xs, muted
 - **Wizard step labels:** `.field-label-lg` — sm, foreground
 - **Links / text actions:** `.link-action` or `.link-back` — xs, `text-primary`
-- On mobile, form controls use **16px** min font-size (iOS zoom prevention — see `index.css`)
+- **Input value text:** `text-sm` (`.field-input`, `.search-input`)
+- **Placeholder text:** `.text-caption` (11px) via `::placeholder` — smaller than input value
+- **iOS zoom:** bump to **16px only on `:focus`** on coarse pointers (not on every field at rest)
+
+### 3.4 Copy style
+
+- **Captions** under titles, tiles, and templates: one short line, no filler (“Choose a file…”, “Upload CSV or Excel”)
+- Prefer verbs + object: “Record fixtures by floor”, not “Record fixtures floor by floor on site”
+- Dialog subtitles use `.text-caption`; section labels use `.section-label` (uppercase micro heading)
 
 ---
 
@@ -235,7 +243,7 @@ Base token: `--radius: 0.75rem` (12px).
 
 | Class | Use |
 |-------|-----|
-| `.btn-primary` | Primary actions — filled teal |
+| `.btn-primary` | Primary actions — filled teal, **white label + icons** |
 | `.btn-secondary` | Secondary actions — bordered card |
 | `.btn-icon` | Icon-only 36×36 back/close |
 | `.btn-cta` | Full-width page CTA (maintenance complete, etc.) |
@@ -274,6 +282,10 @@ Base token: `--radius: 0.75rem` (12px).
 | `.field-textarea` | Multi-line input |
 | `.search-input` | Search with left icon padding (`pl-10`) |
 
+**Input rules:**
+- Value: `text-sm`; placeholder: `text-caption text-muted-foreground`
+- Never use `text-base` on placeholders — they should read lighter and slightly smaller than typed text
+
 ### 8.5 Selectable cards
 
 | Class | Use |
@@ -302,9 +314,13 @@ Structure (Export, Import, and future modals):
 </DialogContent>
 ```
 
-- Body scrolls vertically only (`overflow-x-hidden`)
+- Shell uses **`!flex flex-col`** (overrides shadcn `grid` on `DialogContent`) so the body can scroll
+- Header: **always left-aligned** (`.dialog-shell-header`, `pr-12` for close button)
+- Body: `.dialog-shell-body` — `flex-1 min-h-0 overflow-y-auto overflow-x-hidden`
 - No horizontal scroll tables — use stacked key-value preview
-- Footer buttons: full width on mobile, auto on `sm+`
+- Footer: `.dialog-shell-footer` — full-width buttons on mobile
+
+**Primary actions in dialogs:** `bg-primary text-primary-foreground` — icons and label text must stay **white** on brand fills.
 
 ### 8.8 Badges
 

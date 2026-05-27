@@ -354,7 +354,7 @@ export default function AddAsset() {
             </div>
             <div className="min-w-0 flex-1 text-left">
               <p className="text-sm font-semibold text-foreground">Survey a floor</p>
-              <p className="text-xs text-muted-foreground">Walk the building and record fixtures</p>
+              <p className="text-xs text-muted-foreground">Walk the building, record fixtures</p>
             </div>
           </button>
 
@@ -364,7 +364,7 @@ export default function AddAsset() {
             </div>
             <div className="min-w-0 flex-1 text-left">
               <p className="text-sm font-semibold text-foreground">Find a fixture</p>
-              <p className="text-xs text-muted-foreground">Search and update an existing record</p>
+              <p className="text-xs text-muted-foreground">Search or browse by floor</p>
             </div>
           </button>
 
@@ -378,7 +378,7 @@ export default function AddAsset() {
             </div>
             <div className="min-w-0 flex-1 text-left">
               <p className="text-sm font-semibold text-foreground">Import spreadsheet</p>
-              <p className="text-xs text-muted-foreground">Bulk load from CSV or Excel</p>
+              <p className="text-xs text-muted-foreground">Import CSV or Excel</p>
             </div>
           </button>
         </div>

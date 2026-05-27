@@ -28,17 +28,17 @@ const IMPORT_MODES: { id: ImportMode; label: string; description: string }[] = [
   {
     id: 'skip_duplicates',
     label: 'Skip duplicates',
-    description: 'Keep existing records; only add fixtures that are not already in the database.',
+    description: 'Add new rows only; keep existing records.',
   },
   {
     id: 'update_existing',
     label: 'Update existing',
-    description: 'Refresh matching fixtures (same campus, building, floor, and room) with spreadsheet values.',
+    description: 'Refresh matches by campus, building, floor, and room.',
   },
   {
     id: 'insert_only',
     label: 'Insert all rows',
-    description: 'Always create new records — useful for one-time seed imports.',
+    description: 'Create a new record for every row.',
   },
 ];
 
@@ -158,14 +158,13 @@ export function ImportDialog({ open, onOpenChange }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="dialog-shell">
-        <DialogHeader className="dialog-shell-header">
-          <DialogTitle className="flex items-center gap-2">
-            <FileSpreadsheet className="h-5 w-5 text-primary" />
-            Import your spreadsheet
+        <DialogHeader className="dialog-shell-header text-left">
+          <DialogTitle className="flex items-center gap-2 text-left">
+            <FileSpreadsheet className="h-5 w-5 shrink-0 text-primary" />
+            Import spreadsheet
           </DialogTitle>
-          <p className="text-xs text-muted-foreground">
-            Choose a file from your device (.csv or .xlsx). Headers are auto-detected; rows import only after you
-            review the preview and tap confirm.
+          <p className="text-caption text-left text-muted-foreground">
+            Upload CSV or Excel. Review the preview, then confirm.
           </p>
         </DialogHeader>
 
@@ -173,8 +172,7 @@ export function ImportDialog({ open, onOpenChange }: Props) {
           <div className="callout-accent">
             <Camera className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
             <span>
-              Photos are not included in typical exports. Imported fixtures will need fixture and model-label
-              photos captured on site unless your spreadsheet has <strong className="font-semibold text-foreground">Photo URL</strong> columns.
+              Photos are usually captured on site. Add <strong className="font-semibold text-foreground">Photo URL</strong> columns to import links.
             </span>
           </div>
 
@@ -197,8 +195,8 @@ export function ImportDialog({ open, onOpenChange }: Props) {
               className="upload-zone"
             >
               <Upload className="h-8 w-8 text-primary" />
-              <span className="text-sm font-semibold text-foreground">Choose spreadsheet file</span>
-              <span className="text-[11px] text-muted-foreground">CSV or Excel (.xlsx)</span>
+              <span className="text-sm font-semibold text-foreground">Choose file</span>
+              <span className="text-caption text-muted-foreground">CSV or .xlsx</span>
             </button>
           ) : (
             <div className="space-y-3">
