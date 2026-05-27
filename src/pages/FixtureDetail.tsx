@@ -14,6 +14,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { SimpleRating } from '@/components/SimpleRating';
 import { FIELD_LABELS, issueLabel } from '@/lib/fieldLabels';
+import { campusFloorUrl } from '@/lib/campusNav';
 import { MapPin, Wrench, CheckCircle2, Edit3, Save, X, ExternalLink, Image as ImageIcon, Hash, Tag, Download } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -88,7 +89,7 @@ export default function FixtureDetail() {
       <PageHeader
         title={fixture.buildingName}
         subtitle={`Floor ${fixture.floor} · Room ${fixture.roomNumber}`}
-        onBack={() => navigate(-1)}
+        backTo={campusFloorUrl(fixture.campusId, fixture.buildingId, fixture.floor)}
         action={<StatusBadge status={status} />}
       />
 
