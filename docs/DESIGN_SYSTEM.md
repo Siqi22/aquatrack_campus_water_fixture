@@ -278,12 +278,13 @@ Base token: `--radius: 0.75rem` (12px).
 | `.field-label` | Standard label |
 | `.field-label-lg` | Wizard section label |
 | `.field-input` | Text input, select |
+| `.field-control` | Wrapper under labels — keeps date/select the same width (`min-w-0 max-w-full`) |
 | `.field-textarea` | Multi-line input |
 | `.search-input` | Search with left icon padding (`pl-10`) |
 
 **Input rules:**
 - Value: `text-sm`; placeholder: fixed 11px via `::placeholder`
-- Date fields use the same full-width `.field-input` layout as other controls (label on one line, input below)
+- Date fields use the same `.field-control` + `.field-input` stack as selects (label line, control below, full content width)
 - Never use `text-base` on placeholders — they should read lighter and slightly smaller than typed text
 
 ### 8.5 Selectable cards

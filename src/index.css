@@ -233,15 +233,43 @@
   }
 
   .field-input {
-    @apply w-full rounded-xl border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30;
+    @apply w-full max-w-full min-w-0 rounded-xl border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30;
+  }
+
+  .field-control {
+    @apply mt-1 w-full min-w-0 max-w-full;
+  }
+
+  .field-control .field-input {
+    @apply box-border w-full max-w-full min-w-0;
+  }
+
+  .field-control .field-input[type="date"] {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  .field-control .field-input[type="date"]::-webkit-date-and-time-value {
+    min-width: 0;
+    text-align: left;
+  }
+
+  .field-control .field-input[type="date"]::-webkit-datetime-edit {
+    min-width: 0;
+    padding: 0;
+  }
+
+  .field-control .field-input[type="date"]::-webkit-calendar-picker-indicator {
+    margin-left: 0.25rem;
+    opacity: 0.55;
   }
 
   .field-textarea {
     @apply field-input min-h-[90px];
-  }
-
-  .field-input[type="date"] {
-    @apply block w-full;
   }
 
   .field-input::placeholder,

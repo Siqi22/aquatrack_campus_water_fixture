@@ -134,27 +134,31 @@ function ExportDialogBody({
         <p className="section-label">Filename</p>
         <label className="field-label block">
           <span className="block">Campus</span>
-          <select
-            value={campusToken}
-            onChange={(e) => setCampusToken(e.target.value)}
-            className="field-input mt-1 block w-full"
-          >
-            <option value="all">All campuses</option>
-            {campusOptions.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+          <div className="field-control">
+            <select
+              value={campusToken}
+              onChange={(e) => setCampusToken(e.target.value)}
+              className="field-input"
+            >
+              <option value="all">All campuses</option>
+              {campusOptions.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </label>
         <label className="field-label block">
           <span className="block">Date</span>
-          <input
-            type="date"
-            value={dateToken}
-            onChange={(e) => setDateToken(e.target.value)}
-            className="field-input mt-1 block w-full"
-          />
+          <div className="field-control">
+            <input
+              type="date"
+              value={dateToken}
+              onChange={(e) => setDateToken(e.target.value)}
+              className="field-input"
+            />
+          </div>
         </label>
         <label className="flex items-center gap-2 text-xs text-foreground">
           <Checkbox
