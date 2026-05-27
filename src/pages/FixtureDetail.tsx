@@ -238,22 +238,24 @@ export default function FixtureDetail() {
 
       <div className="card-soft p-4 mb-4">
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-foreground">
+          <div className="min-w-0 flex-1">
+            <p className="line-clamp-1 break-words text-sm font-semibold text-foreground">
               {editing ? fixtureCategoryMeta[category].label : getFixtureCategoryLabel(fixture.category)}
             </p>
             {fixtureIdentity ? (
-              <p className="mt-1 truncate text-xs text-muted-foreground">{fixtureIdentity}</p>
+              <p className="mt-1 line-clamp-1 break-all text-xs text-muted-foreground" title={fixtureIdentity}>
+                {fixtureIdentity}
+              </p>
             ) : null}
           </div>
-          <div className="flex flex-wrap justify-end gap-2">
-            <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold text-secondary-foreground">
-              <MapPin className="h-3 w-3" />
-              F{displayFloor} · Rm {displayRoom}
+          <div className="flex max-w-[46%] shrink-0 flex-col items-end gap-2 sm:max-w-none sm:flex-row sm:flex-wrap sm:justify-end">
+            <span className="inline-flex max-w-full items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold text-secondary-foreground">
+              <MapPin className="h-3 w-3 shrink-0" />
+              <span className="truncate">F{displayFloor} · Rm {displayRoom}</span>
             </span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold text-secondary-foreground">
-              <Hash className="h-3 w-3" />
-              {fixture.id}
+            <span className="inline-flex max-w-full items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold text-secondary-foreground">
+              <Hash className="h-3 w-3 shrink-0" />
+              <span className="truncate">{fixture.id}</span>
             </span>
           </div>
         </div>
@@ -641,7 +643,9 @@ function InfoTile({ label, value }: { label: string; value: string }) {
   return (
     <div className="info-tile">
       <p className="info-tile-label">{label}</p>
-      <p className="info-tile-value">{value}</p>
+      <p className="info-tile-value" title={value}>
+        {value}
+      </p>
     </div>
   );
 }

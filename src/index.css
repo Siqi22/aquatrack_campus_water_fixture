@@ -111,11 +111,11 @@
   }
 
   .page-title {
-    @apply text-xl font-bold tracking-tight text-foreground;
+    @apply truncate text-xl font-bold tracking-tight text-foreground;
   }
 
   .page-subtitle {
-    @apply mt-0.5 text-sm text-muted-foreground;
+    @apply mt-0.5 truncate text-sm text-muted-foreground;
   }
 
   .section-label {
@@ -283,7 +283,7 @@
 
   /* ── Info tiles ── */
   .info-tile {
-    @apply rounded-xl border bg-card/70 p-3;
+    @apply min-w-0 rounded-xl border bg-card/70 p-3;
   }
 
   .info-tile-label {
@@ -291,7 +291,7 @@
   }
 
   .info-tile-value {
-    @apply mt-1 truncate text-sm font-semibold text-foreground;
+    @apply mt-1 line-clamp-1 break-all text-sm font-semibold text-foreground;
   }
 
   /* ── Links & actions ── */

@@ -14,6 +14,19 @@ interface FloorPlanViewProps {
   campusId?: string;
 }
 
+function MarkCompleteButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-status-good/50 bg-status-good/5 py-2.5 text-xs font-semibold text-status-good"
+    >
+      <CheckCircle2 className="h-3.5 w-3.5" />
+      Mark floor complete
+    </button>
+  );
+}
+
 export function FloorPlanView({ buildingId, floor, buildingName, campusId }: FloorPlanViewProps) {
   const { getFixturesByBuildingAndFloor, getFloorProgress, setFloorStatus, primaryRole } = useFixtureStore();
   const canComplete = canMarkFloorComplete(primaryRole);
@@ -23,6 +36,7 @@ export function FloorPlanView({ buildingId, floor, buildingName, campusId }: Flo
   const floorProgress = getFloorProgress(buildingId, floor);
   const isLocked = floorProgress.status === 'Restricted';
   const isDone = floorProgress.status === 'Done';
+  const showMarkComplete = canComplete && !isLocked && !isDone;
 
   const statusPill = floorStatusPillClass;
 
@@ -82,37 +96,29 @@ export function FloorPlanView({ buildingId, floor, buildingName, campusId }: Flo
           />
         </div>
 
-        <div className="mt-2 flex flex-wrap gap-2">
-          {canComplete && !isLocked && !isDone && (
-            <button
-              type="button"
-              onClick={handleMarkComplete}
-              className="rounded-full bg-primary px-3 py-1 text-[10px] font-semibold text-primary-foreground"
-            >
-              <CheckCircle2 className="mr-1 inline h-3 w-3" />
-              Mark floor complete
-            </button>
-          )}
-          {canLock && !isLocked && !isDone && (
-            <button
-              type="button"
-              onClick={handleLock}
-              className="rounded-full bg-secondary px-3 py-1 text-[10px] font-semibold text-secondary-foreground"
-            >
-              <Lock className="mr-1 inline h-3 w-3" />
-              Mark locked
-            </button>
-          )}
-          {canManageProgress && isLocked && (
-            <button
-              type="button"
-              onClick={handleUnlock}
-              className="rounded-full bg-secondary px-3 py-1 text-[10px] font-semibold text-secondary-foreground"
-            >
-              Unlock floor
-            </button>
-          )}
-        </div>
+        {(canLock && !isLocked && !isDone) || (canManageProgress && isLocked) ? (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {canLock && !isLocked && !isDone && (
+              <button
+                type="button"
+                onClick={handleLock}
+                className="rounded-full bg-secondary px-3 py-1 text-[10px] font-semibold text-secondary-foreground"
+              >
+                <Lock className="mr-1 inline h-3 w-3" />
+                Mark locked
+              </button>
+            )}
+            {canManageProgress && isLocked && (
+              <button
+                type="button"
+                onClick={handleUnlock}
+                className="rounded-full bg-secondary px-3 py-1 text-[10px] font-semibold text-secondary-foreground"
+              >
+                Unlock floor
+              </button>
+            )}
+          </div>
+        ) : null}
       </div>
 
       {isLocked ? (
@@ -147,10 +153,16 @@ export function FloorPlanView({ buildingId, floor, buildingName, campusId }: Flo
             Record fixtures here, mark the floor complete if finished, or mark it locked if there is no access.
           </p>
           {!isDone ? (
-            <Link to={addHref} className="btn-primary mt-4 inline-flex text-xs">
-              <PlusCircle className="h-3.5 w-3.5" />
-              Add first fixture
-            </Link>
+            <div className="mt-4 w-full max-w-sm space-y-2">
+              <Link
+                to={addHref}
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-primary/40 py-2.5 text-xs font-semibold text-primary"
+              >
+                <PlusCircle className="h-3.5 w-3.5" />
+                Add first fixture
+              </Link>
+              {showMarkComplete ? <MarkCompleteButton onClick={handleMarkComplete} /> : null}
+            </div>
           ) : null}
         </div>
       ) : (
@@ -187,7 +199,7 @@ export function FloorPlanView({ buildingId, floor, buildingName, campusId }: Flo
               );
             })}
             {!isDone ? (
-              <div className="p-3">
+              <div className="space-y-2 p-3">
                 <Link
                   to={addHref}
                   className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-primary/40 py-2.5 text-xs font-semibold text-primary"
@@ -195,6 +207,7 @@ export function FloorPlanView({ buildingId, floor, buildingName, campusId }: Flo
                   <PlusCircle className="h-3.5 w-3.5" />
                   Add another fixture
                 </Link>
+                {showMarkComplete ? <MarkCompleteButton onClick={handleMarkComplete} /> : null}
               </div>
             ) : null}
           </div>
