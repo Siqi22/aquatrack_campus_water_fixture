@@ -370,7 +370,7 @@ export default function AddAsset() {
 
           <button
             type="button"
-            onClick={() => navigate('/?import=1')}
+            onClick={() => navigate('/add?import=1')}
             className="action-tile w-full"
           >
             <div className="action-tile-icon">
@@ -1098,11 +1098,11 @@ export default function AddAsset() {
           </div>
           <div>
             <label className="text-sm font-medium text-foreground">Water pressure</label>
-            <SimpleRating value={pressure} onChange={setPressure} />
+            <SimpleRating compact value={pressure} onChange={setPressure} />
           </div>
           <div>
             <label className="text-sm font-medium text-foreground">Cleanliness</label>
-            <SimpleRating value={cleanliness} onChange={setCleanliness} />
+            <SimpleRating compact value={cleanliness} onChange={setCleanliness} />
           </div>
 
           <div>

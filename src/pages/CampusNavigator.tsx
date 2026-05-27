@@ -1,45 +1,41 @@
-import { useCallback, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useFixtureStore } from '@/store/fixtureStore';
 import { FloorPlanView } from '@/components/FloorPlanView';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { FLOOR_STATUS_LABELS } from '@/lib/fieldLabels';
+import { loadCampusNavState, saveCampusNavState } from '@/lib/campusNavState';
 import { Building2, ChevronRight, ChevronDown, Layers } from 'lucide-react';
 
 export default function CampusNavigator() {
   const { campuses, getBuildingsByCampus, getFixturesByBuilding, getFixturesByCampus, getFloorsByBuilding } =
     useFixtureStore();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
 
-  const defaultCampusId = campuses[0]?.id ?? '';
-  const campusId = searchParams.get('campus') || defaultCampusId;
-  const buildingId = searchParams.get('building');
-  const floor = searchParams.get('floor');
-  const focusFloor = searchParams.get('focus');
+  const defaultCampusId = campuses[0]?.id || '';
+  const [selectedCampus, setSelectedCampus] = useState(defaultCampusId);
+  const [expandedBuilding, setExpandedBuilding] = useState<string | null>(null);
+  const [selectedFloor, setSelectedFloor] = useState<{ buildingId: string; floor: string } | null>(null);
+  const [hydrated, setHydrated] = useState(false);
 
-  const patchParams = useCallback(
-    (patch: Record<string, string | null | undefined>, replace = false) => {
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-          for (const [key, value] of Object.entries(patch)) {
-            if (value == null || value === '') next.delete(key);
-            else next.set(key, value);
-          }
-          const resolvedCampus = next.get('campus') || campusId || defaultCampusId;
-          if (resolvedCampus) next.set('campus', resolvedCampus);
-          return next;
-        },
-        { replace },
-      );
-    },
-    [campusId, defaultCampusId, setSearchParams],
-  );
+  useEffect(() => {
+    if (!defaultCampusId || hydrated) return;
+    const saved = loadCampusNavState(defaultCampusId);
+    const campusValid = campuses.some((c) => c.id === saved.selectedCampus);
+    setSelectedCampus(campusValid ? saved.selectedCampus : defaultCampusId);
+    setExpandedBuilding(saved.expandedBuilding);
+    setSelectedFloor(saved.selectedFloor);
+    setHydrated(true);
+  }, [defaultCampusId, campuses, hydrated]);
 
-  const campusBuildings = campusId ? getBuildingsByCampus(campusId) : [];
-  const campusFixtureCount = campusId ? getFixturesByCampus(campusId).length : 0;
-  const currentCampus = campuses.find((c) => c.id === campusId);
+  useEffect(() => {
+    if (!hydrated || !selectedCampus) return;
+    saveCampusNavState({ selectedCampus, expandedBuilding, selectedFloor });
+  }, [hydrated, selectedCampus, expandedBuilding, selectedFloor]);
+
+  const campusBuildings = selectedCampus ? getBuildingsByCampus(selectedCampus) : [];
+  const campusFixtureCount = selectedCampus ? getFixturesByCampus(selectedCampus).length : 0;
+  const currentCampus = campuses.find((c) => c.id === selectedCampus);
 
   const floorBadge: Record<string, string> = {
     NotStarted: 'bg-secondary text-secondary-foreground',
@@ -48,24 +44,26 @@ export default function CampusNavigator() {
     Restricted: 'bg-status-urgent/15 text-status-urgent',
   };
 
-  const activeBuilding = useMemo(
-    () => (buildingId ? campusBuildings.find((b) => b.id === buildingId) : undefined),
-    [buildingId, campusBuildings],
-  );
+  function backFromFloor() {
+    if (selectedFloor) {
+      setExpandedBuilding(selectedFloor.buildingId);
+    }
+    setSelectedFloor(null);
+  }
 
-  if (buildingId && floor && activeBuilding) {
+  if (selectedFloor) {
     return (
       <div className="page-shell">
         <PageHeader
-          title={`Floor ${floor}`}
-          subtitle={activeBuilding.name}
-          onBack={() => patchParams({ floor: null, focus: floor })}
+          title={`Floor ${selectedFloor.floor}`}
+          subtitle={campusBuildings.find((b) => b.id === selectedFloor.buildingId)?.name ?? 'Building'}
+          onBack={backFromFloor}
         />
         <FloorPlanView
-          buildingId={buildingId}
-          floor={floor}
-          buildingName={activeBuilding.name}
-          campusId={campusId}
+          buildingId={selectedFloor.buildingId}
+          floor={selectedFloor.floor}
+          buildingName={campusBuildings.find((b) => b.id === selectedFloor.buildingId)?.name || ''}
+          campusId={selectedCampus}
         />
       </div>
     );
@@ -88,8 +86,12 @@ export default function CampusNavigator() {
             <button
               key={c.id}
               type="button"
-              onClick={() => patchParams({ campus: c.id, building: null, floor: null, focus: null })}
-              className={campusId === c.id ? 'chip-active' : 'chip-inactive'}
+              onClick={() => {
+                setSelectedCampus(c.id);
+                setExpandedBuilding(null);
+                setSelectedFloor(null);
+              }}
+              className={selectedCampus === c.id ? 'chip-active' : 'chip-inactive'}
             >
               {c.name}
             </button>
@@ -110,7 +112,7 @@ export default function CampusNavigator() {
           </div>
         ) : (
           campusBuildings.map((b) => {
-            const isOpen = buildingId === b.id;
+            const isOpen = expandedBuilding === b.id;
             const fixtureCount = getFixturesByBuilding(b.id).length;
             const floors = getFloorsByBuilding(b.id);
             const doneCount = floors.filter((f) => f.status === 'Done' || f.status === 'Restricted').length;
@@ -121,10 +123,7 @@ export default function CampusNavigator() {
               <div key={b.id} className="card-soft overflow-hidden">
                 <button
                   type="button"
-                  onClick={() => {
-                    if (isOpen) patchParams({ building: null, floor: null, focus: null });
-                    else patchParams({ building: b.id, floor: null, focus: null });
-                  }}
+                  onClick={() => setExpandedBuilding(isOpen ? null : b.id)}
                   className="flex w-full items-center gap-3 p-4 text-left"
                 >
                   <div className="action-tile-icon">
@@ -152,7 +151,7 @@ export default function CampusNavigator() {
                       type="button"
                       onClick={() =>
                         navigate(
-                          `/add?mode=onboard&campusId=${encodeURIComponent(campusId)}&buildingId=${encodeURIComponent(b.id)}&floor=${encodeURIComponent(nextFloor)}`,
+                          `/add?mode=onboard&campusId=${encodeURIComponent(selectedCampus)}&buildingId=${encodeURIComponent(b.id)}&floor=${encodeURIComponent(nextFloor)}`,
                         )
                       }
                       className="btn-primary w-full text-xs"
@@ -164,28 +163,24 @@ export default function CampusNavigator() {
 
                 {isOpen && (
                   <div className="border-t px-2 pb-2">
-                    {floors.map((fp) => {
-                      const isFocused = focusFloor === fp.floor;
-                      return (
-                        <button
-                          key={fp.floor}
-                          type="button"
-                          onClick={() => patchParams({ building: b.id, floor: fp.floor, focus: null })}
-                          className={`flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-secondary/50 ${
-                            isFocused ? 'bg-accent/10 ring-1 ring-accent/30' : ''
-                          }`}
-                        >
-                          <Layers className="h-4 w-4 text-muted-foreground" />
-                          <span className="flex-1 text-sm text-foreground">Floor {fp.floor}</span>
-                          <span
-                            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${floorBadge[fp.status]}`}
-                          >
-                            {FLOOR_STATUS_LABELS[fp.status] ?? fp.status}
-                          </span>
-                          <ChevronRight className="h-3 w-3 text-muted-foreground" />
-                        </button>
-                      );
-                    })}
+                    {floors.map((fp) => (
+                      <button
+                        key={fp.floor}
+                        type="button"
+                        onClick={() => {
+                          setExpandedBuilding(b.id);
+                          setSelectedFloor({ buildingId: b.id, floor: fp.floor });
+                        }}
+                        className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-secondary/50"
+                      >
+                        <Layers className="h-4 w-4 text-muted-foreground" />
+                        <span className="flex-1 text-sm text-foreground">Floor {fp.floor}</span>
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${floorBadge[fp.status]}`}>
+                          {FLOOR_STATUS_LABELS[fp.status] ?? fp.status}
+                        </span>
+                        <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>

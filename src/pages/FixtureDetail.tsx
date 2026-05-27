@@ -12,9 +12,8 @@ import {
 import type { FixtureCategory } from '@/store/fixtureStore';
 import { StatusBadge } from '@/components/StatusBadge';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { SimpleRating } from '@/components/SimpleRating';
+import { SimpleRating, ratingLabel } from '@/components/SimpleRating';
 import { FIELD_LABELS, issueLabel } from '@/lib/fieldLabels';
-import { campusFloorUrl } from '@/lib/campusNav';
 import { MapPin, Wrench, CheckCircle2, Edit3, Save, X, ExternalLink, Image as ImageIcon, Hash, Tag, Download } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -89,7 +88,7 @@ export default function FixtureDetail() {
       <PageHeader
         title={fixture.buildingName}
         subtitle={`Floor ${fixture.floor} · Room ${fixture.roomNumber}`}
-        backTo={campusFloorUrl(fixture.campusId, fixture.buildingId, fixture.floor)}
+        onBack={() => navigate(-1)}
         action={<StatusBadge status={status} />}
       />
 
@@ -138,14 +137,16 @@ export default function FixtureDetail() {
             </div>
           </div>
           <div className="rounded-xl border bg-card/70 p-3">
-            <p className="text-[10px] font-medium text-muted-foreground">Ratings</p>
-            <div className="mt-1">
-              <p className="text-[11px] text-muted-foreground">Pressure</p>
-              <SimpleRating value={fixture.qualityRating.pressure} readonly />
-            </div>
-            <div className="mt-2">
-              <p className="text-[11px] text-muted-foreground">Cleanliness</p>
-              <SimpleRating value={fixture.qualityRating.cleanliness} readonly />
+            <p className="text-[10px] font-medium text-muted-foreground">Condition</p>
+            <div className="mt-2 space-y-1.5 text-[11px]">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-muted-foreground">Pressure</span>
+                <span className="font-semibold text-foreground">{ratingLabel(fixture.qualityRating.pressure)}</span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-muted-foreground">Cleanliness</span>
+                <span className="font-semibold text-foreground">{ratingLabel(fixture.qualityRating.cleanliness)}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -250,13 +251,15 @@ export default function FixtureDetail() {
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Water pressure</label>
-                <SimpleRating value={pressure} onChange={setPressure} />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Cleanliness</label>
-                <SimpleRating value={cleanliness} onChange={setCleanliness} />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Water pressure</label>
+                  <SimpleRating compact value={pressure} onChange={setPressure} />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Cleanliness</label>
+                  <SimpleRating compact value={cleanliness} onChange={setCleanliness} />
+                </div>
               </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground">Observations</label>
