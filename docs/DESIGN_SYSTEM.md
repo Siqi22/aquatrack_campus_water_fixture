@@ -116,9 +116,8 @@ Page subtitle: `.page-subtitle` → `text-sm text-muted-foreground`.
 - **Field labels (standard forms):** `.field-label` — xs, muted
 - **Wizard step labels:** `.field-label-lg` — sm, foreground
 - **Links / text actions:** `.link-action` or `.link-back` — xs, `text-primary`
-- **Input value text:** `text-sm` (`.field-input`, `.search-input`)
-- **Placeholder text:** `.text-caption` (11px) via `::placeholder` — smaller than input value
-- **iOS zoom:** bump to **16px only on `:focus`** on coarse pointers (not on every field at rest)
+- **Input value text:** `text-sm` (`.field-input`, `.search-input`) — fixed at 14px, does not change on focus
+- **Placeholder text:** fixed **11px** via `::placeholder` — always smaller than typed text; never scales with focus or platform
 
 ### 3.4 Copy style
 
@@ -386,7 +385,7 @@ Centered `max-w-sm` on `.app-surface`, hero logo + `.card-soft` form card.
 ## 11. Accessibility
 
 - Minimum tap target: ~36px height for buttons (`.btn-icon` = 36px, `.btn-primary` py-2.5)
-- Form inputs: 16px on coarse pointers (iOS)
+- Form inputs: `text-sm` value + fixed 11px placeholders (no platform-specific font-size overrides)
 - Icon-only buttons: `aria-label` required
 - Dialog close: sr-only "Close" text
 - Color is not the only status indicator — StatusBadge includes icons

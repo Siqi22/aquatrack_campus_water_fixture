@@ -89,19 +89,6 @@
       env(safe-area-inset-bottom) env(safe-area-inset-left);
     touch-action: manipulation;
   }
-
-  /* iOS Safari auto-zooms focused fields when font-size < 16px */
-  @media (hover: none) and (pointer: coarse) {
-    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(
-        [type="file"]
-      ):not([type="hidden"]):not([type="button"]):not([type="submit"]):not(
-        [type="reset"]
-      ):focus,
-    textarea:focus,
-    select:focus {
-      font-size: 16px !important;
-    }
-  }
 }
 
 @layer components {
@@ -256,7 +243,10 @@
   .field-input::placeholder,
   .field-textarea::placeholder,
   .search-input::placeholder {
-    @apply text-caption text-muted-foreground;
+    @apply text-muted-foreground;
+    font-size: 11px;
+    line-height: 16px;
+    opacity: 1;
   }
 
   /* ── Info tiles ── */
