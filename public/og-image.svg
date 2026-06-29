@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="AquaTrack">
+  <rect width="1200" height="630" fill="#f8fafc"/>
+  <rect x="72" y="72" width="1056" height="486" rx="32" fill="#0f766e"/>
+  <path d="M208 164c54 60 108 128 108 194 0 60-48 101-108 101s-108-41-108-101c0-66 54-134 108-194z" fill="#e0f7f4"/>
+  <path d="M154 360c34 34 74 34 108 0" fill="none" stroke="#0f766e" stroke-width="25" stroke-linecap="round"/>
+  <circle cx="256" cy="258" r="24" fill="#14b8a6"/>
+  <text x="392" y="283" font-family="Inter, Arial, sans-serif" font-size="96" font-weight="800" fill="#ffffff">AquaTrack</text>
+  <text x="398" y="371" font-family="Inter, Arial, sans-serif" font-size="40" font-weight="500" fill="#ccfbf1">Campus drinking-water fixture inventory</text>
+</svg>

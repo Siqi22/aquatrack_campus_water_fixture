@@ -125,6 +125,8 @@ export default function AddAsset() {
     if (nextMode === 'onboard') {
       setMode('onboard');
       setStep(1);
+    } else if (nextMode === 'manage') {
+      setMode('manage');
     }
     if (campusId) setSelectedCampusId(campusId);
     if (buildingId) setSelectedBuildingId(buildingId);
@@ -137,6 +139,12 @@ export default function AddAsset() {
   const manageResults = manageQuery
     ? searchFixtures(manageQuery).filter(f => f.campusId === manageCampus)
     : [];
+
+  useEffect(() => {
+    if (!manageCampus && campuses[0]) {
+      setManageCampus(campuses[0].id);
+    }
+  }, [campuses, manageCampus]);
 
   const recentFixtures = useMemo(() => {
     const toNumeric = (id: string) => {

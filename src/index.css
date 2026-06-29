@@ -170,6 +170,10 @@
     @apply flex-1 rounded-xl border bg-card px-3 py-2.5 text-center;
   }
 
+  .quick-stat-link {
+    @apply block transition-all hover:border-primary/30 hover:bg-secondary/40 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+  }
+
   .welcome-overlay {
     @apply fixed inset-0 z-[60] flex items-center justify-center bg-foreground/25 p-4 backdrop-blur-sm;
   }

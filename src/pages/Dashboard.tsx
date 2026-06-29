@@ -104,7 +104,12 @@ export default function Dashboard() {
       {loaded && hasFixtures && (
         <>
           <div className="mt-5 flex gap-2">
-            <QuickStat label="Fixtures" value={fixtures.length} />
+            <QuickStat
+              label="Fixtures"
+              value={fixtures.length}
+              to="/add?mode=manage"
+              ariaLabel={`View ${fixtures.length} fixtures`}
+            />
             <QuickStat label="Due service" value={tasks.length} tone={tasks.length > 0 ? 'warning' : 'default'} />
             <QuickStat label="Urgent" value={urgentCount} tone={urgentCount > 0 ? 'urgent' : 'default'} />
           </div>
