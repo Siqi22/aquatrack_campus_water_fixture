@@ -19,6 +19,35 @@ function parseDataUrl(dataUrl: string): { base64: string; mimeType: string } {
   return { mimeType: 'image/jpeg', base64 };
 }
 
+function loadImage(dataUrl: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('Could not read image'));
+    img.src = dataUrl;
+  });
+}
+
+async function compressImageForScan(dataUrl: string): Promise<string> {
+  const { base64 } = parseDataUrl(dataUrl);
+  if (base64.length <= 5_000_000) return dataUrl;
+
+  const img = await loadImage(dataUrl);
+  const maxSide = 1600;
+  const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+  const width = Math.max(1, Math.round(img.naturalWidth * scale));
+  const height = Math.max(1, Math.round(img.naturalHeight * scale));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return dataUrl;
+
+  ctx.drawImage(img, 0, 0, width, height);
+  return canvas.toDataURL('image/jpeg', 0.78);
+}
+
 function resolveScanApiUrl(): string {
   const explicit = import.meta.env.VITE_SCAN_API_URL?.trim();
   if (explicit) return explicit;
@@ -44,7 +73,8 @@ function parseScanResponse(row: Record<string, unknown>): ScanFixtureLabelResult
 
 /** Call Vercel API route (Claude Haiku on server). Bypasses Lovable-managed Supabase Edge Functions. */
 export async function scanFixtureLabelFromPhoto(dataUrl: string): Promise<ScanFixtureLabelResult> {
-  const { base64, mimeType } = parseDataUrl(dataUrl);
+  const scanDataUrl = await compressImageForScan(dataUrl);
+  const { base64, mimeType } = parseDataUrl(scanDataUrl);
   if (!base64) throw new Error('Invalid image data');
 
   const { data: { session } } = await supabase.auth.getSession();
