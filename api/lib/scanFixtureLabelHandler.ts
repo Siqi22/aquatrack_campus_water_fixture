@@ -59,7 +59,20 @@ export interface ScanHandlerResult {
 }
 
 function getEnv(name: string, fallback?: string): string | undefined {
-  return process.env[name] ?? fallback;
+  const value = process.env[name]?.trim();
+  return value || fallback;
+}
+
+function getSupabaseServerEnv(): { url: string; key: string } {
+  const projectId = getEnv("SUPABASE_PROJECT_ID", getEnv("SUPABASE_PROJECT_REF", getEnv("VITE_SUPABASE_PROJECT_ID", getEnv("VITE_SUPABASE_PROJECT_REF"))));
+  const url = getEnv("SUPABASE_URL", getEnv("VITE_SUPABASE_URL", projectId ? `https://${projectId}.supabase.co` : undefined)) ?? "";
+  const key =
+    getEnv(
+      "SUPABASE_ANON_KEY",
+      getEnv("SUPABASE_PUBLISHABLE_KEY", getEnv("VITE_SUPABASE_PUBLISHABLE_KEY", getEnv("VITE_SUPABASE_ANON_KEY", getEnv("VITE_SUPABASE_KEY")))),
+    ) ?? "";
+
+  return { url, key };
 }
 
 export async function verifySupabaseUser(authHeader: string | undefined): Promise<ScanHandlerResult | null> {
@@ -67,8 +80,7 @@ export async function verifySupabaseUser(authHeader: string | undefined): Promis
     return { status: 401, body: { error: "Unauthorized" } };
   }
 
-  const supabaseUrl = getEnv("SUPABASE_URL", getEnv("VITE_SUPABASE_URL"));
-  const supabaseAnonKey = getEnv("SUPABASE_ANON_KEY", getEnv("VITE_SUPABASE_PUBLISHABLE_KEY"));
+  const { url: supabaseUrl, key: supabaseAnonKey } = getSupabaseServerEnv();
   if (!supabaseUrl || !supabaseAnonKey) {
     return { status: 500, body: { error: "Server misconfigured" } };
   }
