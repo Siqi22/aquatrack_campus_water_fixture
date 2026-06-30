@@ -357,7 +357,7 @@ export default function AddAsset() {
 
   function handleManageBack() {
     if (searchParams.get('mode') === 'manage') {
-      navigate('/');
+      navigate(-1);
       return;
     }
     setMode('choose');
