@@ -775,19 +775,19 @@ export default function AddAsset() {
 
           {/* Quick fixture-type pick after taking photos */}
           <div className="rounded-2xl border bg-card p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-foreground">What type of fixture is this?</p>
+            <div>
+              <p className="text-sm font-semibold text-foreground">What type of fixture is this?</p>
+              <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
                 <p className="text-[11px] text-muted-foreground">Pick the fixture type before continuing.</p>
-              </div>
               <button
                 type="button"
                 onClick={() => setCategoryReferenceOpen(true)}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border bg-secondary px-2.5 py-1.5 text-[11px] font-semibold text-secondary-foreground hover:bg-secondary/80"
+                className="inline-flex items-center gap-1.5 rounded-lg border bg-secondary px-2.5 py-1.5 text-[11px] font-semibold text-secondary-foreground hover:bg-secondary/80"
               >
                 <Info className="h-3.5 w-3.5" />
                 View examples
               </button>
+              </div>
             </div>
             <div className="mt-2 grid grid-cols-2 gap-2">
               {FIXTURE_CATEGORIES.map((id) => {
