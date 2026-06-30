@@ -17,7 +17,7 @@ Built for the University of Washington campus water inventory program, with term
 | **Maintenance** | 180-day filter cycle tracking with Good / Warning / Urgent status |
 | **Import** | Upload **CSV or Excel**; auto-detect columns; skip duplicates, update existing, or insert all |
 | **Export** | Template-based CSV export (default, maintenance, asset register, compliance) |
-| **Auth** | Supabase email/password and Google OAuth; row-level security on all tables |
+| **Auth** | Supabase email/password; row-level security on all tables |
 
 ---
 

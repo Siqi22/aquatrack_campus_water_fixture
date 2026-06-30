@@ -60,18 +60,6 @@ export default function Auth() {
     }
   }
 
-  async function handleGoogle() {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: `${window.location.origin}/` },
-      });
-      if (error) throw error;
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Google sign-in failed");
-    }
-  }
-
   return (
     <div className="app-surface flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-sm">
@@ -151,25 +139,10 @@ export default function Auth() {
             </button>
           </form>
 
-          <div className="my-4 flex items-center gap-2">
-            <div className="h-px flex-1 bg-border" />
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              or
-            </span>
-            <div className="h-px flex-1 bg-border" />
-          </div>
-
-          <button
-            type="button"
-            onClick={handleGoogle}
-            className="btn-secondary w-full"
-          >
-            Continue with Google
-          </button>
         </div>
 
         <p className="mt-4 text-center text-xs text-muted-foreground">
-          Each account has its own private workspace.
+          Signed-in teammates share one campus inventory workspace.
         </p>
       </div>
     </div>
