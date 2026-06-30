@@ -355,6 +355,14 @@ export default function AddAsset() {
     4: locationConfirmed && step5Ready,
   };
 
+  function handleManageBack() {
+    if (searchParams.get('mode') === 'manage') {
+      navigate('/');
+      return;
+    }
+    setMode('choose');
+  }
+
   // Mode chooser
   if (mode === 'choose') {
     return (
@@ -433,7 +441,7 @@ export default function AddAsset() {
   if (mode === 'manage') {
     return (
       <div className="page-shell">
-        <button onClick={() => setMode('choose')} className="link-back mb-3">
+        <button onClick={handleManageBack} className="link-back mb-3">
           ← Back
         </button>
         <h1 className="text-xl font-bold text-foreground">Manage database</h1>
