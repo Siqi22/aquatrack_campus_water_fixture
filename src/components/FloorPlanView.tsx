@@ -122,19 +122,61 @@ export function FloorPlanView({ buildingId, floor, buildingName, campusId }: Flo
       </div>
 
       {isLocked ? (
-        <div className="p-4">
-          <div className="rounded-2xl border bg-status-urgent/5 p-4">
-            <div className="flex items-center gap-2">
-              <Lock className="h-4 w-4 text-status-urgent" />
-              <p className="text-sm font-semibold text-foreground">Floor locked</p>
+        <div>
+          <div className="p-4">
+            <div className="rounded-2xl border bg-status-urgent/5 p-4">
+              <div className="flex items-center gap-2">
+                <Lock className="h-4 w-4 text-status-urgent" />
+                <p className="text-sm font-semibold text-foreground">Floor locked</p>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {floorProgress.restrictedReason
+                  ? `Reason: ${floorProgress.restrictedReason}`
+                  : 'This floor cannot be surveyed right now.'}
+              </p>
+              <p className="mt-2 text-[11px] text-muted-foreground">Unlock the floor when access is available.</p>
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {floorProgress.restrictedReason
-                ? `Reason: ${floorProgress.restrictedReason}`
-                : 'This floor cannot be surveyed right now.'}
-            </p>
-            <p className="mt-2 text-[11px] text-muted-foreground">Unlock the floor when access is available.</p>
           </div>
+
+          {fixtures.length > 0 ? (
+            <div className="border-t">
+              <div className="bg-secondary/10 px-4 py-2">
+                <p className="text-xs font-semibold text-foreground">Already recorded fixtures</p>
+                <p className="text-[10px] text-muted-foreground">These entries remain visible while the floor is locked.</p>
+              </div>
+              <div className="divide-y">
+                {fixtures.map((f) => {
+                  const status = getFixtureStatus(f.lastMaintenanceDate);
+                  return (
+                    <Link
+                      key={f.id}
+                      to={`/fixture/${f.id}`}
+                      className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-secondary/20"
+                    >
+                      <div className={`h-2.5 w-2.5 shrink-0 rounded-full ${fixtureStatusDotClass[status]}`} />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-foreground">
+                          {FIELD_LABELS.room}: {f.nearestRoom || f.roomNumber}
+                        </p>
+                        <p className="truncate text-[11px] text-muted-foreground">
+                          {[f.brand, f.model, f.serialNumber].filter(Boolean).join(' · ') || 'Details pending'}
+                        </p>
+                      </div>
+                      <StatusBadge status={status} />
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div className="border-t px-4 pb-4">
+              <div className="rounded-2xl border border-dashed p-4 text-center">
+                <Droplets className="mx-auto h-5 w-5 text-muted-foreground" />
+                <p className="mt-2 text-sm font-medium text-foreground">No fixtures recorded yet</p>
+                <p className="mt-1 text-xs text-muted-foreground">Unlock the floor before starting this survey.</p>
+              </div>
+            </div>
+          )}
         </div>
       ) : fixtures.length === 0 ? (
         <div className="empty-state px-4 py-10">
