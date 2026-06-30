@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useFixtureStore, getFixtureStatus, getDaysSinceMaintenance } from '@/store/fixtureStore';
-import { StatusBadge } from '@/components/StatusBadge';
+import { useFixtureStore } from '@/store/fixtureStore';
+import type { Fixture } from '@/store/fixtureStore';
 import { ActionTile } from '@/components/layout/ActionTile';
 import { QuickStat } from '@/components/layout/QuickStat';
 import { ExportDialog } from '@/components/ExportDialog';
@@ -16,6 +16,7 @@ import {
   ClipboardList,
 } from 'lucide-react';
 import { getQuickStart } from '@/lib/roles';
+import { issueLabel } from '@/lib/fieldLabels';
 import type { LucideIcon } from 'lucide-react';
 
 const stepIcons: Record<string, LucideIcon> = {
@@ -24,6 +25,15 @@ const stepIcons: Record<string, LucideIcon> = {
   import: FileSpreadsheet,
   maintenance: Wrench,
 };
+
+function getReviewReasons(fixture: Fixture): string[] {
+  const reasons: string[] = [];
+  if (fixture.qualityRating.pressure <= 1) reasons.push('Low pressure');
+  if (fixture.qualityRating.cleanliness <= 1) reasons.push('Low cleanliness');
+  if (fixture.issues?.length) reasons.push(...fixture.issues.map(issueLabel));
+  if (fixture.observations?.trim()) reasons.push('Has notes');
+  return reasons;
+}
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -34,15 +44,16 @@ export default function Dashboard() {
     loading,
     loaded,
     searchFixtures,
-    getMaintenanceTasks,
   } = useFixtureStore();
   const [query, setQuery] = useState('');
   const [exportOpen, setExportOpen] = useState(false);
 
   const hasFixtures = fixtures.length > 0;
   const quickStart = getQuickStart(hasFixtures);
-  const tasks = getMaintenanceTasks();
-  const urgentCount = fixtures.filter((f) => getFixtureStatus(f.lastMaintenanceDate) === 'Urgent').length;
+  const urgentFixtures = fixtures
+    .map((fixture) => ({ fixture, reasons: getReviewReasons(fixture) }))
+    .filter(({ reasons }) => reasons.length > 0);
+  const urgentCount = urgentFixtures.length;
 
   const results = useMemo(() => {
     if (!query.trim()) return [];
@@ -110,7 +121,6 @@ export default function Dashboard() {
               to="/add?mode=manage"
               ariaLabel={`View ${fixtures.length} fixtures`}
             />
-            <QuickStat label="Due service" value={tasks.length} tone={tasks.length > 0 ? 'warning' : 'default'} />
             <QuickStat label="Urgent" value={urgentCount} tone={urgentCount > 0 ? 'urgent' : 'default'} />
           </div>
 
@@ -139,33 +149,40 @@ export default function Dashboard() {
                         {[f.brand, f.model].filter(Boolean).join(' ') || 'Details pending'}
                       </p>
                     </div>
-                    <StatusBadge status={getFixtureStatus(f.lastMaintenanceDate)} />
+                    {getReviewReasons(f).length > 0 ? (
+                      <span className="rounded-full bg-status-urgent/10 px-2 py-1 text-[10px] font-semibold text-status-urgent">
+                        Review
+                      </span>
+                    ) : null}
                   </Link>
                 ))
               )}
             </div>
           )}
 
-          {tasks.length > 0 && (
+          {urgentFixtures.length > 0 && (
             <section className="mt-6">
               <div className="mb-2 flex items-center justify-between">
                 <h2 className="section-label">Needs attention</h2>
-                <Link to="/maintenance" className="link-action">
+                <Link to="/add?mode=manage" className="link-action">
                   All <ArrowRight className="h-3 w-3" />
                 </Link>
               </div>
               <div className="space-y-2">
-                {tasks.slice(0, 2).map((f) => (
+                {urgentFixtures.slice(0, 3).map(({ fixture: f, reasons }) => (
                   <Link key={f.id} to={`/fixture/${f.id}`} className="list-row">
                     <div className="min-w-0">
                       <p className="list-row-title">
                         {f.buildingName} · {f.roomNumber}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {getDaysSinceMaintenance(f.lastMaintenanceDate)} days since service
+                        {reasons.slice(0, 2).join(' · ')}
+                        {reasons.length > 2 ? ` +${reasons.length - 2} more` : ''}
                       </p>
                     </div>
-                    <StatusBadge status={getFixtureStatus(f.lastMaintenanceDate)} />
+                    <span className="rounded-full bg-status-urgent/10 px-2 py-1 text-[10px] font-semibold text-status-urgent">
+                      Review
+                    </span>
                   </Link>
                 ))}
               </div>
