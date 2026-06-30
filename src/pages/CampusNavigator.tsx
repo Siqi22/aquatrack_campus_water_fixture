@@ -12,6 +12,17 @@ function getPageScrollContainer(): HTMLElement | null {
   return document.querySelector('main.scroll-gutter-stable');
 }
 
+function restorePageScroll(top: number) {
+  const scrollToTop = () => {
+    const el = getPageScrollContainer();
+    if (el) el.scrollTop = top;
+  };
+
+  requestAnimationFrame(scrollToTop);
+  requestAnimationFrame(() => requestAnimationFrame(scrollToTop));
+  window.setTimeout(scrollToTop, 80);
+}
+
 export default function CampusNavigator() {
   const { campuses, getBuildingsByCampus, getFixturesByBuilding, getFixturesByCampus, getFloorsByBuilding } =
     useFixtureStore();
@@ -24,6 +35,10 @@ export default function CampusNavigator() {
   const [listScrollTop, setListScrollTop] = useState(0);
   const [hydrated, setHydrated] = useState(false);
   const restoreScrollTopRef = useRef<number | null>(null);
+
+  const campusBuildings = selectedCampus ? getBuildingsByCampus(selectedCampus) : [];
+  const campusFixtureCount = selectedCampus ? getFixturesByCampus(selectedCampus).length : 0;
+  const currentCampus = campuses.find((c) => c.id === selectedCampus);
 
   useEffect(() => {
     if (!defaultCampusId || hydrated) return;
@@ -46,28 +61,31 @@ export default function CampusNavigator() {
     if (!hydrated || selectedFloor || restoreScrollTopRef.current == null) return;
     const top = restoreScrollTopRef.current;
     restoreScrollTopRef.current = null;
-    requestAnimationFrame(() => {
-      getPageScrollContainer()?.scrollTo({ top });
-    });
+    restorePageScroll(top);
   }, [hydrated, selectedFloor, campusBuildings.length, expandedBuilding]);
 
-  const campusBuildings = selectedCampus ? getBuildingsByCampus(selectedCampus) : [];
-  const campusFixtureCount = selectedCampus ? getFixturesByCampus(selectedCampus).length : 0;
-  const currentCampus = campuses.find((c) => c.id === selectedCampus);
-
   function backFromFloor() {
+    const saved = loadCampusNavState(selectedCampus || defaultCampusId);
+    const nextScrollTop = saved.listScrollTop || listScrollTop;
     if (selectedFloor) {
       setExpandedBuilding(selectedFloor.buildingId);
     }
-    restoreScrollTopRef.current = listScrollTop;
+    restoreScrollTopRef.current = nextScrollTop;
     setSelectedFloor(null);
   }
 
   function openFloor(buildingId: string, floor: string) {
     const nextScrollTop = getPageScrollContainer()?.scrollTop ?? 0;
+    const nextSelectedFloor = { buildingId, floor };
     setListScrollTop(nextScrollTop);
     setExpandedBuilding(buildingId);
-    setSelectedFloor({ buildingId, floor });
+    setSelectedFloor(nextSelectedFloor);
+    saveCampusNavState({
+      selectedCampus,
+      expandedBuilding: buildingId,
+      selectedFloor: nextSelectedFloor,
+      listScrollTop: nextScrollTop,
+    });
   }
 
   if (selectedFloor) {
