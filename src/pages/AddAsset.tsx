@@ -8,7 +8,7 @@ import {
   normalizeFixtureCategory,
 } from '@/store/fixtureStore';
 import type { FixtureCategory } from '@/store/fixtureStore';
-import { Camera, ScanLine, CheckCircle2, Building2, ChevronLeft, ChevronRight, ImagePlus, PlusCircle, ListChecks, Search, Map, MessageSquareWarning, University, Info, X, FileSpreadsheet } from 'lucide-react';
+import { Camera, ScanLine, CheckCircle2, Building2, ChevronLeft, ChevronRight, ImagePlus, PlusCircle, ListChecks, Search, Map, MessageSquareWarning, University, Info, X, FileSpreadsheet, Maximize2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { SimpleRating } from '@/components/SimpleRating';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -80,6 +80,7 @@ export default function AddAsset() {
   const [locationConfirmed, setLocationConfirmed] = useState(false);
   const [postSaveOpen, setPostSaveOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [previewPhoto, setPreviewPhoto] = useState<{ src: string; label: string } | null>(null);
 
   // University/campus creation + fuzzy matching
   const [campusQuery, setCampusQuery] = useState('');
@@ -727,7 +728,17 @@ export default function AddAsset() {
             <div className="rounded-xl border-2 border-dashed p-3">
               {photo ? (
                 <>
-                  <img src={photo} alt="Fixture" className="h-24 w-full rounded-lg object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setPreviewPhoto({ src: photo, label: FIELD_LABELS.generalPhoto })}
+                    className="group relative block w-full overflow-hidden rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    aria-label={`Open ${FIELD_LABELS.generalPhoto}`}
+                  >
+                    <img src={photo} alt="Fixture" className="h-24 w-full object-cover" />
+                    <span className="absolute right-1.5 top-1.5 rounded-md bg-background/85 p-1 text-foreground shadow-sm">
+                      <Maximize2 className="h-3.5 w-3.5" />
+                    </span>
+                  </button>
                   <div className="mt-2 flex gap-2">
                     <button onClick={() => photoInputRef.current?.click()} className="flex-1 rounded-md bg-secondary px-2 py-1 text-[11px] font-semibold text-secondary-foreground">Retake</button>
                     <button onClick={() => setPhoto(null)} className="rounded-md bg-secondary px-2 py-1 text-[11px] font-semibold text-secondary-foreground">✕</button>
@@ -744,7 +755,17 @@ export default function AddAsset() {
             <div className="rounded-xl border-2 border-dashed p-3">
               {platePhoto ? (
                 <>
-                  <img src={platePhoto} alt={FIELD_LABELS.modelLabel} className="h-24 w-full rounded-lg object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setPreviewPhoto({ src: platePhoto, label: FIELD_LABELS.modelLabel })}
+                    className="group relative block w-full overflow-hidden rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    aria-label={`Open ${FIELD_LABELS.modelLabel}`}
+                  >
+                    <img src={platePhoto} alt={FIELD_LABELS.modelLabel} className="h-24 w-full object-cover" />
+                    <span className="absolute right-1.5 top-1.5 rounded-md bg-background/85 p-1 text-foreground shadow-sm">
+                      <Maximize2 className="h-3.5 w-3.5" />
+                    </span>
+                  </button>
                   <div className="mt-2 flex gap-2">
                     <button onClick={() => platePhotoInputRef.current?.click()} className="flex-1 rounded-md bg-secondary px-2 py-1 text-[11px] font-semibold text-secondary-foreground">Retake</button>
                     <button onClick={() => { setPlatePhoto(null); setScanned(false); setScanError(null); }} className="rounded-md bg-secondary px-2 py-1 text-[11px] font-semibold text-secondary-foreground">✕</button>
@@ -1124,6 +1145,29 @@ export default function AddAsset() {
           </button>
         )}
       </div>
+
+      {previewPhoto && (
+        <div className="overlay-scrim p-3" onClick={() => setPreviewPhoto(null)}>
+          <div className="relative flex max-h-[92vh] w-full max-w-3xl flex-col gap-3" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between gap-3 rounded-xl bg-background/95 px-3 py-2 shadow-lg">
+              <p className="min-w-0 truncate text-sm font-semibold text-foreground">{previewPhoto.label}</p>
+              <button
+                type="button"
+                onClick={() => setPreviewPhoto(null)}
+                className="btn-icon"
+                aria-label="Close photo preview"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <img
+              src={previewPhoto.src}
+              alt={previewPhoto.label}
+              className="max-h-[78vh] w-full rounded-xl bg-background object-contain shadow-xl"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Post-save: Are you done with this floor? */}
       {postSaveOpen && (
