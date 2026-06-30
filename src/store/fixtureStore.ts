@@ -586,7 +586,7 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
         floorProgress,
       );
 
-      // First-run seed: if user has no campuses at all, seed a starter campus.
+      // First-run seed: if the shared workspace has no campuses, seed a starter campus.
       if (campuses.length === 0 && userId) {
         const { data: seed } = await supabase
           .from("campuses")
