@@ -121,7 +121,13 @@ export default function Dashboard() {
               to="/add?mode=manage"
               ariaLabel={`View ${fixtures.length} fixtures`}
             />
-            <QuickStat label="Urgent" value={urgentCount} tone={urgentCount > 0 ? 'urgent' : 'default'} />
+            <QuickStat
+              label="Urgent"
+              value={urgentCount}
+              tone={urgentCount > 0 ? 'urgent' : 'default'}
+              to="/add?mode=manage&filter=urgent"
+              ariaLabel={`View ${urgentCount} urgent fixtures`}
+            />
           </div>
 
           <div className="relative mt-4">

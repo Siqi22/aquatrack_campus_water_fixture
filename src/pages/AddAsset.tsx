@@ -17,6 +17,16 @@ import { FIELD_LABELS, NO_LABEL_REASONS, ISSUE_OPTIONS } from '@/lib/fieldLabels
 import { scanFixtureLabelFromPhoto } from '@/lib/scanFixtureLabel';
 
 type Mode = 'choose' | 'onboard' | 'manage';
+type ManageFilter = 'all' | 'urgent';
+
+function needsReview(fixture: { qualityRating: { pressure: number; cleanliness: number }; issues?: string[]; observations?: string }) {
+  return (
+    fixture.qualityRating.pressure <= 1 ||
+    fixture.qualityRating.cleanliness <= 1 ||
+    !!fixture.issues?.length ||
+    !!fixture.observations?.trim()
+  );
+}
 
 function fuzzyIncludes(haystack: string, needle: string) {
   return haystack.toLowerCase().includes(needle.trim().toLowerCase());
@@ -40,6 +50,7 @@ export default function AddAsset() {
   const [manageCampus, setManageCampus] = useState<string>(campuses[0]?.id || '');
   const [manageBuilding, setManageBuilding] = useState<string>('');
   const [manageFloor, setManageFloor] = useState<string | null>(null);
+  const [manageFilter, setManageFilter] = useState<ManageFilter>('all');
 
   // Onboard state
   const [step, setStep] = useState(1);
@@ -114,6 +125,7 @@ export default function AddAsset() {
     const campusId = searchParams.get('campusId') ?? '';
     const buildingId = searchParams.get('buildingId') ?? '';
     const floorParam = searchParams.get('floor') ?? '';
+    const filterParam = searchParams.get('filter');
 
     if (nextMode === 'onboard') {
       setMode('onboard');
@@ -124,14 +136,21 @@ export default function AddAsset() {
     if (campusId) setSelectedCampusId(campusId);
     if (buildingId) setSelectedBuildingId(buildingId);
     if (floorParam) setFloor(floorParam);
+    setManageFilter(filterParam === 'urgent' ? 'urgent' : 'all');
   }, [searchParams]);
 
   // Manage helpers
   const manageCampusBuildings = manageCampus ? getBuildingsByCampus(manageCampus) : [];
   const manageBuildingObj = buildings.find(b => b.id === manageBuilding);
-  const manageResults = manageQuery
-    ? searchFixtures(manageQuery).filter(f => f.campusId === manageCampus)
-    : [];
+  const urgentFixtures = useMemo(() => fixtures.filter(needsReview), [fixtures]);
+  const manageResults = useMemo(() => {
+    const source = manageQuery
+      ? searchFixtures(manageQuery)
+      : manageFilter === 'urgent'
+        ? urgentFixtures
+        : [];
+    return source.filter(f => f.campusId === manageCampus);
+  }, [manageCampus, manageFilter, manageQuery, searchFixtures, urgentFixtures]);
 
   useEffect(() => {
     if (!manageCampus && campuses[0]) {
@@ -420,8 +439,25 @@ export default function AddAsset() {
         <h1 className="text-xl font-bold text-foreground">Manage database</h1>
         <p className="text-sm text-muted-foreground">Search fixtures or browse by building and floor</p>
 
-        {/* Campus selector */}
         <div className="chip-row mt-4">
+          <button
+            type="button"
+            onClick={() => setManageFilter('all')}
+            className={manageFilter === 'all' ? 'chip-active whitespace-nowrap' : 'chip-inactive whitespace-nowrap'}
+          >
+            All fixtures
+          </button>
+          <button
+            type="button"
+            onClick={() => setManageFilter('urgent')}
+            className={manageFilter === 'urgent' ? 'chip-active whitespace-nowrap' : 'chip-inactive whitespace-nowrap'}
+          >
+            Urgent review
+          </button>
+        </div>
+
+        {/* Campus selector */}
+        <div className="chip-row mt-3">
           {campuses.map((c) => (
             <button
               key={c.id}
@@ -444,10 +480,12 @@ export default function AddAsset() {
           />
         </div>
 
-        {manageQuery ? (
+        {manageQuery || manageFilter === 'urgent' ? (
           <div className="mt-3 space-y-2">
             {manageResults.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">No results</p>
+              <p className="text-sm text-muted-foreground text-center py-4">
+                {manageFilter === 'urgent' ? 'No urgent fixtures in this campus' : 'No results'}
+              </p>
             ) : (
               manageResults.map((f) => (
                 <Link key={f.id} to={`/fixture/${f.id}`} className="flex items-center justify-between rounded-xl border bg-card p-3">
@@ -455,7 +493,13 @@ export default function AddAsset() {
                     <p className="list-row-title">{f.buildingName} — Rm {f.roomNumber}</p>
                     <p className="list-row-subtitle">{f.brand} {f.model}</p>
                   </div>
-                  <StatusBadge status={getFixtureStatus(f.lastMaintenanceDate)} />
+                  {needsReview(f) ? (
+                    <span className="rounded-full bg-status-urgent/10 px-2 py-1 text-[10px] font-semibold text-status-urgent">
+                      Review
+                    </span>
+                  ) : (
+                    <StatusBadge status={getFixtureStatus(f.lastMaintenanceDate)} />
+                  )}
                 </Link>
               ))
             )}
