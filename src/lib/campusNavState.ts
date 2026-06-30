@@ -4,6 +4,7 @@ export interface CampusNavState {
   selectedCampus: string;
   expandedBuilding: string | null;
   selectedFloor: { buildingId: string; floor: string } | null;
+  listScrollTop: number;
 }
 
 export function loadCampusNavState(fallbackCampusId: string): CampusNavState {
@@ -11,6 +12,7 @@ export function loadCampusNavState(fallbackCampusId: string): CampusNavState {
     selectedCampus: fallbackCampusId,
     expandedBuilding: null,
     selectedFloor: null,
+    listScrollTop: 0,
   };
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY);
@@ -20,6 +22,7 @@ export function loadCampusNavState(fallbackCampusId: string): CampusNavState {
       selectedCampus: parsed.selectedCampus || fallbackCampusId,
       expandedBuilding: parsed.expandedBuilding ?? null,
       selectedFloor: parsed.selectedFloor ?? null,
+      listScrollTop: typeof parsed.listScrollTop === 'number' ? parsed.listScrollTop : 0,
     };
   } catch {
     return fallback;

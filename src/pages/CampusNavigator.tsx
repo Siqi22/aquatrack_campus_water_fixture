@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useFixtureStore } from '@/store/fixtureStore';
 import { FloorPlanView } from '@/components/FloorPlanView';
@@ -7,6 +7,10 @@ import { FLOOR_STATUS_LABELS } from '@/lib/fieldLabels';
 import { loadCampusNavState, saveCampusNavState } from '@/lib/campusNavState';
 import { floorStatusPillClass } from '@/lib/statusStyles';
 import { Building2, ChevronRight, ChevronDown, Layers } from 'lucide-react';
+
+function getPageScrollContainer(): HTMLElement | null {
+  return document.querySelector('main.scroll-gutter-stable');
+}
 
 export default function CampusNavigator() {
   const { campuses, getBuildingsByCampus, getFixturesByBuilding, getFixturesByCampus, getFloorsByBuilding } =
@@ -17,7 +21,9 @@ export default function CampusNavigator() {
   const [selectedCampus, setSelectedCampus] = useState(defaultCampusId);
   const [expandedBuilding, setExpandedBuilding] = useState<string | null>(null);
   const [selectedFloor, setSelectedFloor] = useState<{ buildingId: string; floor: string } | null>(null);
+  const [listScrollTop, setListScrollTop] = useState(0);
   const [hydrated, setHydrated] = useState(false);
+  const restoreScrollTopRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!defaultCampusId || hydrated) return;
@@ -26,13 +32,24 @@ export default function CampusNavigator() {
     setSelectedCampus(campusValid ? saved.selectedCampus : defaultCampusId);
     setExpandedBuilding(saved.expandedBuilding);
     setSelectedFloor(saved.selectedFloor);
+    setListScrollTop(saved.listScrollTop);
+    if (!saved.selectedFloor) restoreScrollTopRef.current = saved.listScrollTop;
     setHydrated(true);
   }, [defaultCampusId, campuses, hydrated]);
 
   useEffect(() => {
     if (!hydrated || !selectedCampus) return;
-    saveCampusNavState({ selectedCampus, expandedBuilding, selectedFloor });
-  }, [hydrated, selectedCampus, expandedBuilding, selectedFloor]);
+    saveCampusNavState({ selectedCampus, expandedBuilding, selectedFloor, listScrollTop });
+  }, [hydrated, selectedCampus, expandedBuilding, selectedFloor, listScrollTop]);
+
+  useEffect(() => {
+    if (!hydrated || selectedFloor || restoreScrollTopRef.current == null) return;
+    const top = restoreScrollTopRef.current;
+    restoreScrollTopRef.current = null;
+    requestAnimationFrame(() => {
+      getPageScrollContainer()?.scrollTo({ top });
+    });
+  }, [hydrated, selectedFloor, campusBuildings.length, expandedBuilding]);
 
   const campusBuildings = selectedCampus ? getBuildingsByCampus(selectedCampus) : [];
   const campusFixtureCount = selectedCampus ? getFixturesByCampus(selectedCampus).length : 0;
@@ -42,7 +59,15 @@ export default function CampusNavigator() {
     if (selectedFloor) {
       setExpandedBuilding(selectedFloor.buildingId);
     }
+    restoreScrollTopRef.current = listScrollTop;
     setSelectedFloor(null);
+  }
+
+  function openFloor(buildingId: string, floor: string) {
+    const nextScrollTop = getPageScrollContainer()?.scrollTop ?? 0;
+    setListScrollTop(nextScrollTop);
+    setExpandedBuilding(buildingId);
+    setSelectedFloor({ buildingId, floor });
   }
 
   if (selectedFloor) {
@@ -84,6 +109,8 @@ export default function CampusNavigator() {
                 setSelectedCampus(c.id);
                 setExpandedBuilding(null);
                 setSelectedFloor(null);
+                setListScrollTop(0);
+                restoreScrollTopRef.current = 0;
               }}
               className={selectedCampus === c.id ? 'chip-active' : 'chip-inactive'}
             >
@@ -161,10 +188,7 @@ export default function CampusNavigator() {
                       <button
                         key={fp.floor}
                         type="button"
-                        onClick={() => {
-                          setExpandedBuilding(b.id);
-                          setSelectedFloor({ buildingId: b.id, floor: fp.floor });
-                        }}
+                        onClick={() => openFloor(b.id, fp.floor)}
                         className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-secondary/50"
                       >
                         <Layers className="h-4 w-4 text-muted-foreground" />
