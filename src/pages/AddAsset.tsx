@@ -872,7 +872,7 @@ export default function AddAsset() {
                   </button>
                 </div>
                 <img
-                  src="/fixtures-reference.jpg"
+                  src="/fixtures-reference.png"
                   alt="Fixture type reference examples"
                   className="mt-3 max-h-[72vh] w-full rounded-xl border object-contain"
                 />
