@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useOrganization } from "@/contexts/OrganizationContext";
 import { Droplets } from "lucide-react";
 import { toast } from "sonner";
 
@@ -10,6 +11,7 @@ type Mode = "signin" | "signup";
 export default function Auth() {
   const navigate = useNavigate();
   const { session, loading: authLoading } = useAuth();
+  const { organizationMode, setOrganizationMode, organizationName } = useOrganization();
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -69,7 +71,7 @@ export default function Auth() {
           </div>
           <h1 className="text-2xl font-bold text-foreground">AquaTrack</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Campus water fixture inventory
+            {organizationName} water fixture inventory
           </p>
         </div>
 
@@ -92,6 +94,31 @@ export default function Auth() {
           </div>
 
           <form onSubmit={handleEmailAuth} className="space-y-3">
+            <fieldset>
+              <legend className="field-label">Workspace type</legend>
+              <div className="mt-2 grid gap-2">
+                {([
+                  ['uw', 'University of Washington'],
+                  ['school_district', 'School District'],
+                ] as const).map(([value, label]) => (
+                  <label
+                    key={value}
+                    className={`flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-sm ${
+                      organizationMode === value ? 'border-primary bg-primary/5' : 'bg-card'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="organization-mode"
+                      value={value}
+                      checked={organizationMode === value}
+                      onChange={() => setOrganizationMode(value)}
+                    />
+                    <span className="font-medium text-foreground">{label}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
             {mode === "signup" && (
               <div>
                 <label className="field-label">Display name</label>
@@ -142,7 +169,7 @@ export default function Auth() {
         </div>
 
         <p className="mt-4 text-center text-xs text-muted-foreground">
-          Signed-in teammates share one campus inventory workspace.
+          Signed-in teammates share one fixture inventory workspace.
         </p>
       </div>
     </div>

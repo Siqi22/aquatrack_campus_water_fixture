@@ -61,7 +61,7 @@ export function WelcomeScreen({ userId, fixtureCount, onDismiss, onImport }: Pro
               icon={
                 step.id === 'import'
                   ? FileSpreadsheet
-                  : step.id === 'maintenance'
+                  : step.id === 'leadTesting'
                     ? Wrench
                     : step.id === 'campus'
                       ? Building2

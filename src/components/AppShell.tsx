@@ -1,23 +1,25 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Building2, ClipboardList, Droplets, Home, LogOut } from 'lucide-react';
+import { Beaker, Building2, ClipboardList, Droplets, Home, LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFixtureStore } from '@/store/fixtureStore';
 import { WelcomeScreen, dismissWelcome, wasWelcomeDismissed } from '@/components/WelcomeScreen';
 import { ImportDialog } from '@/components/ImportDialog';
 import { toast } from 'sonner';
-
-const tabs = [
-  { to: '/', icon: Home, label: 'Home' },
-  { to: '/add', icon: ClipboardList, label: 'Survey' },
-  { to: '/campus', icon: Building2, label: 'Campus' },
-];
+import { useOrganization } from '@/contexts/OrganizationContext';
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, signOut } = useAuth();
+  const { locationLabel, organizationName } = useOrganization();
+  const tabs = [
+    { to: '/', icon: Home, label: 'Home' },
+    { to: '/add', icon: ClipboardList, label: 'Survey' },
+    { to: '/campus', icon: Building2, label: locationLabel },
+    { to: '/lead-testing', icon: Beaker, label: 'Lead Testing' },
+  ];
   const { loaded, fixtures } = useFixtureStore();
   const [welcomeOpen, setWelcomeOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -52,7 +54,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-foreground">AquaTrack</p>
-              <p className="truncate text-[10px] text-muted-foreground">{user?.email}</p>
+              <p className="truncate text-[10px] text-muted-foreground">{organizationName} · {user?.email}</p>
             </div>
           </div>
           <button
@@ -77,7 +79,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <nav className="nav-bar">
         <div className="mx-auto flex max-w-lg items-stretch justify-around px-2">
           {tabs.map(({ to, icon: Icon, label }) => {
-            const active = pathname === to || (to === '/add' && pathname.startsWith('/add'));
+            const active = pathname === to || (to === '/add' && pathname.startsWith('/add')) || (to === '/lead-testing' && pathname.startsWith('/lead-testing/'));
             return (
               <Link
                 key={to}

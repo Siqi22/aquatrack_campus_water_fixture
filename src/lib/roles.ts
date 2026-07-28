@@ -1,5 +1,5 @@
 export interface QuickStartStep {
-  id: 'survey' | 'campus' | 'import' | 'maintenance';
+  id: 'survey' | 'campus' | 'import' | 'leadTesting';
   label: string;
   description: string;
   to: string;
@@ -16,10 +16,10 @@ export function getQuickStart(hasFixtures: boolean): QuickStartStep[] {
         to: '/campus',
       },
       {
-        id: 'maintenance',
-        label: 'Check maintenance',
-        description: 'Fixtures due for service',
-        to: '/maintenance',
+        id: 'leadTesting',
+        label: 'Lead testing',
+        description: 'Sampling, results, and remediation',
+        to: '/lead-testing',
       },
       {
         id: 'import',

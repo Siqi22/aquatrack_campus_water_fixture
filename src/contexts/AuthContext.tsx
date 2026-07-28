@@ -2,6 +2,7 @@ import { ReactNode, createContext, useContext, useEffect, useState } from 'react
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useFixtureStore } from '@/store/fixtureStore';
+import { useOrganization } from '@/contexts/OrganizationContext';
 
 interface AuthContextValue {
   user: User | null;
@@ -17,6 +18,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const loadAll = useFixtureStore((s) => s.loadAll);
   const reset = useFixtureStore((s) => s.reset);
+  const { organizationMode } = useOrganization();
 
   useEffect(() => {
     // Set up listener FIRST then check current session.
@@ -24,7 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(sess);
       if (sess) {
         // Defer DB read so we don't block the listener.
-        setTimeout(() => loadAll(), 0);
+        setTimeout(() => loadAll(organizationMode), 0);
       } else {
         reset();
       }
@@ -32,10 +34,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setLoading(false);
-      if (data.session) loadAll();
+      if (data.session) loadAll(organizationMode);
     });
     return () => sub.subscription.unsubscribe();
-  }, [loadAll, reset]);
+  }, [loadAll, reset, organizationMode]);
 
   return (
     <AuthContext.Provider

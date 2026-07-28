@@ -35,8 +35,10 @@ function fuzzyIncludes(haystack: string, needle: string) {
 import { supabase } from '@/integrations/supabase/client';
 import { uploadFixturePhoto } from '@/lib/uploadPhoto';
 import { toast } from 'sonner';
+import { useOrganization } from '@/contexts/OrganizationContext';
 
 export default function AddAsset() {
+  const { isSchoolDistrict, locationLabel } = useOrganization();
   const { campuses, buildings, fixtures, addCampus, addBuilding, addFixture, searchFixtures, getBuildingsByCampus, getFixturesByCampus, setFloorStatus, getFloorProgress } = useFixtureStore();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -87,6 +89,7 @@ export default function AddAsset() {
 
   // University/campus creation + fuzzy matching
   const [campusQuery, setCampusQuery] = useState('');
+  const [schoolDistrict, setSchoolDistrict] = useState('');
   const [universityName, setUniversityName] = useState('');
   const [campusName, setCampusName] = useState('');
   const [campusAddress, setCampusAddress] = useState('');
@@ -182,15 +185,17 @@ export default function AddAsset() {
   }
 
   async function handleCreateCampus() {
-    const school = universityName.trim();
-    const name = campusName.trim();
-    if (!school || !name) return;
-    const created = await addCampus({ school, name, address: campusAddress.trim() || '—' });
+    const district = schoolDistrict.trim();
+    const school = isSchoolDistrict ? universityName.trim() : 'University of Washington';
+    const name = isSchoolDistrict ? school : campusName.trim();
+    if (!name || (isSchoolDistrict && (!district || !school))) return;
+    const created = await addCampus({ schoolDistrict: isSchoolDistrict ? district : undefined, school, name, address: campusAddress.trim() || '—' });
     if (created) {
       setSelectedCampusId(created.id);
       toast.success('Campus created');
     }
     setCampusQuery('');
+    setSchoolDistrict('');
     setUniversityName('');
     setCampusName('');
     setCampusAddress('');
@@ -470,9 +475,9 @@ export default function AddAsset() {
             <button
               key={c.id}
               onClick={() => { setManageCampus(c.id); setManageBuilding(''); setManageFloor(null); }}
-              className={manageCampus === c.id ? 'chip-active whitespace-nowrap' : 'chip-inactive whitespace-nowrap'}
+              className={manageCampus === c.id ? 'chip-active max-w-full whitespace-normal break-words text-left' : 'chip-inactive max-w-full whitespace-normal break-words text-left'}
             >
-              {c.name}
+              {isSchoolDistrict ? c.school : c.name}
             </button>
           ))}
         </div>
@@ -589,7 +594,7 @@ export default function AddAsset() {
       {step === 1 && (
         <div className="mt-4 space-y-4">
           <div>
-            <label className="field-label-lg">University / Campus</label>
+            <label className="field-label-lg">{isSchoolDistrict ? 'School District / School' : 'Campus'}</label>
 
             <div className="mt-2 space-y-2">
               {filteredCampuses.slice(0, 6).map((c) => {
@@ -602,8 +607,8 @@ export default function AddAsset() {
                       active ? 'border-primary/30 bg-primary/10' : 'bg-card hover:bg-secondary/30'
                     }`}
                   >
-                    <p className="text-sm font-semibold text-foreground">{c.school}</p>
-                    <p className="text-[11px] text-muted-foreground">{c.name} • {c.address}</p>
+                    <p className="break-words text-sm font-semibold text-foreground">{isSchoolDistrict ? c.school : c.name}</p>
+                    <p className="break-words text-[11px] text-muted-foreground">{isSchoolDistrict ? `${c.schoolDistrict || 'District not recorded'} • ` : ''}{c.address}</p>
                   </button>
                 );
               })}
@@ -613,24 +618,30 @@ export default function AddAsset() {
             <div className="mt-3 rounded-2xl border bg-secondary/30 p-3">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <University className="h-4 w-4" />
-                <p className="text-sm font-semibold text-foreground">Create new university/campus</p>
+                <p className="text-sm font-semibold text-foreground">Create new {locationLabel.toLowerCase()}</p>
               </div>
               <div className="mt-3 grid grid-cols-1 gap-2">
-                <div>
+                {isSchoolDistrict && <input
+                  value={schoolDistrict}
+                  onChange={(e) => setSchoolDistrict(e.target.value)}
+                  placeholder="School district (e.g. Seattle Public Schools)"
+                  className="field-input"
+                />}
+                {isSchoolDistrict && <div>
                   <input
                     value={universityName}
                     onChange={(e) => setUniversityName(e.target.value)}
-                    placeholder="University name (e.g. University of Washington)"
+                    placeholder="School name (e.g. Lincoln High School)"
                     className="field-input"
                   />
-                </div>
+                </div>}
 
-                <input
+                {!isSchoolDistrict && <input
                   value={campusName}
                   onChange={(e) => setCampusName(e.target.value)}
                   placeholder="Campus name (e.g. Seattle Campus)"
                   className="field-input"
-                />
+                />}
                 <input
                   value={campusAddress}
                   onChange={(e) => setCampusAddress(e.target.value)}
@@ -641,7 +652,7 @@ export default function AddAsset() {
                   onClick={handleCreateCampus}
                   className="rounded-2xl bg-foreground px-4 py-2.5 text-xs font-semibold text-background"
                 >
-                  Create campus
+                  Create {locationLabel.toLowerCase()}
                 </button>
               </div>
             </div>
@@ -1115,7 +1126,7 @@ export default function AddAsset() {
           </div>
 
           <div className="rounded-2xl border bg-card p-4 space-y-2 text-sm">
-            <div className="flex justify-between"><span className="text-muted-foreground">Campus</span><span className="font-semibold text-foreground text-right">{selectedCampus ? `${selectedCampus.school} — ${selectedCampus.name}` : '—'}</span></div>
+            <div className="flex gap-3 justify-between"><span className="shrink-0 text-muted-foreground">{locationLabel}</span><span className="min-w-0 break-words font-semibold text-foreground text-right">{selectedCampus ? (isSchoolDistrict ? selectedCampus.school : selectedCampus.name) : '—'}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Building</span><span className="font-semibold text-foreground text-right">{selectedBuilding?.name ?? '—'}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">{FIELD_LABELS.floor}</span><span className="font-semibold text-foreground">{floor || '—'}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">{FIELD_LABELS.room}</span><span className="font-semibold text-foreground text-right">{nearestRoom || '—'}</span></div>

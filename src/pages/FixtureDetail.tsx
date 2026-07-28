@@ -2,22 +2,18 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   useFixtureStore,
-  getFixtureStatus,
-  getDaysSinceMaintenance,
   fixtureCategoryMeta,
   FIXTURE_CATEGORIES,
   normalizeFixtureCategory,
   getFixtureCategoryLabel,
 } from '@/store/fixtureStore';
 import type { Fixture, FixtureCategory } from '@/store/fixtureStore';
-import { StatusBadge } from '@/components/StatusBadge';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { SimpleRating, ratingLabel } from '@/components/SimpleRating';
 import { FIELD_LABELS, ISSUE_OPTIONS, issueLabel } from '@/lib/fieldLabels';
 import { uploadFixturePhoto } from '@/lib/uploadPhoto';
 import {
   MapPin,
-  CheckCircle2,
   Edit3,
   Save,
   X,
@@ -32,11 +28,14 @@ import {
   Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { LeadTestingPanel } from '@/components/LeadTestingPanel';
+import { useOrganization } from '@/contexts/OrganizationContext';
 
 export default function FixtureDetail() {
+  const { isSchoolDistrict, locationLabel } = useOrganization();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { campuses, buildings, getFixtureById, getBuildingsByCampus, updateFixture, completeService } =
+  const { campuses, buildings, getFixtureById, getBuildingsByCampus, updateFixture } =
     useFixtureStore();
   const fixture = getFixtureById(id || '');
 
@@ -94,7 +93,7 @@ export default function FixtureDetail() {
   useEffect(() => {
     if (!fixture) return;
     resetFormFromFixture(fixture);
-  }, [fixture?.id]);
+  }, [fixture]);
 
   useEffect(() => {
     if (!editing || !buildingId) return;
@@ -113,10 +112,6 @@ export default function FixtureDetail() {
       </div>
     );
   }
-
-  const status = getFixtureStatus(fixture.lastMaintenanceDate);
-  const days = getDaysSinceMaintenance(fixture.lastMaintenanceDate);
-  const remaining = Math.max(0, 180 - days);
 
   function handleFileUpload(file: File, setter: (value: string) => void) {
     const reader = new FileReader();
@@ -183,11 +178,6 @@ export default function FixtureDetail() {
     }
   }
 
-  function handleComplete() {
-    completeService(fixture.id);
-    toast.success('Service completed — timer reset!');
-  }
-
   const displayPhotoURL = editing ? photoURL : fixture.photoURL;
   const displayPlateURL = editing ? modelPlatePhotoURL : fixture.modelPlatePhotoURL;
   const displayCampus = editing ? campuses.find((c) => c.id === campusId) : campus;
@@ -227,7 +217,6 @@ export default function FixtureDetail() {
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <StatusBadge status={status} />
               <button type="button" onClick={() => setEditing(true)} className="link-action">
                 <Edit3 className="h-3 w-3" /> Edit
               </button>
@@ -260,26 +249,7 @@ export default function FixtureDetail() {
           </div>
         </div>
 
-        <div className="mt-3 grid grid-cols-3 gap-2">
-          <div className="rounded-xl border bg-card/70 p-3">
-            <p className="text-[10px] font-medium text-muted-foreground">Last service</p>
-            <p className="mt-1 text-sm font-semibold text-foreground">{fixture.lastMaintenanceDate}</p>
-            <p className="mt-1 text-[11px] text-muted-foreground">{days} days ago</p>
-          </div>
-          <div className="rounded-xl border bg-card/70 p-3">
-            <p className="text-[10px] font-medium text-muted-foreground">Filter life</p>
-            <p className="mt-1 text-sm font-semibold text-foreground">
-              {remaining > 0 ? `${remaining} left` : `${Math.abs(remaining)} overdue`}
-            </p>
-            <div className="mt-2 h-1.5 rounded-full bg-secondary overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all ${
-                  status === 'Good' ? 'bg-status-good' : status === 'Warning' ? 'bg-status-warning' : 'bg-status-urgent'
-                }`}
-                style={{ width: `${Math.min(100, (days / 180) * 100)}%` }}
-              />
-            </div>
-          </div>
+        <div className="mt-3 grid grid-cols-1 gap-2">
           <div className="rounded-xl border bg-card/70 p-3">
             <p className="text-[10px] font-medium text-muted-foreground">Condition</p>
             <div className="mt-2 space-y-1.5 text-[11px]">
@@ -382,11 +352,11 @@ export default function FixtureDetail() {
           <div className="panel-body">
             {editing ? (
               <div className="space-y-3">
-                <Field label="Campus" as="select" value={campusId} onChange={setCampusId}>
-                  <option value="">Select campus</option>
+                <Field label={locationLabel} as="select" value={campusId} onChange={setCampusId}>
+                  <option value="">Select {locationLabel.toLowerCase()}</option>
                   {campuses.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.school} — {c.name}
+                      {isSchoolDistrict ? c.school : c.name}
                     </option>
                   ))}
                 </Field>
@@ -424,10 +394,10 @@ export default function FixtureDetail() {
                       <GraduationCap className="h-4 w-4" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Campus</p>
-                      <p className="mt-0.5 text-sm font-semibold text-foreground">{displayCampus.name}</p>
-                      {displayCampus.school ? (
-                        <p className="mt-0.5 text-[11px] text-muted-foreground">{displayCampus.school}</p>
+                      <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{locationLabel}</p>
+                      <p className="mt-0.5 text-sm font-semibold text-foreground">{isSchoolDistrict ? displayCampus.school : displayCampus.name}</p>
+                      {isSchoolDistrict && displayCampus.schoolDistrict ? (
+                        <p className="mt-0.5 text-[11px] text-muted-foreground">{displayCampus.schoolDistrict}</p>
                       ) : null}
                     </div>
                   </div>
@@ -582,12 +552,7 @@ export default function FixtureDetail() {
         </div>
       </div>
 
-      {!editing ? (
-        <button onClick={handleComplete} className="btn-cta">
-          <CheckCircle2 className="h-5 w-5" />
-          Complete Maintenance
-        </button>
-      ) : null}
+      {!editing ? <LeadTestingPanel fixture={fixture} /> : null}
     </div>
   );
 }

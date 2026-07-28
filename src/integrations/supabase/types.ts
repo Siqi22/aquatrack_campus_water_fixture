@@ -73,7 +73,9 @@ export type Database = {
           latitude: number | null;
           longitude: number | null;
           name: string;
+          organization_mode: string;
           school: string;
+          school_district: string | null;
           updated_at: string;
         };
         Insert: {
@@ -84,7 +86,9 @@ export type Database = {
           latitude?: number | null;
           longitude?: number | null;
           name: string;
+          organization_mode?: string;
           school: string;
+          school_district?: string | null;
           updated_at?: string;
         };
         Update: {
@@ -95,7 +99,9 @@ export type Database = {
           latitude?: number | null;
           longitude?: number | null;
           name?: string;
+          organization_mode?: string;
           school?: string;
+          school_district?: string | null;
           updated_at?: string;
         };
         Relationships: [];

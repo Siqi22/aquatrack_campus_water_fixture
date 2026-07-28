@@ -5,13 +5,17 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppShell } from "@/components/AppShell";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { OrganizationProvider } from "@/contexts/OrganizationContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import CampusNavigator from "./pages/CampusNavigator";
 import AddAsset from "./pages/AddAsset";
 import FixtureDetail from "./pages/FixtureDetail";
-import Maintenance from "./pages/Maintenance";
+import LeadTestingDashboard from "./pages/LeadTestingDashboard";
+import LeadTestingSampling from "./pages/LeadTestingSampling";
+import LeadTestingResults from "./pages/LeadTestingResults";
+import LeadTestingUpload from "./pages/LeadTestingUpload";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,7 +26,8 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <AuthProvider>
+        <OrganizationProvider>
+          <AuthProvider>
           <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route
@@ -35,7 +40,10 @@ const App = () => (
                       <Route path="/campus" element={<CampusNavigator />} />
                       <Route path="/add" element={<AddAsset />} />
                       <Route path="/fixture/:id" element={<FixtureDetail />} />
-                      <Route path="/maintenance" element={<Maintenance />} />
+                      <Route path="/lead-testing" element={<LeadTestingDashboard />} />
+                      <Route path="/lead-testing/sampling" element={<LeadTestingSampling />} />
+                      <Route path="/lead-testing/results" element={<LeadTestingResults />} />
+                      <Route path="/lead-testing/upload" element={<LeadTestingUpload />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </AppShell>
@@ -43,7 +51,8 @@ const App = () => (
               }
             />
           </Routes>
-        </AuthProvider>
+          </AuthProvider>
+        </OrganizationProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

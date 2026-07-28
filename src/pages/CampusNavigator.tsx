@@ -7,6 +7,7 @@ import { FLOOR_STATUS_LABELS } from '@/lib/fieldLabels';
 import { loadCampusNavState, saveCampusNavState } from '@/lib/campusNavState';
 import { floorStatusPillClass } from '@/lib/statusStyles';
 import { Building2, ChevronRight, ChevronDown, Layers } from 'lucide-react';
+import { useOrganization } from '@/contexts/OrganizationContext';
 
 function getPageScrollContainer(): HTMLElement | null {
   return document.querySelector('main.scroll-gutter-stable');
@@ -27,8 +28,15 @@ export default function CampusNavigator() {
   const { campuses, getBuildingsByCampus, getFixturesByBuilding, getFixturesByCampus, getFloorsByBuilding } =
     useFixtureStore();
   const navigate = useNavigate();
+  const { isSchoolDistrict, locationLabel } = useOrganization();
+  const districtName = (value?: string) => value?.trim() || 'District not recorded';
+  const districts = [...new Set(campuses.map((campus) => districtName(campus.schoolDistrict)))].sort();
+  const [selectedDistrict, setSelectedDistrict] = useState(districts[0] || '');
+  const visibleCampuses = isSchoolDistrict
+    ? campuses.filter((campus) => districtName(campus.schoolDistrict) === selectedDistrict)
+    : campuses;
 
-  const defaultCampusId = campuses[0]?.id || '';
+  const defaultCampusId = visibleCampuses[0]?.id || '';
   const [selectedCampus, setSelectedCampus] = useState(defaultCampusId);
   const [expandedBuilding, setExpandedBuilding] = useState<string | null>(null);
   const [selectedFloor, setSelectedFloor] = useState<{ buildingId: string; floor: string } | null>(null);
@@ -43,14 +51,21 @@ export default function CampusNavigator() {
   useEffect(() => {
     if (!defaultCampusId || hydrated) return;
     const saved = loadCampusNavState(defaultCampusId);
-    const campusValid = campuses.some((c) => c.id === saved.selectedCampus);
+    const campusValid = visibleCampuses.some((c) => c.id === saved.selectedCampus);
     setSelectedCampus(campusValid ? saved.selectedCampus : defaultCampusId);
     setExpandedBuilding(saved.expandedBuilding);
     setSelectedFloor(saved.selectedFloor);
     setListScrollTop(saved.listScrollTop);
     if (!saved.selectedFloor) restoreScrollTopRef.current = saved.listScrollTop;
     setHydrated(true);
-  }, [defaultCampusId, campuses, hydrated]);
+  }, [defaultCampusId, visibleCampuses, hydrated]);
+
+  useEffect(() => {
+    if (visibleCampuses.some((campus) => campus.id === selectedCampus)) return;
+    setSelectedCampus(visibleCampuses[0]?.id || '');
+    setExpandedBuilding(null);
+    setSelectedFloor(null);
+  }, [selectedCampus, visibleCampuses]);
 
   useEffect(() => {
     if (!hydrated || !selectedCampus) return;
@@ -109,17 +124,35 @@ export default function CampusNavigator() {
   return (
     <div className="page-shell">
       <PageHeader
-        title="Campus"
+        title={locationLabel}
         subtitle={
           currentCampus
             ? `${campusBuildings.length} buildings · ${campusFixtureCount} fixtures`
-            : 'Select a campus to browse'
+            : `Select a ${locationLabel.toLowerCase()} to browse`
         }
       />
 
-      {campuses.length > 1 && (
+      {isSchoolDistrict && districts.length > 0 && (
+        <div className="mb-4">
+          <p className="field-label mb-2">School District</p>
+          <div className="chip-row">
+            {districts.map((district) => (
+              <button
+                key={district}
+                type="button"
+                onClick={() => setSelectedDistrict(district)}
+                className={`${selectedDistrict === district ? 'chip-active' : 'chip-inactive'} max-w-full whitespace-normal break-words text-left leading-tight`}
+              >
+                {district}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {visibleCampuses.length > 1 && (
         <div className="chip-row mb-4">
-          {campuses.map((c) => (
+          {visibleCampuses.map((c) => (
             <button
               key={c.id}
               type="button"
@@ -130,16 +163,16 @@ export default function CampusNavigator() {
                 setListScrollTop(0);
                 restoreScrollTopRef.current = 0;
               }}
-              className={selectedCampus === c.id ? 'chip-active' : 'chip-inactive'}
+              className={`${selectedCampus === c.id ? 'chip-active' : 'chip-inactive'} max-w-full whitespace-normal break-words text-left leading-tight`}
             >
-              {c.name}
+              {isSchoolDistrict ? c.school : c.name}
             </button>
           ))}
         </div>
       )}
 
-      {currentCampus && campuses.length === 1 && (
-        <p className="mb-4 text-sm text-muted-foreground">{currentCampus.school}</p>
+      {currentCampus && visibleCampuses.length === 1 && (
+        <p className="mb-4 text-sm text-muted-foreground">{isSchoolDistrict ? currentCampus.school : currentCampus.name}</p>
       )}
 
       <div className="space-y-2">

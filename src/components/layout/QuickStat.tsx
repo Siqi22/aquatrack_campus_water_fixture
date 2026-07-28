@@ -6,6 +6,7 @@ interface Props {
   tone?: 'default' | 'good' | 'warning' | 'urgent';
   to?: string;
   ariaLabel?: string;
+  onClick?: () => void;
 }
 
 const toneClass: Record<NonNullable<Props['tone']>, string> = {
@@ -15,7 +16,7 @@ const toneClass: Record<NonNullable<Props['tone']>, string> = {
   urgent: 'text-status-urgent',
 };
 
-export function QuickStat({ label, value, tone = 'default', to, ariaLabel }: Props) {
+export function QuickStat({ label, value, tone = 'default', to, ariaLabel, onClick }: Props) {
   const content = (
     <>
       <p className={`text-xl font-bold tabular-nums ${toneClass[tone]}`}>{value}</p>
@@ -28,6 +29,14 @@ export function QuickStat({ label, value, tone = 'default', to, ariaLabel }: Pro
       <Link to={to} aria-label={ariaLabel ?? `${label}: ${value}`} className="quick-stat quick-stat-link">
         {content}
       </Link>
+    );
+  }
+
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} aria-label={ariaLabel ?? `${label}: ${value}`} className="quick-stat quick-stat-link text-left">
+        {content}
+      </button>
     );
   }
 

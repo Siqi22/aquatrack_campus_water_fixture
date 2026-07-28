@@ -9,7 +9,7 @@ import {
   Search,
   Download,
   Upload,
-  Wrench,
+  Beaker,
   ArrowRight,
   Building2,
   FileSpreadsheet,
@@ -18,12 +18,13 @@ import {
 import { getQuickStart } from '@/lib/roles';
 import { issueLabel } from '@/lib/fieldLabels';
 import type { LucideIcon } from 'lucide-react';
+import { useOrganization } from '@/contexts/OrganizationContext';
 
 const stepIcons: Record<string, LucideIcon> = {
   survey: ClipboardList,
   campus: Building2,
   import: FileSpreadsheet,
-  maintenance: Wrench,
+  leadTesting: Beaker,
 };
 
 function getReviewReasons(fixture: Fixture): string[] {
@@ -36,6 +37,7 @@ function getReviewReasons(fixture: Fixture): string[] {
 }
 
 export default function Dashboard() {
+  const { organizationName, locationLabel } = useOrganization();
   const navigate = useNavigate();
   const {
     fixtures,
@@ -71,7 +73,7 @@ export default function Dashboard() {
         <h1 className="page-title mt-1">{hasFixtures ? 'Inventory overview' : 'Get started'}</h1>
         <p className="page-subtitle">
           {hasFixtures
-            ? `${fixtures.length} fixtures across ${buildings.length} buildings`
+            ? `${fixtures.length} fixtures across ${buildings.length} buildings · ${organizationName}`
             : 'Import a spreadsheet or survey on site — nothing is pre-loaded.'}
         </p>
       </header>
@@ -200,8 +202,8 @@ export default function Dashboard() {
               <Building2 className="h-5 w-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-foreground">Campus & floor progress</p>
-              <p className="text-xs text-muted-foreground">Browse buildings and continue surveys</p>
+              <p className="text-sm font-semibold text-foreground">Fixture Documentation</p>
+              <p className="text-xs text-muted-foreground">Review documented fixtures by {locationLabel.toLowerCase()} and continue field surveys</p>
             </div>
             <ArrowRight className="h-4 w-4 text-muted-foreground" />
           </Link>

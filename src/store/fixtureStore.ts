@@ -168,6 +168,13 @@ export interface Fixture {
   locationConfirmed?: boolean;
   savedByName?: string;
   createdBy?: string;
+  currentLeadTestingStatus?: string;
+  currentRequiredAction?: string;
+  currentResultPpb?: number;
+  currentResultCategory?: string;
+  currentTestingRoundId?: string;
+  fixtureAvailabilityStatus?: string;
+  leadTestingLastUpdatedAt?: string;
 }
 
 export interface Building {
@@ -182,6 +189,7 @@ export interface Building {
 export interface Campus {
   id: string;
   name: string;
+  schoolDistrict?: string;
   school: string;
   address: string;
 }
@@ -222,7 +230,7 @@ type FixtureRow = Database["public"]["Tables"]["fixtures"]["Row"];
 type FloorProgressRow = Database["public"]["Tables"]["floor_progress"]["Row"];
 
 function mapCampus(r: CampusRow): Campus {
-  return { id: r.id, name: r.name, school: r.school, address: r.address ?? "" };
+  return { id: r.id, name: r.name, schoolDistrict: r.school_district ?? undefined, school: r.school, address: r.address ?? "" };
 }
 function mapBuilding(r: BuildingRow): Building {
   return {
@@ -235,6 +243,12 @@ function mapBuilding(r: BuildingRow): Building {
   };
 }
 function mapFixture(r: FixtureRow, buildingName: string): Fixture {
+  const lead = r as FixtureRow & {
+    current_lead_testing_status?: string | null; current_required_action?: string | null;
+    current_result_ppb?: number | null; current_result_category?: string | null;
+    current_testing_round_id?: string | null; fixture_availability_status?: string | null;
+    lead_testing_last_updated_at?: string | null;
+  };
   return {
     id: r.id,
     campusId: r.campus_id,
@@ -274,6 +288,13 @@ function mapFixture(r: FixtureRow, buildingName: string): Fixture {
     savedByName:
       (r as { saved_by_name?: string | null }).saved_by_name ?? undefined,
     createdBy: r.created_by ?? undefined,
+    currentLeadTestingStatus: lead.current_lead_testing_status ?? 'not_started',
+    currentRequiredAction: lead.current_required_action ?? 'Sampling required',
+    currentResultPpb: lead.current_result_ppb == null ? undefined : Number(lead.current_result_ppb),
+    currentResultCategory: lead.current_result_category ?? undefined,
+    currentTestingRoundId: lead.current_testing_round_id ?? undefined,
+    fixtureAvailabilityStatus: lead.fixture_availability_status ?? 'available_for_consumption',
+    leadTestingLastUpdatedAt: lead.lead_testing_last_updated_at ?? undefined,
   };
 }
 function mapFloorProgress(r: FloorProgressRow): BuildingFloorProgress {
@@ -391,11 +412,13 @@ async function syncFloorProgressWithFixtures(
 interface FixtureStore {
   loading: boolean;
   loaded: boolean;
+  loadError: string | null;
+  organizationMode: "uw" | "school_district";
   campuses: Campus[];
   buildings: Building[];
   fixtures: Fixture[];
   floorProgress: BuildingFloorProgress[];
-  loadAll: () => Promise<void>;
+  loadAll: (organizationMode?: "uw" | "school_district") => Promise<void>;
   reset: () => void;
   addCampus: (
     campus: Omit<Campus, "id"> & { id?: string },
@@ -438,6 +461,8 @@ interface FixtureStore {
 export const useFixtureStore = create<FixtureStore>((set, get) => ({
   loading: false,
   loaded: false,
+  loadError: null,
+  organizationMode: "uw",
   campuses: [],
   buildings: [],
   fixtures: [],
@@ -446,15 +471,17 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
   reset: () =>
     set({
       loaded: false,
+      loadError: null,
       campuses: [],
       buildings: [],
       fixtures: [],
       floorProgress: [],
     }),
 
-  loadAll: async () => {
+  loadAll: async (requestedMode) => {
     if (get().loading) return;
-    set({ loading: true });
+    const organizationMode = requestedMode ?? get().organizationMode;
+    set({ loading: true, loaded: false, loadError: null, organizationMode });
     try {
       const { data: userResp } = await supabase.auth.getUser();
       const userId = userResp?.user?.id ?? null;
@@ -463,6 +490,7 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
           supabase
             .from("campuses")
             .select("*")
+            .eq("organization_mode", organizationMode)
             .order("created_at", { ascending: true }),
           supabase
             .from("buildings")
@@ -481,10 +509,16 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
       if (fpRes.error) throw fpRes.error;
 
       const campuses = (campusesRes.data ?? []).map(mapCampus);
-      const buildings = (buildingsRes.data ?? []).map(mapBuilding);
+      const campusIds = new Set(campuses.map((campus) => campus.id));
+      const buildings = (buildingsRes.data ?? [])
+        .filter((building) => campusIds.has(building.campus_id))
+        .map(mapBuilding);
+      const buildingIds = new Set(buildings.map((building) => building.id));
       const buildingNameById = new Map(buildings.map((b) => [b.id, b.name]));
 
-      const fixtureRows = fixturesRes.data ?? [];
+      const fixtureRows = (fixturesRes.data ?? []).filter(
+        (fixture) => campusIds.has(fixture.campus_id) && buildingIds.has(fixture.building_id),
+      );
       await Promise.all(
         fixtureRows.map(async (row) => {
           const rowExt = row as FixtureRow & {
@@ -538,7 +572,9 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
       const fixtures = fixtureRows.map((r) =>
         mapFixture(r, buildingNameById.get(r.building_id) ?? ""),
       );
-      let floorProgress = (fpRes.data ?? []).map(mapFloorProgress);
+      let floorProgress = (fpRes.data ?? [])
+        .filter((progress) => buildingIds.has(progress.building_id))
+        .map(mapFloorProgress);
 
       // Auto-create floor_progress rows for missing (building, floor) combos so the UI has something to show.
       const existing = new Set(
@@ -591,8 +627,10 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
         const { data: seed } = await supabase
           .from("campuses")
           .insert({
-            name: "Main Campus",
-            school: "My University",
+            name: organizationMode === "school_district" ? "My School" : "Main Campus",
+            school_district: "",
+            school: organizationMode === "school_district" ? "My School" : "University of Washington",
+            organization_mode: organizationMode,
             address: "",
             created_by: userId,
           })
@@ -610,6 +648,10 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
       });
     } catch (e) {
       console.error("loadAll failed", e);
+      set({
+        loaded: true,
+        loadError: formatSupabaseError(e),
+      });
     } finally {
       set({ loading: false });
     }
@@ -624,6 +666,8 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
       .from("campuses")
       .insert({
         name: campus.name,
+        school_district: campus.schoolDistrict ?? null,
+        organization_mode: get().organizationMode,
         school: campus.school,
         address: campus.address,
         created_by: userId,
