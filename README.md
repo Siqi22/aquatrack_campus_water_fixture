@@ -28,8 +28,8 @@ Built for the University of Washington campus water inventory program, with term
 | Frontend | React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui |
 | State | Zustand (`fixtureStore`) |
 | Backend | Supabase (Postgres, Auth, Storage, Edge Functions) |
-| Import | Custom CSV parser + lazy-loaded `read-excel-file` for Excel |
-| Scanning | Vercel API `/api/scan-fixture-label` (Claude Haiku vision OCR on model plates) |
+| Import | CSV/Excel parser + Claude PDF extraction for lead reports |
+| Scanning | Vercel APIs for Claude model-plate OCR and lead-report PDF extraction |
 
 ---
 
@@ -107,7 +107,7 @@ npx supabase db push
 
 Key migrations include floor progress tracking, fixture audit columns, and **alphanumeric floor labels** (`floor` stored as `TEXT`).
 
-### 4. AI label scan (Claude Haiku on Vercel — not Lovable Cloud)
+### 4. Claude document and label reading on Vercel
 
 Lovable Cloud locks Supabase Edge Functions behind the platform. **Label scan runs on Vercel** at `/api/scan-fixture-label` using your own Anthropic key — no Lovable AI credits, no Supabase CLI.
 
@@ -117,6 +117,7 @@ Add to **Vercel** environment variables (copy `env/vercel.import.env.example` �
 |----------|-------------|
 | `ANTHROPIC_API_KEY` | Claude API key from [Anthropic Console](https://console.anthropic.com/) — **no `VITE_` prefix** |
 | `ANTHROPIC_MODEL` | Optional; default `claude-haiku-4-5-20251001` |
+| `ANTHROPIC_PDF_MODEL` | Optional PDF-specific model; defaults to `ANTHROPIC_MODEL` |
 | `VITE_SUPABASE_*` | Same as frontend (API verifies signed-in user JWT) |
 
 Optional for Capacitor / local Vite dev:
@@ -125,8 +126,13 @@ Optional for Capacitor / local Vite dev:
 |----------|-------------|
 | `VITE_VERCEL_APP_URL` | e.g. `https://aqua-map-keeper-7pw2.vercel.app` — proxies `/api/*` during `npm run dev` |
 | `VITE_SCAN_API_URL` | Full scan URL override for native builds |
+| `VITE_LEAD_PDF_API_URL` | Full `/api/parse-lead-report` URL override |
 
-The app calls `/api/scan-fixture-label` when you tap **AI scan label**. Keys stay on Vercel; the browser only sends the image + user session token. **Anthropic only** — Lovable gateway is not used.
+The app calls `/api/scan-fixture-label` for model plates and `/api/parse-lead-report`
+for uploaded lead-testing PDFs. PDFs first enter the authenticated private
+Supabase bucket; the serverless API reads them and sends them to Claude. Keys
+stay on Vercel, and extracted rows still require fixture matching and human
+review before import.
 
 `supabase/functions/scan-fixture-label/` remains in the repo for Lovable git sync but is **not** called by the app.
 

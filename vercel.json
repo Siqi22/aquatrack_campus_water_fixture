@@ -6,6 +6,10 @@
     "api/scan-fixture-label.ts": {
       "maxDuration": 30,
       "memory": 1024
+    },
+    "api/parse-lead-report.ts": {
+      "maxDuration": 300,
+      "memory": 1024
     }
   }
 }

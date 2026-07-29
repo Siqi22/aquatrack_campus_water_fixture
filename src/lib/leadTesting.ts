@@ -46,6 +46,29 @@ export function formatPpb(value: number | null | undefined) {
   return (Math.trunc(value * 1000) / 1000).toFixed(3);
 }
 
+export function formatLeadMeasurement(
+  value: string | null | undefined,
+  unit: string | null | undefined,
+  ppb: number | null | undefined,
+) {
+  if (ppb != null && Number.isFinite(ppb)) return `${formatPpb(ppb)} ppb`;
+  const original = value?.trim();
+  const originalUnit = unit?.trim() || 'ppb';
+  if (!original) return '—';
+  const bound = original.match(/^<\s*(\d+(?:\.\d+)?)$/);
+  if (bound) {
+    const normalizedUnit = originalUnit.toLowerCase();
+    const multiplier =
+      normalizedUnit === 'ppb' || normalizedUnit === 'µg/l' || normalizedUnit === 'ug/l'
+        ? 1
+        : normalizedUnit === 'mg/l' || normalizedUnit === 'ppm'
+          ? 1000
+          : null;
+    if (multiplier != null) return `<${formatPpb(Number(bound[1]) * multiplier)} ppb`;
+  }
+  return `${original} ${originalUnit}`;
+}
+
 export function leadResultColor(value: number | null | undefined) {
   if (value == null) return 'text-foreground';
   if (value > 15) return 'text-destructive';

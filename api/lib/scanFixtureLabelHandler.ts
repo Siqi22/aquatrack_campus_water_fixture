@@ -63,7 +63,7 @@ function getEnv(name: string, fallback?: string): string | undefined {
   return value || fallback;
 }
 
-function getSupabaseServerEnv(): { url: string; key: string } {
+export function getSupabaseServerEnv(): { url: string; key: string } {
   const projectId = getEnv("SUPABASE_PROJECT_ID", getEnv("SUPABASE_PROJECT_REF", getEnv("VITE_SUPABASE_PROJECT_ID", getEnv("VITE_SUPABASE_PROJECT_REF"))));
   const url = getEnv("SUPABASE_URL", getEnv("VITE_SUPABASE_URL", projectId ? `https://${projectId}.supabase.co` : undefined)) ?? "";
   const key =

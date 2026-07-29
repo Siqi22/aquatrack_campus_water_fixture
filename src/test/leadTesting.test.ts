@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { drinkingStatusLabel, formatPpb, normalizeLeadResult, overallWorkflowLabel, requiredActionLabel } from '@/lib/leadTesting';
+import { drinkingStatusLabel, formatLeadMeasurement, formatPpb, normalizeLeadResult, overallWorkflowLabel, requiredActionLabel } from '@/lib/leadTesting';
 
 describe('lead result workflow', () => {
   it.each([
@@ -13,6 +13,7 @@ describe('lead result workflow', () => {
   it('displays ppb with three decimals without rounding',()=>{expect(formatPpb(1.2349)).toBe('1.234');expect(formatPpb(normalizeLeadResult('0.0084567','mg/L').ppb)).toBe('8.456')});
   it('preserves non-detect notation without inventing a value',()=>{const r=normalizeLeadResult('ND','ppb');expect(r.original).toBe('ND');expect(r.ppb).toBeNull();expect(r.category).toBeNull()});
   it('categorizes a reliable less-than bound without inventing a value',()=>{const r=normalizeLeadResult('<0.5','ppb');expect(r.category).toBe('5 ppb or less');expect(r.ppb).toBeNull()});
+  it('displays less-than results in normalized ppb without losing the bound',()=>{expect(formatLeadMeasurement('<1','ppb',null)).toBe('<1.000 ppb');expect(formatLeadMeasurement('<0.001','mg/L',null)).toBe('<1.000 ppb')});
   it('rejects invalid units and negative values',()=>{expect(()=>normalizeLeadResult('1','oz')).toThrow();expect(()=>normalizeLeadResult('-1','ppb')).toThrow()});
 });
 
