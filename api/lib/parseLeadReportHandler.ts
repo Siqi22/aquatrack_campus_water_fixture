@@ -52,7 +52,7 @@ const EXTRACTION_TOOL = {
           type: "object",
           additionalProperties: false,
           properties: {
-            source_page: { type: ["integer", "null"], minimum: 1 },
+            source_page: { type: ["integer", "null"] },
             school_name: { type: ["string", "null"] },
             building_name: { type: ["string", "null"] },
             floor: { type: ["string", "null"] },
