@@ -15,11 +15,11 @@ describe('roles', () => {
     expect(canMarkFloorComplete()).toBe(true);
   });
 
-  it('returns survey-first quick start when empty', () => {
-    expect(getQuickStart(false)[0].id).toBe('survey');
+  it('returns lead-testing-first quick start when empty', () => {
+    expect(getQuickStart(false)[0].id).toBe('leadTesting');
   });
 
-  it('returns campus-first quick start when fixtures exist', () => {
-    expect(getQuickStart(true)[0].id).toBe('campus');
+  it('returns lead-testing-first quick start when fixtures exist', () => {
+    expect(getQuickStart(true)[0].id).toBe('leadTesting');
   });
 });

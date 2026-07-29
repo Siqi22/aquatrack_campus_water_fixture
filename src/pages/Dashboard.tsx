@@ -1,214 +1,164 @@
-import { useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useFixtureStore } from '@/store/fixtureStore';
-import type { Fixture } from '@/store/fixtureStore';
-import { ActionTile } from '@/components/layout/ActionTile';
-import { QuickStat } from '@/components/layout/QuickStat';
-import { ExportDialog } from '@/components/ExportDialog';
+import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import {
-  Search,
-  Download,
-  Upload,
-  Beaker,
-  ArrowRight,
-  Building2,
-  FileSpreadsheet,
-  ClipboardList,
+  BarChart3,
+  ClipboardCheck,
+  FlaskConical,
+  RotateCcw,
+  ShieldCheck,
+  Wrench,
+  type LucideIcon,
 } from 'lucide-react';
-import { getQuickStart } from '@/lib/roles';
-import { issueLabel } from '@/lib/fieldLabels';
-import type { LucideIcon } from 'lucide-react';
+import { useFixtureStore } from '@/store/fixtureStore';
 import { useOrganization } from '@/contexts/OrganizationContext';
-
-const stepIcons: Record<string, LucideIcon> = {
-  survey: ClipboardList,
-  campus: Building2,
-  import: FileSpreadsheet,
-  leadTesting: Beaker,
-};
-
-function getReviewReasons(fixture: Fixture): string[] {
-  const reasons: string[] = [];
-  if (fixture.qualityRating.pressure <= 1) reasons.push('Low pressure');
-  if (fixture.qualityRating.cleanliness <= 1) reasons.push('Low cleanliness');
-  if (fixture.issues?.length) reasons.push(...fixture.issues.map(issueLabel));
-  if (fixture.observations?.trim()) reasons.push('Has notes');
-  return reasons;
-}
+import { useLeadTesting } from '@/hooks/useLeadTesting';
 
 export default function Dashboard() {
-  const { organizationName, locationLabel } = useOrganization();
-  const navigate = useNavigate();
-  const {
-    fixtures,
-    campuses,
-    buildings,
-    loading,
-    loaded,
-    searchFixtures,
-  } = useFixtureStore();
-  const [query, setQuery] = useState('');
-  const [exportOpen, setExportOpen] = useState(false);
+  const { organizationName } = useOrganization();
+  const { fixtures, campuses, buildings, loading, loaded } = useFixtureStore();
+  const lead = useLeadTesting();
 
-  const hasFixtures = fixtures.length > 0;
-  const quickStart = getQuickStart(hasFixtures);
-  const urgentFixtures = fixtures
-    .map((fixture) => ({ fixture, reasons: getReviewReasons(fixture) }))
-    .filter(({ reasons }) => reasons.length > 0);
-  const urgentCount = urgentFixtures.length;
+  const districtName = (
+    campuses.find((campus) => campus.schoolDistrict?.trim())?.schoolDistrict || organizationName
+  ).replace(/\s+School District$/i, '');
 
-  const results = useMemo(() => {
-    if (!query.trim()) return [];
-    return searchFixtures(query).slice(0, 8);
-  }, [query, searchFixtures]);
+  const latestRoundByFixture = useMemo(() => {
+    const latest = new Map<string, (typeof lead.rounds)[number]>();
+    lead.rounds.forEach((round) => {
+      const current = latest.get(round.fixture_id);
+      if (!current || round.round_number > current.round_number) latest.set(round.fixture_id, round);
+    });
+    return latest;
+  }, [lead.rounds]);
 
-  function openImport() {
-    navigate('/?import=1');
-  }
+  const fixtureState = (fixtureId: string) => {
+    const fixture = fixtures.find((item) => item.id === fixtureId);
+    const round = latestRoundByFixture.get(fixtureId);
+    return {
+      status: fixture?.currentLeadTestingStatus ?? round?.status ?? 'not_started',
+      ppb: round?.result_ppb ?? fixture?.currentResultPpb ?? null,
+    };
+  };
+
+  const schoolCount = (matches: (status: string, ppb: number | null) => boolean) =>
+    new Set(
+      fixtures
+        .filter((fixture) => {
+          const state = fixtureState(fixture.id);
+          return matches(state.status, state.ppb);
+        })
+        .map((fixture) => fixture.campusId),
+    ).size;
+
+  const leadStatus = {
+    sampling: schoolCount((status) => ['not_started', 'scheduled'].includes(status)),
+    results: schoolCount((status) => ['awaiting_results', 'awaiting_retest_results'].includes(status)),
+    above5: schoolCount((_status, ppb) => ppb !== null && ppb > 5 && ppb <= 15),
+    above15: schoolCount((_status, ppb) => ppb !== null && ppb > 15),
+    retesting: schoolCount((status) => ['awaiting_retest', 'retest_sample_drawn', 'awaiting_retest_results'].includes(status)),
+    remediation: schoolCount((status) => ['action_required', 'remediation_in_progress'].includes(status)),
+  };
+
+  const lastUpdated = fixtures
+    .map((fixture) => fixture.leadTestingLastUpdatedAt)
+    .filter((value): value is string => Boolean(value))
+    .sort()
+    .at(-1);
 
   return (
     <div className="page-shell">
-      <header className="page-header">
-        <p className="section-label">Home</p>
-        <h1 className="page-title mt-1">{hasFixtures ? 'Inventory overview' : 'Get started'}</h1>
-        <p className="page-subtitle">
-          {hasFixtures
-            ? `${fixtures.length} fixtures across ${buildings.length} buildings · ${organizationName}`
-            : 'Import a spreadsheet or survey on site — nothing is pre-loaded.'}
+      <header className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="section-label">{districtName}</p>
+          <h1 className="page-title mt-1">Lead Testing Overview</h1>
+          <p className="page-subtitle">Track lead testing progress across all schools.</p>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Last updated: {lastUpdated ? new Date(lastUpdated).toLocaleDateString() : 'No testing activity yet'}
         </p>
       </header>
 
-      <section className="space-y-2">
-        {quickStart.slice(0, 2).map((step, i) => (
-          <ActionTile
-            key={step.id}
-            icon={stepIcons[step.id] ?? ClipboardList}
-            title={step.label}
-            description={step.description}
-            primary={i === 0}
-            to={step.id === 'import' ? undefined : step.to}
-            onClick={step.id === 'import' ? openImport : undefined}
-          />
-        ))}
-      </section>
-
-      <div className="mt-3 flex gap-2">
-        <button type="button" onClick={openImport} className="btn-secondary flex-1 text-xs">
-          <Upload className="h-3.5 w-3.5" />
-          Import
-        </button>
-        <button
-          type="button"
-          onClick={() => setExportOpen(true)}
-          disabled={!loaded || !hasFixtures}
-          className="btn-secondary flex-1 text-xs"
-        >
-          <Download className="h-3.5 w-3.5" />
-          Export
-        </button>
-      </div>
-
-      <ExportDialog open={exportOpen} onOpenChange={setExportOpen} fixtures={fixtures} campuses={campuses} />
-
-      {!loaded && loading && (
+      {!loaded && loading ? (
         <p className="mt-8 text-center text-sm text-muted-foreground">Loading workspace…</p>
-      )}
-
-      {loaded && hasFixtures && (
-        <>
-          <div className="mt-5 flex gap-2">
-            <QuickStat
-              label="Fixtures"
-              value={fixtures.length}
-              to="/add?mode=manage"
-              ariaLabel={`View ${fixtures.length} fixtures`}
-            />
-            <QuickStat
-              label="Urgent"
-              value={urgentCount}
-              tone={urgentCount > 0 ? 'urgent' : 'default'}
-              to="/add?mode=manage&filter=urgent"
-              ariaLabel={`View ${urgentCount} urgent fixtures`}
-            />
-          </div>
-
-          <div className="relative mt-4">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search fixtures…"
-              className="search-input"
-            />
-          </div>
-
-          {query.trim() && (
-            <div className="mt-2 space-y-1">
-              {results.length === 0 ? (
-                <p className="py-4 text-center text-sm text-muted-foreground">No matches</p>
-              ) : (
-                results.map((f) => (
-                  <Link key={f.id} to={`/fixture/${f.id}`} className="list-row">
-                    <div className="min-w-0">
-                      <p className="list-row-title">
-                        {f.buildingName} · Fl {f.floor} · {f.roomNumber}
-                      </p>
-                      <p className="list-row-subtitle">
-                        {[f.brand, f.model].filter(Boolean).join(' ') || 'Details pending'}
-                      </p>
-                    </div>
-                    {getReviewReasons(f).length > 0 ? (
-                      <span className="rounded-full bg-status-urgent/10 px-2 py-1 text-[10px] font-semibold text-status-urgent">
-                        Review
-                      </span>
-                    ) : null}
-                  </Link>
-                ))
-              )}
+      ) : (
+        <div className="space-y-4">
+          <section className="card-soft p-4 sm:p-5">
+            <SectionHeading icon={Wrench} title="Action Status" subtitle="Schools that require action" />
+            <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <ActionCard icon={FlaskConical} value={leadStatus.sampling} label="Awaiting initial sampling" to="/campus?leadFilter=sample" active={leadStatus.sampling > 0} />
+              <ActionCard icon={ClipboardCheck} value={leadStatus.results} label="Awaiting laboratory results" to="/campus?leadFilter=awaiting" />
+              <ActionCard icon={RotateCcw} value={leadStatus.retesting} label="Awaiting retesting" to="/campus?leadFilter=retest" />
+              <ActionCard icon={ShieldCheck} value={leadStatus.remediation} label="In active remediation" to="/campus?leadFilter=remediation" />
             </div>
-          )}
+          </section>
 
-          {urgentFixtures.length > 0 && (
-            <section className="mt-6">
-              <div className="mb-2 flex items-center justify-between">
-                <h2 className="section-label">Needs attention</h2>
-                <Link to="/add?mode=manage" className="link-action">
-                  All <ArrowRight className="h-3 w-3" />
-                </Link>
-              </div>
-              <div className="space-y-2">
-                {urgentFixtures.slice(0, 3).map(({ fixture: f, reasons }) => (
-                  <Link key={f.id} to={`/fixture/${f.id}`} className="list-row">
-                    <div className="min-w-0">
-                      <p className="list-row-title">
-                        {f.buildingName} · {f.roomNumber}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {reasons.slice(0, 2).join(' · ')}
-                        {reasons.length > 2 ? ` +${reasons.length - 2} more` : ''}
-                      </p>
-                    </div>
-                    <span className="rounded-full bg-status-urgent/10 px-2 py-1 text-[10px] font-semibold text-status-urgent">
-                      Review
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            </section>
-          )}
+          <section className="card-soft p-4 sm:p-5">
+            <SectionHeading icon={BarChart3} title="Completed Test Results" subtitle="Schools with completed laboratory results" />
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <ResultCard value={leadStatus.above5} label="Schools with results 5–15 ppb" tone="warning" to="/campus?leadFilter=above5" />
+              <ResultCard value={leadStatus.above15} label="Schools with results above 15 ppb" tone="urgent" to="/campus?leadFilter=immediate" />
+            </div>
+          </section>
 
-          <Link to="/campus" className="action-tile mt-6">
-            <div className="action-tile-icon">
-              <Building2 className="h-5 w-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-foreground">Fixture Documentation</p>
-              <p className="text-xs text-muted-foreground">Review documented fixtures by {locationLabel.toLowerCase()} and continue field surveys</p>
-            </div>
-            <ArrowRight className="h-4 w-4 text-muted-foreground" />
-          </Link>
-        </>
+          <p className="text-xs text-muted-foreground">
+            {campuses.length} schools · {buildings.length} buildings · {fixtures.length} fixtures
+          </p>
+        </div>
       )}
     </div>
+  );
+}
+
+function SectionHeading({ icon: Icon, title, subtitle }: { icon: LucideIcon; title: string; subtitle: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+        <Icon className="h-5 w-5" />
+      </div>
+      <div>
+        <h2 className="text-sm font-semibold text-foreground">{title}</h2>
+        <p className="text-xs text-muted-foreground">{subtitle}</p>
+      </div>
+    </div>
+  );
+}
+
+function ActionCard({
+  icon: Icon,
+  value,
+  label,
+  to,
+  active = false,
+}: {
+  icon: LucideIcon;
+  value: number;
+  label: string;
+  to: string;
+  active?: boolean;
+}) {
+  return (
+    <Link
+      to={to}
+      className={`flex min-w-0 items-center gap-3 rounded-xl border p-3 transition-colors hover:bg-secondary/30 ${
+        active ? 'border-orange-400 bg-orange-50/50' : 'bg-card'
+      }`}
+    >
+      <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${active ? 'bg-orange-100 text-orange-600' : 'bg-secondary text-muted-foreground'}`}>
+        <Icon className="h-5 w-5" />
+      </div>
+      <div className="min-w-0">
+        <p className={`text-xl font-bold tabular-nums ${active ? 'text-orange-600' : 'text-foreground'}`}>{value}</p>
+        <p className="text-[11px] font-medium leading-tight text-muted-foreground">{label}</p>
+      </div>
+    </Link>
+  );
+}
+
+function ResultCard({ value, label, tone, to }: { value: number; label: string; tone: 'warning' | 'urgent'; to: string }) {
+  return (
+    <Link to={to} className={`rounded-xl border p-4 transition-colors hover:bg-secondary/30 ${tone === 'warning' ? 'border-amber-200' : 'border-red-200'}`}>
+      <p className={`text-2xl font-bold tabular-nums ${tone === 'warning' ? 'text-amber-500' : 'text-red-600'}`}>{value}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{label}</p>
+    </Link>
   );
 }

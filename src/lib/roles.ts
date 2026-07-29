@@ -10,12 +10,6 @@ export function getQuickStart(hasFixtures: boolean): QuickStartStep[] {
   if (hasFixtures) {
     return [
       {
-        id: 'campus',
-        label: 'Review campus progress',
-        description: 'Buildings, floors, survey status',
-        to: '/campus',
-      },
-      {
         id: 'leadTesting',
         label: 'Lead testing',
         description: 'Sampling, results, and remediation',
@@ -32,22 +26,16 @@ export function getQuickStart(hasFixtures: boolean): QuickStartStep[] {
 
   return [
     {
-      id: 'survey',
-      label: 'Start a survey',
-      description: 'Record your first fixture',
-      to: '/add',
+      id: 'leadTesting',
+      label: 'Lead testing',
+      description: 'Sampling, results, and remediation',
+      to: '/lead-testing',
     },
     {
       id: 'import',
       label: 'Import existing data',
       description: 'Upload CSV or Excel',
       to: '/?import=1',
-    },
-    {
-      id: 'campus',
-      label: 'Set up campus',
-      description: 'Browse buildings after import',
-      to: '/campus',
     },
   ];
 }

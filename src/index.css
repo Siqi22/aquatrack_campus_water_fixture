@@ -103,7 +103,7 @@
   }
 
   .page-shell {
-    @apply mx-auto w-full max-w-lg px-4 pt-5 pb-8;
+    @apply mx-auto w-full px-4 pt-5 pb-8 md:px-6 md:pt-7 lg:px-8;
   }
 
   .page-header {
@@ -111,11 +111,11 @@
   }
 
   .page-title {
-    @apply truncate text-xl font-bold tracking-tight text-foreground;
+    @apply break-words text-xl font-bold tracking-tight text-foreground md:text-2xl;
   }
 
   .page-subtitle {
-    @apply mt-0.5 truncate text-sm text-muted-foreground;
+    @apply mt-0.5 break-words text-sm text-muted-foreground;
   }
 
   .section-label {

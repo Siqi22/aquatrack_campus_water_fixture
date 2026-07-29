@@ -1,13 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useFixtureStore } from '@/store/fixtureStore';
 import { FloorPlanView } from '@/components/FloorPlanView';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { FLOOR_STATUS_LABELS } from '@/lib/fieldLabels';
 import { loadCampusNavState, saveCampusNavState } from '@/lib/campusNavState';
-import { floorStatusPillClass } from '@/lib/statusStyles';
-import { Building2, ChevronRight, ChevronDown, Layers } from 'lucide-react';
+import { Building2, ChevronRight, ChevronDown, Download, Layers } from 'lucide-react';
 import { useOrganization } from '@/contexts/OrganizationContext';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useSearchParams } from 'react-router-dom';
+import {
+  isLeadFixtureFilter,
+  LEAD_FIXTURE_FILTER_OPTIONS,
+  matchesLeadFixtureFilter,
+  type LeadFixtureFilter,
+} from '@/lib/leadTestingFilters';
+import { Button } from '@/components/ui/button';
+import { LeadResultsExportDialog } from '@/components/LeadResultsExportDialog';
 
 function getPageScrollContainer(): HTMLElement | null {
   return document.querySelector('main.scroll-gutter-stable');
@@ -25,16 +32,13 @@ function restorePageScroll(top: number) {
 }
 
 export default function CampusNavigator() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { campuses, getBuildingsByCampus, getFixturesByBuilding, getFixturesByCampus, getFloorsByBuilding } =
     useFixtureStore();
-  const navigate = useNavigate();
   const { isSchoolDistrict, locationLabel } = useOrganization();
-  const districtName = (value?: string) => value?.trim() || 'District not recorded';
-  const districts = [...new Set(campuses.map((campus) => districtName(campus.schoolDistrict)))].sort();
-  const [selectedDistrict, setSelectedDistrict] = useState(districts[0] || '');
-  const visibleCampuses = isSchoolDistrict
-    ? campuses.filter((campus) => districtName(campus.schoolDistrict) === selectedDistrict)
-    : campuses;
+  const visibleCampuses = campuses;
+  const requestedFilter = searchParams.get('leadFilter');
+  const leadFilter: LeadFixtureFilter = isLeadFixtureFilter(requestedFilter) ? requestedFilter : 'all';
 
   const defaultCampusId = visibleCampuses[0]?.id || '';
   const [selectedCampus, setSelectedCampus] = useState(defaultCampusId);
@@ -42,10 +46,19 @@ export default function CampusNavigator() {
   const [selectedFloor, setSelectedFloor] = useState<{ buildingId: string; floor: string } | null>(null);
   const [listScrollTop, setListScrollTop] = useState(0);
   const [hydrated, setHydrated] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const restoreScrollTopRef = useRef<number | null>(null);
 
   const campusBuildings = selectedCampus ? getBuildingsByCampus(selectedCampus) : [];
-  const campusFixtureCount = selectedCampus ? getFixturesByCampus(selectedCampus).length : 0;
+  const filteredCampusFixtures = selectedCampus
+    ? getFixturesByCampus(selectedCampus).filter((fixture) => matchesLeadFixtureFilter(fixture, leadFilter))
+    : [];
+  const campusFixtureCount = filteredCampusFixtures.length;
+  const displayedBuildings = campusBuildings.filter(
+    (building) =>
+      leadFilter === 'all' ||
+      getFixturesByBuilding(building.id).some((fixture) => matchesLeadFixtureFilter(fixture, leadFilter)),
+  );
   const currentCampus = campuses.find((c) => c.id === selectedCampus);
 
   useEffect(() => {
@@ -116,6 +129,7 @@ export default function CampusNavigator() {
           floor={selectedFloor.floor}
           buildingName={campusBuildings.find((b) => b.id === selectedFloor.buildingId)?.name || ''}
           campusId={selectedCampus}
+          leadFilter={leadFilter}
         />
       </div>
     );
@@ -130,66 +144,82 @@ export default function CampusNavigator() {
             ? `${campusBuildings.length} buildings · ${campusFixtureCount} fixtures`
             : `Select a ${locationLabel.toLowerCase()} to browse`
         }
+        action={
+          <Button size="sm" variant="outline" onClick={() => setExportOpen(true)}>
+            <Download className="mr-1 h-4 w-4" />
+            Download
+          </Button>
+        }
       />
+      <LeadResultsExportDialog open={exportOpen} onOpenChange={setExportOpen} campuses={visibleCampuses} />
 
-      {isSchoolDistrict && districts.length > 0 && (
-        <div className="mb-4">
-          <p className="field-label mb-2">School District</p>
-          <div className="chip-row">
-            {districts.map((district) => (
-              <button
-                key={district}
-                type="button"
-                onClick={() => setSelectedDistrict(district)}
-                className={`${selectedDistrict === district ? 'chip-active' : 'chip-inactive'} max-w-full whitespace-normal break-words text-left leading-tight`}
-              >
-                {district}
-              </button>
-            ))}
-          </div>
+      <div className="mb-4 grid max-w-3xl gap-3 sm:grid-cols-2">
+        {visibleCampuses.length > 1 && (
+        <div>
+          <p className="field-label mb-2">School</p>
+          <Select
+            value={selectedCampus}
+            onValueChange={(value) => {
+              setSelectedCampus(value);
+              setExpandedBuilding(null);
+              setSelectedFloor(null);
+              setListScrollTop(0);
+              restoreScrollTopRef.current = 0;
+            }}
+          >
+            <SelectTrigger><SelectValue placeholder="Select a school" /></SelectTrigger>
+            <SelectContent>
+              {visibleCampuses.map((campus) => (
+                <SelectItem key={campus.id} value={campus.id}>
+                  {isSchoolDistrict ? campus.school : campus.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-      )}
-
-      {visibleCampuses.length > 1 && (
-        <div className="chip-row mb-4">
-          {visibleCampuses.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              onClick={() => {
-                setSelectedCampus(c.id);
-                setExpandedBuilding(null);
-                setSelectedFloor(null);
-                setListScrollTop(0);
-                restoreScrollTopRef.current = 0;
-              }}
-              className={`${selectedCampus === c.id ? 'chip-active' : 'chip-inactive'} max-w-full whitespace-normal break-words text-left leading-tight`}
-            >
-              {isSchoolDistrict ? c.school : c.name}
-            </button>
-          ))}
+        )}
+        <div>
+          <p className="field-label mb-2">Lead Testing Filter</p>
+          <Select
+            value={leadFilter}
+            onValueChange={(value: LeadFixtureFilter) => {
+              const next = new URLSearchParams(searchParams);
+              if (value === 'all') next.delete('leadFilter');
+              else next.set('leadFilter', value);
+              setSearchParams(next);
+              setExpandedBuilding(null);
+              setSelectedFloor(null);
+            }}
+          >
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {LEAD_FIXTURE_FILTER_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-      )}
+      </div>
 
       {currentCampus && visibleCampuses.length === 1 && (
         <p className="mb-4 text-sm text-muted-foreground">{isSchoolDistrict ? currentCampus.school : currentCampus.name}</p>
       )}
 
-      <div className="space-y-2">
-        {campusBuildings.length === 0 ? (
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
+        {displayedBuildings.length === 0 ? (
           <div className="rounded-2xl border border-dashed py-12 text-center">
             <Building2 className="mx-auto h-8 w-8 text-muted-foreground/40" />
-            <p className="mt-2 text-sm font-medium text-foreground">No buildings yet</p>
-            <p className="mt-1 text-xs text-muted-foreground">Import data or start a survey to add buildings.</p>
+            <p className="mt-2 text-sm font-medium text-foreground">{leadFilter === 'all' ? 'No buildings yet' : 'No fixtures match this filter'}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{leadFilter === 'all' ? 'No buildings are available for this school.' : 'Choose another lead testing status or school.'}</p>
           </div>
         ) : (
-          campusBuildings.map((b) => {
+          displayedBuildings.map((b) => {
             const isOpen = expandedBuilding === b.id;
-            const fixtureCount = getFixturesByBuilding(b.id).length;
-            const floors = getFloorsByBuilding(b.id);
-            const doneCount = floors.filter((f) => f.status === 'Done' || f.status === 'Restricted').length;
-            const progressPct = floors.length ? Math.round((doneCount / floors.length) * 100) : 0;
-            const nextFloor = floors.find((f) => f.status === 'NotStarted' || f.status === 'InProgress')?.floor;
+            const buildingFixtures = getFixturesByBuilding(b.id).filter((fixture) => matchesLeadFixtureFilter(fixture, leadFilter));
+            const fixtureCount = buildingFixtures.length;
+            const floors = getFloorsByBuilding(b.id).filter(
+              (floor) => leadFilter === 'all' || buildingFixtures.some((fixture) => fixture.floor === floor.floor),
+            );
 
             return (
               <div key={b.id} className="card-soft overflow-hidden">
@@ -204,11 +234,8 @@ export default function CampusNavigator() {
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-foreground">{b.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {fixtureCount} fixtures · {progressPct}% complete
+                      {floors.length} floors · {fixtureCount} fixtures
                     </p>
-                    <div className="mt-2 h-1 max-w-[120px] overflow-hidden rounded-full bg-secondary">
-                      <div className="h-full bg-primary/70" style={{ width: `${progressPct}%` }} />
-                    </div>
                   </div>
                   {isOpen ? (
                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
@@ -216,22 +243,6 @@ export default function CampusNavigator() {
                     <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   )}
                 </button>
-
-                {!isOpen && nextFloor && (
-                  <div className="border-t px-4 pb-3 pt-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        navigate(
-                          `/add?mode=onboard&campusId=${encodeURIComponent(selectedCampus)}&buildingId=${encodeURIComponent(b.id)}&floor=${encodeURIComponent(nextFloor)}`,
-                        )
-                      }
-                      className="btn-primary w-full text-xs"
-                    >
-                      Continue · Floor {nextFloor}
-                    </button>
-                  </div>
-                )}
 
                 {isOpen && (
                   <div className="border-t px-2 pb-2">
@@ -244,9 +255,6 @@ export default function CampusNavigator() {
                       >
                         <Layers className="h-4 w-4 text-muted-foreground" />
                         <span className="flex-1 text-sm text-foreground">Floor {fp.floor}</span>
-                        <span className={`status-pill ${floorStatusPillClass[fp.status]}`}>
-                          {FLOOR_STATUS_LABELS[fp.status] ?? fp.status}
-                        </span>
                         <ChevronRight className="h-3 w-3 text-muted-foreground" />
                       </button>
                     ))}

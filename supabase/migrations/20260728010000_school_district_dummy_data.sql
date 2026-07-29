@@ -36,9 +36,9 @@ BEGIN
 
   WITH school_data(school_key, school_name, address) AS (
     VALUES
-      ('cedar-valley', 'Cedar Valley Elementary School', '2710 Cedar Valley Road, Stanwood, WA'),
-      ('port-susan', 'Port Susan Middle School', '7400 Port Susan Avenue, Stanwood, WA'),
-      ('summit-ridge', 'Summit Ridge High School', '9100 Summit Ridge Drive, Stanwood, WA')
+      ('cedar-valley', 'Pine Creek Elementary School', '100 Pine Creek Way, North Valley, WA'),
+      ('port-susan', 'Maple Grove Middle School', '200 Maple Grove Avenue, North Valley, WA'),
+      ('summit-ridge', 'Riverstone High School', '300 Riverstone Boulevard, North Valley, WA')
   )
   INSERT INTO public.campuses (
     id, name, school_district, school, address, organization_mode, created_by
@@ -52,7 +52,7 @@ BEGIN
       substr(md5('aquatrack-demo-school-' || school_key), 21, 12)
     )::uuid,
     school_name,
-    'Stanwood-Camano School District',
+    'North Valley School District',
     school_name,
     address,
     'school_district',
@@ -67,15 +67,15 @@ BEGIN
 
   WITH building_data(school_key, building_key, building_name, floor_total) AS (
     VALUES
-      ('cedar-valley', 'cv-main', 'Main Classroom Building', 2),
-      ('cedar-valley', 'cv-early', 'Early Learning Building', 2),
+      ('cedar-valley', 'cv-main', 'Learning Center', 2),
+      ('cedar-valley', 'cv-early', 'Commons Building', 2),
       ('port-susan', 'ps-academic', 'Academic Building', 3),
-      ('port-susan', 'ps-commons', 'Commons Building', 2),
-      ('port-susan', 'ps-gym', 'Gymnasium Building', 2),
-      ('summit-ridge', 'sr-academic', 'Academic Building', 3),
-      ('summit-ridge', 'sr-stem', 'STEM Building', 3),
-      ('summit-ridge', 'sr-arts', 'Arts Building', 2),
-      ('summit-ridge', 'sr-athletics', 'Athletics Building', 2)
+      ('port-susan', 'ps-commons', 'Innovation Building', 2),
+      ('port-susan', 'ps-gym', 'Student Center', 2),
+      ('summit-ridge', 'sr-academic', 'North Academic Building', 3),
+      ('summit-ridge', 'sr-stem', 'South Academic Building', 3),
+      ('summit-ridge', 'sr-arts', 'STEM Center', 2),
+      ('summit-ridge', 'sr-athletics', 'Athletics Center', 2)
   )
   INSERT INTO public.buildings (id, campus_id, name, floors, created_by)
   SELECT
@@ -186,9 +186,9 @@ BEGIN
     )::uuid,
     floor_number::text,
     CASE fixture_number
-      WHEN 1 THEN 'Classroom ' || floor_number || '0' || (fixture_number + 1) || ' sink'
-      WHEN 2 THEN 'Hallway near Room ' || floor_number || '05 drinking fountain'
-      ELSE 'Main corridor bottle filling station'
+      WHEN 1 THEN 'Classroom area · Floor ' || floor_number || ' · Sink A'
+      WHEN 2 THEN 'East hallway · Floor ' || floor_number || ' · Drinking Fountain B'
+      ELSE 'Commons area · Floor ' || floor_number || ' · Bottle Filler C'
     END,
     CASE fixture_number
       WHEN 1 THEN 'Chicago Faucets'
@@ -209,28 +209,100 @@ BEGIN
     3,
     CASE WHEN fixture_number = 1 THEN 3 ELSE 4 END,
     CASE fixture_number
-      WHEN 1 THEN 'Cold-water classroom sink commonly included in school lead sampling inventories.'
-      WHEN 2 THEN 'Hallway drinking fountain used by students and staff.'
-      ELSE 'Bottle filler located along the main student circulation corridor.'
+      WHEN 1 THEN 'Cold-water sink serving a general classroom area.'
+      WHEN 2 THEN 'Drinking fountain located along an east hallway.'
+      ELSE 'Bottle filling station located near a shared commons area.'
     END,
     CURRENT_DATE - ((floor_number * 18 + fixture_number * 7) || ' days')::interval,
     true,
-    'AquaTrack Demo Seed',
+    'District Inventory Import',
     owner_id
   FROM expanded
-  ON CONFLICT (id) DO NOTHING;
+  ON CONFLICT (id) DO UPDATE SET
+    campus_id = EXCLUDED.campus_id,
+    building_id = EXCLUDED.building_id,
+    floor = EXCLUDED.floor,
+    nearest_room = EXCLUDED.nearest_room,
+    brand = EXCLUDED.brand,
+    model = EXCLUDED.model,
+    serial_number = EXCLUDED.serial_number,
+    category = EXCLUDED.category,
+    observations = EXCLUDED.observations,
+    created_by = EXCLUDED.created_by;
+
+  -- Give the existing 51 fixtures fictional, school-like names and locations
+  -- without changing their building/floor distribution or creating new rows.
+  WITH location_specs(building_key, floor_number, fixture_names) AS (
+    VALUES
+      ('cv-main', 1, ARRAY['Classroom A101 Sink','First Floor Hallway Drinking Fountain','Main Office Sink']),
+      ('cv-main', 2, ARRAY['Classroom A201 Sink','Library Bottle Filling Station']),
+      ('cv-early', 1, ARRAY['Cafeteria Food Preparation Sink','Student Commons Bottle Filling Station','Staff Lounge Sink']),
+      ('cv-early', 2, ARRAY['Art Studio Sink','Second Floor Hallway Drinking Fountain']),
+      ('ps-academic', 1, ARRAY['Classroom A103 Sink','North Corridor Drinking Fountain','Administrative Office Sink']),
+      ('ps-academic', 2, ARRAY['Classroom A203 Faucet','East Hallway Bottle Filling Station']),
+      ('ps-academic', 3, ARRAY['Classroom A303 Sink','Third Floor Hallway Fountain','Media Center Sink']),
+      ('ps-commons', 1, ARRAY['Science Lab 1 Sink','Innovation Lobby Bottle Filling Station']),
+      ('ps-commons', 2, ARRAY['Science Lab 2 Sink','West Hallway Drinking Fountain']),
+      ('ps-gym', 1, ARRAY['Cafeteria Sink','Student Commons Bottle Filling Station','Student Services Sink']),
+      ('ps-gym', 2, ARRAY['Gym Entrance Drinking Fountain','Staff Lounge Sink']),
+      ('sr-academic', 1, ARRAY['Classroom B101 Sink','North Corridor Fountain','Student Services Sink']),
+      ('sr-academic', 2, ARRAY['Classroom B205 Faucet','Second Floor Bottle Filling Station']),
+      ('sr-academic', 3, ARRAY['Classroom B302 Sink','Third Floor Hallway Fountain']),
+      ('sr-stem', 1, ARRAY['Classroom C101 Sink','South Corridor Fountain','Administrative Office Sink']),
+      ('sr-stem', 2, ARRAY['Classroom C204 Sink','East Hallway Bottle Filling Station']),
+      ('sr-stem', 3, ARRAY['Classroom C303 Sink','West Hallway Fountain','Third Floor Bottle Filling Station']),
+      ('sr-arts', 1, ARRAY['Engineering Lab Sink','Laboratory Bottle Filling Station']),
+      ('sr-arts', 2, ARRAY['Chemistry Lab Sink','Science Corridor Fountain','STEM Commons Sink']),
+      ('sr-athletics', 1, ARRAY['Gym Entrance Bottle Filling Station','Athletics Hallway Fountain']),
+      ('sr-athletics', 2, ARRAY['Staff Lounge Sink','Upper Gym Hallway Fountain'])
+  ),
+  expanded_locations AS (
+    SELECT
+      building_key,
+      floor_number,
+      fixture_name,
+      fixture_number
+    FROM location_specs
+    CROSS JOIN LATERAL unnest(fixture_names) WITH ORDINALITY
+      AS fixture(fixture_name, fixture_number)
+  ),
+  resolved_locations AS (
+    SELECT
+      (
+        substr(md5('aquatrack-demo-fixture-' || building_key || '-' || floor_number || '-' || fixture_number), 1, 8) || '-' ||
+        substr(md5('aquatrack-demo-fixture-' || building_key || '-' || floor_number || '-' || fixture_number), 9, 4) || '-' ||
+        substr(md5('aquatrack-demo-fixture-' || building_key || '-' || floor_number || '-' || fixture_number), 13, 4) || '-' ||
+        substr(md5('aquatrack-demo-fixture-' || building_key || '-' || floor_number || '-' || fixture_number), 17, 4) || '-' ||
+        substr(md5('aquatrack-demo-fixture-' || building_key || '-' || floor_number || '-' || fixture_number), 21, 12)
+      )::uuid AS fixture_id,
+      fixture_name
+    FROM expanded_locations
+  )
+  UPDATE public.fixtures fixture
+  SET
+    nearest_room = location.fixture_name,
+    category = CASE
+      WHEN location.fixture_name ILIKE '%Bottle Filling%'
+        THEN 'BottleRefillStation'::public.fixture_category
+      WHEN location.fixture_name ILIKE '%Fountain%'
+        THEN 'MetalFountain'::public.fixture_category
+      ELSE 'Other'::public.fixture_category
+    END,
+    observations = location.fixture_name || ' serving the surrounding school area.'
+  FROM resolved_locations location
+  WHERE fixture.id = location.fixture_id;
 
   -- Assertions keep future edits from silently violating the requested shape.
   SELECT count(*) INTO seeded_school_count
   FROM public.campuses
-  WHERE school_district = 'Stanwood-Camano School District'
+  WHERE school_district = 'North Valley School District'
     AND organization_mode = 'school_district'
     AND created_by = owner_id;
 
   SELECT count(*) INTO seeded_building_count
   FROM public.buildings b
   JOIN public.campuses c ON c.id = b.campus_id
-  WHERE c.school_district = 'Stanwood-Camano School District'
+  WHERE c.school_district = 'North Valley School District'
     AND c.organization_mode = 'school_district'
     AND c.created_by = owner_id;
 
@@ -238,14 +310,14 @@ BEGIN
   FROM public.floor_progress fp
   JOIN public.buildings b ON b.id = fp.building_id
   JOIN public.campuses c ON c.id = b.campus_id
-  WHERE c.school_district = 'Stanwood-Camano School District'
+  WHERE c.school_district = 'North Valley School District'
     AND c.organization_mode = 'school_district'
     AND c.created_by = owner_id;
 
   SELECT count(*) INTO seeded_fixture_count
   FROM public.fixtures f
   JOIN public.campuses c ON c.id = f.campus_id
-  WHERE c.school_district = 'Stanwood-Camano School District'
+  WHERE c.school_district = 'North Valley School District'
     AND c.organization_mode = 'school_district'
     AND c.created_by = owner_id;
 
@@ -254,7 +326,7 @@ BEGIN
     SELECT c.id
     FROM public.campuses c
     LEFT JOIN public.buildings b ON b.campus_id = c.id
-    WHERE c.school_district = 'Stanwood-Camano School District'
+    WHERE c.school_district = 'North Valley School District'
       AND c.organization_mode = 'school_district'
       AND c.created_by = owner_id
     GROUP BY c.id
@@ -264,7 +336,7 @@ BEGIN
   SELECT count(*) INTO invalid_building_count
   FROM public.buildings b
   JOIN public.campuses c ON c.id = b.campus_id
-  WHERE c.school_district = 'Stanwood-Camano School District'
+  WHERE c.school_district = 'North Valley School District'
     AND c.organization_mode = 'school_district'
     AND c.created_by = owner_id
     AND b.floors NOT BETWEEN 2 AND 3;
@@ -274,7 +346,7 @@ BEGIN
     SELECT f.building_id, f.floor
     FROM public.fixtures f
     JOIN public.campuses c ON c.id = f.campus_id
-    WHERE c.school_district = 'Stanwood-Camano School District'
+    WHERE c.school_district = 'North Valley School District'
       AND c.organization_mode = 'school_district'
       AND c.created_by = owner_id
     GROUP BY f.building_id, f.floor

@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Beaker, Building2, ClipboardList, Droplets, Home, LogOut } from 'lucide-react';
+import { Beaker, Building2, Droplets, Home, LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFixtureStore } from '@/store/fixtureStore';
 import { WelcomeScreen, dismissWelcome, wasWelcomeDismissed } from '@/components/WelcomeScreen';
@@ -16,9 +16,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { locationLabel, organizationName } = useOrganization();
   const tabs = [
     { to: '/', icon: Home, label: 'Home' },
-    { to: '/add', icon: ClipboardList, label: 'Survey' },
     { to: '/campus', icon: Building2, label: locationLabel },
-    { to: '/lead-testing', icon: Beaker, label: 'Lead Testing' },
+    { to: '/lead-testing/results', icon: Beaker, label: 'Lead Testing' },
   ];
   const { loaded, fixtures } = useFixtureStore();
   const [welcomeOpen, setWelcomeOpen] = useState(false);
@@ -47,7 +46,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col bg-background app-surface">
       <header className="sticky top-0 z-40 border-b bg-card/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-lg items-center justify-between gap-3 px-4 py-3">
+        <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-3 md:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
               <Droplets className="h-4 w-4 text-primary" />
@@ -72,14 +71,14 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-lg flex-1 overflow-y-auto pb-24 scroll-gutter-stable">
+      <main className="mx-auto w-full max-w-7xl flex-1 overflow-y-auto pb-24 scroll-gutter-stable">
         {children}
       </main>
 
       <nav className="nav-bar">
-        <div className="mx-auto flex max-w-lg items-stretch justify-around px-2">
+        <div className="mx-auto flex w-full max-w-3xl items-stretch justify-around px-2 md:px-6">
           {tabs.map(({ to, icon: Icon, label }) => {
-            const active = pathname === to || (to === '/add' && pathname.startsWith('/add')) || (to === '/lead-testing' && pathname.startsWith('/lead-testing/'));
+            const active = pathname === to || (to === '/lead-testing/results' && pathname.startsWith('/lead-testing/'));
             return (
               <Link
                 key={to}

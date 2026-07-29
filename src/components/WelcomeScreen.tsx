@@ -48,7 +48,7 @@ export function WelcomeScreen({ userId, fixtureCount, onDismiss, onImport }: Pro
 
         <h2 className="mt-4 text-lg font-bold text-foreground">Welcome to AquaTrack</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Survey fixtures on site, import spreadsheets, or browse your campus inventory.
+          Manage lead testing, import records, or browse your school inventory.
         </p>
 
         <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,7 +12,6 @@ import Dashboard from "./pages/Dashboard";
 import CampusNavigator from "./pages/CampusNavigator";
 import AddAsset from "./pages/AddAsset";
 import FixtureDetail from "./pages/FixtureDetail";
-import LeadTestingDashboard from "./pages/LeadTestingDashboard";
 import LeadTestingSampling from "./pages/LeadTestingSampling";
 import LeadTestingResults from "./pages/LeadTestingResults";
 import LeadTestingUpload from "./pages/LeadTestingUpload";
@@ -40,7 +39,7 @@ const App = () => (
                       <Route path="/campus" element={<CampusNavigator />} />
                       <Route path="/add" element={<AddAsset />} />
                       <Route path="/fixture/:id" element={<FixtureDetail />} />
-                      <Route path="/lead-testing" element={<LeadTestingDashboard />} />
+                      <Route path="/lead-testing" element={<Navigate to="/lead-testing/results" replace />} />
                       <Route path="/lead-testing/sampling" element={<LeadTestingSampling />} />
                       <Route path="/lead-testing/results" element={<LeadTestingResults />} />
                       <Route path="/lead-testing/upload" element={<LeadTestingUpload />} />

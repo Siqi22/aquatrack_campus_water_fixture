@@ -189,7 +189,7 @@ export default function FixtureDetail() {
     : [fixture.brand, fixture.model].filter(Boolean).join(' · ');
 
   return (
-    <div className="page-shell pb-8">
+    <div className="page-shell max-w-4xl pb-8">
       <PageHeader
         title={editing ? displayBuilding?.name || fixture.buildingName : fixture.buildingName}
         subtitle={`Floor ${displayFloor} · Room ${displayRoom}`}

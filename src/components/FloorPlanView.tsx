@@ -6,12 +6,14 @@ import { canMarkFloorComplete, canManageFloorProgress, canMarkFloorLocked } from
 import { floorStatusPillClass, fixtureStatusDotClass } from '@/lib/statusStyles';
 import { Droplets, Lock, PlusCircle, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { matchesLeadFixtureFilter, type LeadFixtureFilter } from '@/lib/leadTestingFilters';
 
 interface FloorPlanViewProps {
   buildingId: string;
   floor: string;
   buildingName: string;
   campusId?: string;
+  leadFilter?: LeadFixtureFilter;
 }
 
 function MarkCompleteButton({ onClick }: { onClick: () => void }) {
@@ -27,16 +29,17 @@ function MarkCompleteButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-export function FloorPlanView({ buildingId, floor, buildingName, campusId }: FloorPlanViewProps) {
+export function FloorPlanView({ buildingId, floor, buildingName, campusId, leadFilter = 'all' }: FloorPlanViewProps) {
   const { getFixturesByBuildingAndFloor, getFloorProgress, setFloorStatus } = useFixtureStore();
   const canComplete = canMarkFloorComplete();
   const canManageProgress = canManageFloorProgress();
   const canLock = canMarkFloorLocked();
-  const fixtures = getFixturesByBuildingAndFloor(buildingId, floor);
+  const fixtures = getFixturesByBuildingAndFloor(buildingId, floor)
+    .filter((fixture) => matchesLeadFixtureFilter(fixture, leadFilter));
   const floorProgress = getFloorProgress(buildingId, floor);
   const isLocked = floorProgress.status === 'Restricted';
   const isDone = floorProgress.status === 'Done';
-  const showMarkComplete = canComplete && !isLocked && !isDone;
+  const showMarkComplete = leadFilter === 'all' && canComplete && !isLocked && !isDone;
 
   const statusPill = floorStatusPillClass;
 
@@ -190,11 +193,15 @@ export function FloorPlanView({ buildingId, floor, buildingName, campusId }: Flo
             </div>
           ) : null}
           <Droplets className="empty-state-icon" />
-          <p className="text-sm font-medium text-foreground">No fixtures on this floor yet</p>
-          <p className="mt-1 text-caption text-muted-foreground">
-            Record fixtures here, mark the floor complete if finished, or mark it locked if there is no access.
+          <p className="text-sm font-medium text-foreground">
+            {leadFilter === 'all' ? 'No fixtures on this floor yet' : 'No fixtures match this filter'}
           </p>
-          {!isDone ? (
+          <p className="mt-1 text-caption text-muted-foreground">
+            {leadFilter === 'all'
+              ? 'Record fixtures here, mark the floor complete if finished, or mark it locked if there is no access.'
+              : 'Choose another lead testing filter to view fixtures on this floor.'}
+          </p>
+          {!isDone && leadFilter === 'all' ? (
             <div className="mt-4 w-full max-w-sm space-y-2">
               <Link
                 to={addHref}
@@ -240,7 +247,7 @@ export function FloorPlanView({ buildingId, floor, buildingName, campusId }: Flo
                 </Link>
               );
             })}
-            {!isDone ? (
+            {!isDone && leadFilter === 'all' ? (
               <div className="space-y-2 p-3">
                 <Link
                   to={addHref}

@@ -11,7 +11,7 @@ type Mode = "signin" | "signup";
 export default function Auth() {
   const navigate = useNavigate();
   const { session, loading: authLoading } = useAuth();
-  const { organizationMode, setOrganizationMode, organizationName } = useOrganization();
+  const { organizationName } = useOrganization();
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -94,31 +94,6 @@ export default function Auth() {
           </div>
 
           <form onSubmit={handleEmailAuth} className="space-y-3">
-            <fieldset>
-              <legend className="field-label">Workspace type</legend>
-              <div className="mt-2 grid gap-2">
-                {([
-                  ['uw', 'University of Washington'],
-                  ['school_district', 'School District'],
-                ] as const).map(([value, label]) => (
-                  <label
-                    key={value}
-                    className={`flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-sm ${
-                      organizationMode === value ? 'border-primary bg-primary/5' : 'bg-card'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="organization-mode"
-                      value={value}
-                      checked={organizationMode === value}
-                      onChange={() => setOrganizationMode(value)}
-                    />
-                    <span className="font-medium text-foreground">{label}</span>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
             {mode === "signup" && (
               <div>
                 <label className="field-label">Display name</label>
