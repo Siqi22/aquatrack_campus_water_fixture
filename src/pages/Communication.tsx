@@ -123,9 +123,9 @@ export default function Communication() {
         </div>
       </section>
 
-      <div className="sticky bottom-20 mt-4 grid grid-cols-[auto_1fr] gap-2 rounded-2xl border bg-background/95 p-3 shadow-lg backdrop-blur">
-        <Button variant="outline" onClick={() => setSamples([])}><RefreshCw className="mr-2 h-4 w-4" />Change selection</Button>
-        <Button onClick={download}><Download className="mr-2 h-4 w-4" />Download Editable Word Report</Button>
+      <div className="sticky bottom-20 mt-4 grid grid-cols-1 gap-2 rounded-2xl border bg-background/95 p-3 shadow-lg backdrop-blur sm:grid-cols-[auto_1fr]">
+        <Button className="w-full" variant="outline" onClick={() => setSamples([])}><RefreshCw className="mr-2 h-4 w-4 shrink-0" />Change selection</Button>
+        <Button className="w-full min-w-0" onClick={download}><Download className="mr-2 h-4 w-4 shrink-0" /><span className="truncate">Download Word Report</span></Button>
       </div>
     </div>;
   }
