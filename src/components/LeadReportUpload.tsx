@@ -12,16 +12,18 @@ import { Button } from '@/components/ui/button';
 import { Collapsible,CollapsibleContent,CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Select,SelectContent,SelectItem,SelectTrigger,SelectValue } from '@/components/ui/select';
+import { leadReportRowBelongsToWorkspace } from '@/lib/leadReportScope';
 
 interface ReviewRow extends LeadReportRowDraft { id:string; reportUploadId:string; sourceFileName:string; match:LeadFixtureMatch; selectedFixtureId?:string; confirmed:boolean; excluded:boolean; imported:boolean }
 const db=supabase as any;
 
 export function LeadReportUpload({onImported,reviewUnresolved=false}:{onImported?:()=>void|Promise<void>;reviewUnresolved?:boolean}){
   const {fixtures,campuses,buildings,addCampus,addBuilding,addFixture,loadAll}=useFixtureStore();const[rows,setRows]=useState<ReviewRow[]>([]);const[fileName,setFileName]=useState('');const[busy,setBusy]=useState(false);const[reviewLoaded,setReviewLoaded]=useState(!reviewUnresolved);
+  const fixtureIds=useMemo(()=>new Set(fixtures.map(fixture=>fixture.id)),[fixtures]);const districtName=campuses.find(campus=>campus.schoolDistrict)?.schoolDistrict??'';const schoolNames=useMemo(()=>new Set(campuses.map(campus=>(campus.school||campus.name).trim().toLowerCase())),[campuses]);
   const ready=rows.filter(row=>row.confirmed&&!row.excluded&&!row.imported).length;
   const needsReview=rows.filter(row=>!row.confirmed&&!row.excluded&&!row.imported).length;
   const allReviewed=rows.length>0&&needsReview===0&&ready>0;
-  useEffect(()=>{if(!reviewUnresolved)return;void(async()=>{setBusy(true);try{const result=await db.from('lead_testing_report_rows').select('*,lead_testing_report_uploads(file_name)').is('imported_testing_round_id',null).neq('match_status','excluded').is('deleted_at',null).order('report_upload_id').order('row_number');if(result.error)throw result.error;setRows((result.data??[]).map(reviewRowFromDb));setFileName('Unresolved report matches')}catch(error){toast.error(errorMessage(error),{duration:8000})}finally{setBusy(false);setReviewLoaded(true)}})()},[reviewUnresolved]);
+  useEffect(()=>{if(!reviewUnresolved)return;void(async()=>{setBusy(true);try{const result=await db.from('lead_testing_report_rows').select('*,lead_testing_report_uploads(file_name,district_or_organization)').is('imported_testing_round_id',null).eq('user_confirmed',false).neq('match_status','excluded').is('deleted_at',null).order('report_upload_id').order('row_number');if(result.error)throw result.error;setRows((result.data??[]).filter((row:any)=>leadReportRowBelongsToWorkspace(row,fixtureIds,districtName,schoolNames)).map(reviewRowFromDb));setFileName('Unresolved report matches')}catch(error){toast.error(errorMessage(error),{duration:8000})}finally{setBusy(false);setReviewLoaded(true)}})()},[reviewUnresolved,fixtureIds,districtName,schoolNames]);
   async function openExistingReport(report:{id:string;file_name:string}){
     const existing=await db.from('lead_testing_report_rows').select('*,lead_testing_report_uploads(file_name)').eq('report_upload_id',report.id).is('deleted_at',null).order('row_number');
     if(existing.error)throw existing.error;
