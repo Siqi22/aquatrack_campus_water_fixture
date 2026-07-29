@@ -15,6 +15,7 @@ import FixtureDetail from "./pages/FixtureDetail";
 import LeadTestingSampling from "./pages/LeadTestingSampling";
 import LeadTestingResults from "./pages/LeadTestingResults";
 import LeadTestingUpload from "./pages/LeadTestingUpload";
+import Communication from "./pages/Communication";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -43,6 +44,7 @@ const App = () => (
                       <Route path="/lead-testing/sampling" element={<LeadTestingSampling />} />
                       <Route path="/lead-testing/results" element={<LeadTestingResults />} />
                       <Route path="/lead-testing/upload" element={<LeadTestingUpload />} />
+                      <Route path="/communication" element={<Communication />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </AppShell>

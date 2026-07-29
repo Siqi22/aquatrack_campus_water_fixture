@@ -195,7 +195,7 @@
   }
 
   .nav-tab {
-    @apply flex flex-col items-center gap-0.5 px-4 py-2 text-[10px] font-medium text-muted-foreground transition-colors;
+    @apply flex min-w-0 flex-1 flex-col items-center gap-0.5 px-1 py-2 text-[10px] font-medium text-muted-foreground transition-colors sm:px-4;
   }
 
   .nav-tab-active {

@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Beaker, Building2, Droplets, Home, LogOut } from 'lucide-react';
+import { Beaker, Building2, Droplets, Home, LogOut, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFixtureStore } from '@/store/fixtureStore';
 import { WelcomeScreen, dismissWelcome, wasWelcomeDismissed } from '@/components/WelcomeScreen';
@@ -13,11 +13,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, signOut } = useAuth();
-  const { locationLabel, organizationName } = useOrganization();
+  const { organizationName } = useOrganization();
   const tabs = [
     { to: '/', icon: Home, label: 'Home' },
-    { to: '/campus', icon: Building2, label: locationLabel },
+    { to: '/campus', icon: Building2, label: 'Fixture Inventory' },
     { to: '/lead-testing/results', icon: Beaker, label: 'Lead Testing' },
+    { to: '/communication', icon: MessageCircle, label: 'Communication' },
   ];
   const { loaded, fixtures } = useFixtureStore();
   const [welcomeOpen, setWelcomeOpen] = useState(false);
