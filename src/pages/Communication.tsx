@@ -1,78 +1,73 @@
 import { useMemo, useState } from 'react';
-import { Download, FileCheck2, FileText, RefreshCw, UploadCloud } from 'lucide-react';
+import { Download, FileCheck2, FileText, RefreshCw, Search, UploadCloud } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { supabase } from '@/integrations/supabase/client';
-import { extractLeadReportWithClaude } from '@/lib/claudeLeadReport';
-import { parseSpreadsheetFile } from '@/lib/spreadsheet';
 import {
   downloadEditableWaterReport,
-  leadRowsToWaterSamples,
-  parseWaterQualityCSV,
+  parseWaterMeasurement,
   reportSummary,
-  WATER_ANALYTES,
   type WaterQualitySample,
 } from '@/lib/waterQualityReport';
 import { useFixtureStore } from '@/store/fixtureStore';
+import { useLeadTesting } from '@/hooks/useLeadTesting';
 
-type FileKey = 'results' | 'style' | 'reference' | 'coc';
+type FileKey = 'style' | 'reference' | 'coc';
 type Contact = { name: string; title: string; phone: string; email: string };
 const emptyContact = (): Contact => ({ name: '', title: '', phone: '', email: '' });
 
 export default function Communication() {
-  const { campuses } = useFixtureStore();
+  const { campuses, fixtures } = useFixtureStore();
+  const lead = useLeadTesting();
   const [schoolId, setSchoolId] = useState('');
   const [files, setFiles] = useState<Partial<Record<FileKey, File>>>({});
   const [samples, setSamples] = useState<WaterQualitySample[]>([]);
-  const [busy, setBusy] = useState(false);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [fixtureQuery, setFixtureQuery] = useState('');
   const [samplingDates, setSamplingDates] = useState('');
   const [introduction, setIntroduction] = useState('');
   const [actions, setActions] = useState('');
   const [notes, setNotes] = useState('');
   const [contacts, setContacts] = useState<Contact[]>([emptyContact(), emptyContact()]);
   const school = campuses.find(item => item.id === schoolId);
+  const schoolFixtures = useMemo(() => fixtures.filter(fixture => fixture.campusId === schoolId), [fixtures, schoolId]);
+  const normalizedQuery = fixtureQuery.trim().toLowerCase();
+  const visibleFixtures = schoolFixtures.filter(fixture => !normalizedQuery || [fixture.id, fixture.buildingName, fixture.floor, fixture.roomNumber, fixture.nearestRoom, fixture.category, fixture.brand, fixture.model].filter(Boolean).join(' ').toLowerCase().includes(normalizedQuery));
   const summary = useMemo(() => reportSummary(samples), [samples]);
 
-  async function preview() {
-    const file = files.results;
-    if (!schoolId || !file) return;
-    setBusy(true);
-    let storagePath = '';
-    try {
-      let parsed: WaterQualitySample[] = [];
-      if (file.name.toLowerCase().endsWith('.pdf')) {
-        const { data: auth } = await supabase.auth.getUser();
-        if (!auth.user) throw new Error('Sign in again before reading a PDF.');
-        storagePath = `${auth.user.id}/communication-${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
-        const upload = await supabase.storage.from('lead-testing-reports').upload(storagePath, file);
-        if (upload.error) throw upload.error;
-        parsed = leadRowsToWaterSamples(await extractLeadReportWithClaude(storagePath, file.name));
-      } else {
-        const workbook = await parseSpreadsheetFile(file);
-        parsed = workbook.sheets.flatMap(sheet => parseWaterQualityCSV(sheet.csv));
-      }
-      if (!parsed.length) throw new Error('No water-quality result rows were found.');
-      const selectedSchool = school?.school || school?.name || '';
-      parsed = parsed.map(sample => ({ ...sample, school: sample.school || selectedSchool }));
-      setSamples(parsed);
-      const dates = [...new Set(parsed.map(sample => sample.sampleDate).filter(Boolean))].sort();
-      setSamplingDates(dates.length > 1 ? `${dates[0]} through ${dates.at(-1)}` : dates[0] || '');
-      const resultSummary = reportSummary(parsed);
-      setIntroduction(`Water samples were collected from ${parsed.length} fixture${parsed.length === 1 ? '' : 's'} at ${selectedSchool}. The samples were analyzed for ${resultSummary.analytes.join(', ')}.`);
-      setActions(resultSummary.warnings + resultSummary.urgent > 0
-        ? 'Fixtures with results above the applicable action or aesthetic level will be reviewed, restricted when required, remediated, and retested.'
-        : 'No immediate corrective action is required based on the reported results. Routine monitoring and record retention will continue.');
-      toast.success(`${parsed.length} samples are ready to review.`);
-    } catch (error) {
-      toast.error(message(error), { duration: 9000 });
-    } finally {
-      if (storagePath) await supabase.storage.from('lead-testing-reports').remove([storagePath]);
-      setBusy(false);
-    }
+  function preview() {
+    if (!school || !selected.length) return;
+    const selectedSchool = school.school || school.name;
+    const latestRound = new Map<string, typeof lead.rounds[number]>();
+    lead.rounds.forEach(round => {
+      const current = latestRound.get(round.fixture_id);
+      if (!current || round.round_number > current.round_number) latestRound.set(round.fixture_id, round);
+    });
+    const parsed = schoolFixtures.filter(fixture => selected.includes(fixture.id)).map(fixture => {
+      const round = latestRound.get(fixture.id);
+      const result = round?.result_value ? parseWaterMeasurement('Lead', round.result_value, round.result_original_unit || 'ppb') : undefined;
+      return {
+        sampleId: round?.sample_id || fixture.serialNumber || fixture.id,
+        school: selectedSchool,
+        building: fixture.buildingName,
+        location: `${fixture.buildingName} · Floor ${fixture.floor} · Room ${fixture.roomNumber || fixture.nearestRoom}`,
+        sampleDate: (round?.sample_drawn_at || '').slice(0, 10),
+        measurements: result ? { Lead: result } : {},
+      } satisfies WaterQualitySample;
+    });
+    setSamples(parsed);
+    const dates = [...new Set(parsed.map(sample => sample.sampleDate).filter(Boolean))].sort();
+    setSamplingDates(dates.length > 1 ? `${dates[0]} through ${dates.at(-1)}` : dates[0] || '');
+    const resultSummary = reportSummary(parsed);
+    setIntroduction(`This report summarizes available lead-testing information for ${parsed.length} selected fixture${parsed.length === 1 ? '' : 's'} at ${selectedSchool}.`);
+    setActions(resultSummary.warnings + resultSummary.urgent > 0
+      ? 'Fixtures with results above 5 ppb will be reviewed, restricted when required, remediated, and retested.'
+      : 'No immediate corrective action is required for fixtures with completed results at or below 5 ppb. Fixtures without results remain in the testing workflow.');
+    toast.success(`${parsed.length} fixtures are ready to review.`);
   }
 
   function updateContact(index: number, patch: Partial<Contact>) {
@@ -129,7 +124,7 @@ export default function Communication() {
       </section>
 
       <div className="sticky bottom-20 mt-4 grid grid-cols-[auto_1fr] gap-2 rounded-2xl border bg-background/95 p-3 shadow-lg backdrop-blur">
-        <Button variant="outline" onClick={() => setSamples([])}><RefreshCw className="mr-2 h-4 w-4" />Change files</Button>
+        <Button variant="outline" onClick={() => setSamples([])}><RefreshCw className="mr-2 h-4 w-4" />Change selection</Button>
         <Button onClick={download}><Download className="mr-2 h-4 w-4" />Download Editable Word Report</Button>
       </div>
     </div>;
@@ -147,23 +142,30 @@ export default function Communication() {
       <div className="panel-header"><div><h2 className="font-semibold">Report Setup</h2><p className="text-xs text-muted-foreground">School district report</p></div></div>
       <div className="panel-body">
         <Field label="School">
-          <Select value={schoolId} onValueChange={setSchoolId}><SelectTrigger><SelectValue placeholder="Select a school" /></SelectTrigger><SelectContent>{campuses.map(campus => <SelectItem value={campus.id} key={campus.id}>{campus.school || campus.name}</SelectItem>)}</SelectContent></Select>
+          <Select value={schoolId} onValueChange={value => { setSchoolId(value); setFixtureQuery(''); setSelected(fixtures.filter(fixture => fixture.campusId === value).map(fixture => fixture.id)); }}><SelectTrigger><SelectValue placeholder="Select a school" /></SelectTrigger><SelectContent>{campuses.map(campus => <SelectItem value={campus.id} key={campus.id}>{campus.school || campus.name}</SelectItem>)}</SelectContent></Select>
         </Field>
       </div>
     </section>
 
+    {schoolId && <section className="card-section mt-4">
+      <div className="panel-header"><div><h2 className="font-semibold">Select Fixtures</h2><p className="text-xs text-muted-foreground">{selected.length} of {schoolFixtures.length} selected</p></div><label className="flex items-center gap-2 text-xs"><Checkbox checked={schoolFixtures.length > 0 && selected.length === schoolFixtures.length} onCheckedChange={checked => setSelected(checked === true ? schoolFixtures.map(fixture => fixture.id) : [])} />Select All</label></div>
+      <div className="panel-body">
+        <div className="relative mb-3"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input className="pl-9" value={fixtureQuery} onChange={event => setFixtureQuery(event.target.value)} placeholder="Search building, floor, room, type, or fixture ID…" /></div>
+        <div className="max-h-80 space-y-2 overflow-y-auto">{visibleFixtures.map(fixture => <label className="list-row cursor-pointer" key={fixture.id}><Checkbox checked={selected.includes(fixture.id)} onCheckedChange={checked => setSelected(current => checked ? [...new Set([...current, fixture.id])] : current.filter(id => id !== fixture.id))} /><span className="min-w-0 text-xs"><b>{fixture.buildingName} · Floor {fixture.floor} · Room {fixture.roomNumber || fixture.nearestRoom}</b><br /><span className="text-muted-foreground">{fixture.category} · {fixture.currentResultPpb == null ? 'No result' : `${fixture.currentResultPpb.toFixed(3)} ppb`}</span></span></label>)}{!visibleFixtures.length && <p className="py-5 text-center text-sm text-muted-foreground">No fixtures match this search.</p>}</div>
+      </div>
+    </section>}
+
     <section className="card-section mt-4">
-      <div className="panel-header"><div><h2 className="font-semibold">Source Files</h2><p className="text-xs text-muted-foreground">CSV, Excel, or PDF laboratory results</p></div></div>
-      <div className="panel-body grid gap-3 md:grid-cols-2">
-        <FilePicker id="current-results" title="Current lab/results file" required file={files.results} accept=".pdf,.csv,.xlsx" onFile={file => setFiles(current => ({ ...current, results: file }))} />
+      <div className="panel-header"><div><h2 className="font-semibold">Supporting Files</h2><p className="text-xs text-muted-foreground">Optional report references</p></div></div>
+      <div className="panel-body grid gap-3 md:grid-cols-3">
         <FilePicker id="coc-file" title="COC / sampling form" file={files.coc} accept=".pdf,.csv,.xlsx,.doc,.docx" onFile={file => setFiles(current => ({ ...current, coc: file }))} />
         <FilePicker id="style-file" title="Sample report style" file={files.style} accept=".pdf,.doc,.docx" onFile={file => setFiles(current => ({ ...current, style: file }))} />
         <FilePicker id="reference-file" title="Lab reference format" file={files.reference} accept=".pdf,.csv,.xlsx" onFile={file => setFiles(current => ({ ...current, reference: file }))} />
       </div>
     </section>
 
-    <Button className="mt-4 w-full" size="lg" disabled={busy || !schoolId || !files.results} onClick={preview}>
-      {busy ? <><RefreshCw className="mr-2 h-4 w-4 animate-spin" />Reading results…</> : <><FileCheck2 className="mr-2 h-4 w-4" />Upload &amp; Preview</>}
+    <Button className="mt-4 w-full" size="lg" disabled={!schoolId || !selected.length || lead.loading} onClick={preview}>
+      <FileCheck2 className="mr-2 h-4 w-4" />Review {selected.length || ''} Selected Fixtures
     </Button>
   </div>;
 }
@@ -181,10 +183,4 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function SummaryCard({ label, value, tone = 'default' }: { label: string; value: number; tone?: 'default' | 'warning' | 'urgent' }) {
   return <div className="card-soft p-4"><p className={`text-2xl font-bold tabular-nums ${tone === 'urgent' ? 'text-status-urgent' : tone === 'warning' ? 'text-status-warning' : ''}`}>{value}</p><p className="text-xs text-muted-foreground">{label}</p></div>;
-}
-
-function message(error: unknown) {
-  if (error instanceof Error) return error.message;
-  if (error && typeof error === 'object' && 'message' in error) return String(error.message);
-  return 'Could not prepare this report.';
 }

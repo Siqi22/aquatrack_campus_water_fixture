@@ -66,6 +66,10 @@ function measurement(analyte: WaterAnalyte, rawValue: string, rawUnit: string, h
   return { analyte, display, value, unit: canonicalUnit, belowDetection, severity };
 }
 
+export function parseWaterMeasurement(analyte: WaterAnalyte, value: string, unit: string): WaterMeasurement | undefined {
+  return measurement(analyte, value, unit, `${analyte} Result`);
+}
+
 function evaluate(analyte: WaterAnalyte, value: number | null, belowDetection: boolean): WaterMeasurement['severity'] {
   if (value == null || belowDetection) return 'ok';
   if (analyte === 'Lead') return value > 15 ? 'urgent' : value > 5 ? 'warning' : 'ok';
@@ -155,8 +159,9 @@ function normalizeDate(value: string) {
 
 export function reportSummary(samples: WaterQualitySample[]) {
   const measurements = samples.flatMap(sample => Object.values(sample.measurements).filter(Boolean) as WaterMeasurement[]);
+  const analytes = WATER_ANALYTES.filter(analyte => samples.some(sample => sample.measurements[analyte]));
   return {
-    analytes: WATER_ANALYTES.filter(analyte => samples.some(sample => sample.measurements[analyte])),
+    analytes: analytes.length ? analytes : samples.length ? ['Lead' as WaterAnalyte] : [],
     warnings: measurements.filter(item => item.severity === 'warning').length,
     urgent: measurements.filter(item => item.severity === 'urgent').length,
   };
