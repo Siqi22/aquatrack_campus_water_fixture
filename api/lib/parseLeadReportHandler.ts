@@ -48,7 +48,6 @@ const EXTRACTION_TOOL = {
       school_name: { type: ["string", "null"] },
       rows: {
         type: "array",
-        maxItems: MAX_ROWS,
         items: {
           type: "object",
           additionalProperties: false,
