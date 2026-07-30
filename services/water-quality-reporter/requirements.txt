@@ -8,6 +8,8 @@ openpyxl>=3.1
 xlrd>=2.0
 pdfkit>=1.0
 pdfplumber>=0.10
+pypdfium2>=4.30
+Pillow>=9.1
 # cryptography 49 has no wheel for Apple's Python 3.9 on this Mac and falls
 # back to a source build that requires OpenSSL/pkg-config. Version 48 ships a
 # compatible wheel and satisfies pdfminer.six's cryptography>=36 requirement.

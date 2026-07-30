@@ -38,9 +38,9 @@
 
       <label class="file-field" for="header_template_file">
         <strong>Header template <span class="required">Required</span></strong>
-        <span class="field-hint">Word document (.docx) with content in the Word header area</span>
+        <span class="field-hint">Word document (.docx) with header content, or a PDF letterhead</span>
         {% if existing_header %}<span class="saved-file">Current file: {{ existing_header.filename }}. Choose another file only to replace it.</span>{% endif %}
-        <input id="header_template_file" type="file" name="header_template_file" accept=".docx" {% if not existing_header %}required{% endif %}>
+        <input id="header_template_file" type="file" name="header_template_file" accept=".docx,.pdf" {% if not existing_header %}required{% endif %}>
       </label>
     </div>
   </section>

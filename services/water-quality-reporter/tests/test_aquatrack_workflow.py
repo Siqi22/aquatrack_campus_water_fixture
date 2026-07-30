@@ -5,6 +5,16 @@ import unittest
 from unittest.mock import patch
 
 from docx import Document
+from PIL import Image, ImageDraw
+
+from wqr import (
+    Fixture,
+    Measurement,
+    ReportContext,
+    Sample,
+    load_profile,
+    render_docx,
+)
 
 
 class FakeSupabase:
@@ -97,6 +107,29 @@ def docx_bytes(header_text=None):
     document.add_paragraph("Example communication style")
     document.save(output)
     return output.getvalue()
+
+
+def pdf_header_bytes():
+    output = BytesIO()
+    image = Image.new("RGB", (850, 1100), "white")
+    drawing = ImageDraw.Draw(image)
+    drawing.rectangle((35, 30, 815, 170), fill="#087c92")
+    drawing.text((65, 75), "EXAMPLE DISTRICT", fill="white")
+    image.save(output, format="PDF", resolution=100)
+    return output.getvalue()
+
+
+class StaticRegistry:
+    fixture = Fixture(
+        fixture_id="EX-001",
+        building="Learning Center",
+        floor="1",
+        room="Hallway A",
+        fixture_type="Drinking fountain",
+    )
+
+    def get(self, fixture_id):
+        return self.fixture if fixture_id == self.fixture.fixture_id else None
 
 
 class AquaTrackWorkflowTests(unittest.TestCase):
@@ -198,6 +231,54 @@ class AquaTrackWorkflowTests(unittest.TestCase):
                 [p.text for p in report.sections[0].header.paragraphs],
             )
             self.assertEqual(len(fake.generated_reports), 1)
+
+    def test_pdf_letterhead_is_accepted_and_embedded_in_word_header(self):
+        import flask_app
+
+        header_bytes = pdf_header_bytes()
+        flask_app._validate_header_template(header_bytes, "letterhead.pdf")
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            header_path = Path(temp_dir) / "letterhead.pdf"
+            header_path.write_bytes(header_bytes)
+            sample = Sample(
+                sample_id="SAMPLE-001",
+                client_sample_id="SAMPLE-001",
+                fixture_id="EX-001",
+                volume_ml=250,
+                collection_date=None,
+                analysis_date=None,
+                measurements=[Measurement(
+                    analyte="Lead",
+                    value=6.125,
+                    unit="ppb",
+                    below_dl=False,
+                    detection_limit=None,
+                    method="AquaTrack lead testing record",
+                )],
+            )
+            context = ReportContext(
+                building="Example Elementary",
+                report_date=None,
+                sampling_date_range="March 12, 2026",
+                introduction_md="Example introduction.",
+                actions_taken_md="Example actions.",
+                contacts=[],
+                samples=[sample],
+                action_levels=load_profile("wa_k12_default"),
+                analytes_shown=["Lead"],
+                report_style="wa_school",
+                organization="Example District",
+                header_template_path=str(header_path),
+            )
+
+            output = BytesIO()
+            render_docx(context, StaticRegistry(), output)
+            report = Document(BytesIO(output.getvalue()))
+            self.assertTrue(
+                report.sections[0].header._element.xpath(".//w:drawing")
+            )
+            self.assertGreater(report.sections[0].top_margin.inches, 1.5)
 
 
 if __name__ == "__main__":

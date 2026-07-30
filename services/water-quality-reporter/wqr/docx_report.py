@@ -870,13 +870,79 @@ def _build_findings_summary(ctx: "ReportContext", registry) -> str:
     return " ".join(sentences)
 
 
+def _document_from_pdf_header(path: str | Path) -> Document:
+    """Create a Word document using the first PDF page as letterhead.
+
+    Standard portrait pages are cropped to their top 2.5 inches so a full-page
+    letterhead PDF does not cover the report body. Short or landscape PDFs are
+    treated as header-only artwork and used in full.
+    """
+    import pypdfium2 as pdfium
+
+    pdf = pdfium.PdfDocument(str(path))
+    try:
+        if len(pdf) < 1:
+            raise ValueError("The PDF header template does not contain a page.")
+        page = pdf[0]
+        try:
+            page_width_pt, page_height_pt = page.get_size()
+            bitmap = page.render(scale=2.5)
+            try:
+                image = bitmap.to_pil().convert("RGB").copy()
+            finally:
+                bitmap.close()
+        finally:
+            page.close()
+    finally:
+        pdf.close()
+
+    if page_height_pt / page_width_pt > 0.9:
+        header_height_pt = min(page_height_pt, 180.0)
+        crop_height = max(
+            1,
+            round(image.height * header_height_pt / page_height_pt),
+        )
+        image = image.crop((0, 0, image.width, crop_height))
+
+    image_stream = BytesIO()
+    image.save(image_stream, format="PNG", optimize=True)
+    image_stream.seek(0)
+
+    doc = Document()
+    section = doc.sections[0]
+    section.left_margin = Inches(0.6)
+    section.right_margin = Inches(0.6)
+    section.header_distance = Inches(0.12)
+
+    available_width_inches = (
+        section.page_width - section.left_margin - section.right_margin
+    ) / 914400
+    rendered_height_inches = (
+        available_width_inches * image.height / image.width
+    )
+    section.top_margin = Inches(max(1.0, rendered_height_inches + 0.3))
+
+    paragraph = section.header.paragraphs[0]
+    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    paragraph.paragraph_format.space_before = Pt(0)
+    paragraph.paragraph_format.space_after = Pt(0)
+    paragraph.add_run().add_picture(
+        image_stream,
+        width=Inches(available_width_inches),
+    )
+    return doc
+
+
 def render_docx(ctx: ReportContext, registry: FixtureRegistry,
                 output: str | Path | BytesIO) -> Path | BytesIO:
     """Render the report. Pass a path to write to disk, or a BytesIO for
     in-memory (e.g. Flask send_file)."""
     header_template_path = getattr(ctx, "header_template_path", "")
     if header_template_path:
-        doc = Document(str(header_template_path))
+        if Path(header_template_path).suffix.lower() == ".pdf":
+            doc = _document_from_pdf_header(header_template_path)
+        else:
+            doc = Document(str(header_template_path))
         body = doc._element.body
         for child in list(body):
             if child.tag != qn("w:sectPr"):

@@ -110,4 +110,4 @@ class ReportContext:
     organization: str = ""
     reference_style_applied: bool = False
     reference_layout: str = "report"
-    header_template_path: str = ""       # optional uploaded DOCX with a Word header
+    header_template_path: str = ""       # optional DOCX header or PDF letterhead

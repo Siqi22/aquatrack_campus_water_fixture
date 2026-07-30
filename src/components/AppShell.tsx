@@ -2,8 +2,6 @@ import { ReactNode, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Beaker, Building2, Droplets, Home, LogOut, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useFixtureStore } from '@/store/fixtureStore';
-import { WelcomeScreen, dismissWelcome, wasWelcomeDismissed } from '@/components/WelcomeScreen';
 import { ImportDialog } from '@/components/ImportDialog';
 import { toast } from 'sonner';
 import { useOrganization } from '@/contexts/OrganizationContext';
@@ -20,8 +18,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     { to: '/lead-testing/results', icon: Beaker, label: 'Lead Testing' },
     { to: '/communication', icon: MessageCircle, label: 'Communication' },
   ];
-  const { loaded, fixtures } = useFixtureStore();
-  const [welcomeOpen, setWelcomeOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
 
   useEffect(() => {
@@ -32,17 +28,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       setSearchParams(next, { replace: true });
     }
   }, [searchParams, setSearchParams]);
-
-  useEffect(() => {
-    if (loaded && user?.id && pathname === '/' && !wasWelcomeDismissed(user.id)) {
-      setWelcomeOpen(true);
-    }
-  }, [loaded, pathname, user?.id]);
-
-  function closeWelcome() {
-    dismissWelcome(user?.id);
-    setWelcomeOpen(false);
-  }
 
   return (
     <div className="flex min-h-screen flex-col bg-background app-surface">
@@ -94,18 +79,6 @@ export function AppShell({ children }: { children: ReactNode }) {
           })}
         </div>
       </nav>
-
-      {welcomeOpen && user?.id && (
-        <WelcomeScreen
-          userId={user.id}
-          fixtureCount={fixtures.length}
-          onDismiss={closeWelcome}
-          onImport={() => {
-            closeWelcome();
-            setImportOpen(true);
-          }}
-        />
-      )}
 
       <ImportDialog open={importOpen} onOpenChange={setImportOpen} />
     </div>

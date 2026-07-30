@@ -1251,8 +1251,32 @@ SOURCE_FILE_LABELS = {
 
 
 def _validate_header_template(raw_bytes: bytes, filename: str) -> None:
-    if Path(filename).suffix.lower() != ".docx":
-        raise ValueError("The Header template must be a DOCX Word document.")
+    suffix = Path(filename).suffix.lower()
+    if suffix == ".pdf":
+        try:
+            import pypdfium2 as pdfium
+
+            document = pdfium.PdfDocument(raw_bytes)
+            try:
+                if len(document) < 1:
+                    raise ValueError("The PDF does not contain any pages.")
+                page = document[0]
+                try:
+                    width, height = page.get_size()
+                finally:
+                    page.close()
+            finally:
+                document.close()
+            if width <= 0 or height <= 0:
+                raise ValueError("The first PDF page has an invalid size.")
+            return
+        except Exception as exc:
+            raise ValueError(
+                "The Header template could not be read as a PDF file."
+            ) from exc
+
+    if suffix != ".docx":
+        raise ValueError("The Header template must be a DOCX or PDF file.")
     try:
         from docx import Document
 
