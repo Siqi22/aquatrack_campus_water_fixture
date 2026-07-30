@@ -245,11 +245,19 @@ class AquaTrackWorkflowTests(unittest.TestCase):
                 "Example District Header",
                 [p.text for p in report.sections[0].header.paragraphs],
             )
-            self.assertNotIn(
+            self.assertIn(
                 "Table 1",
                 "\n".join(paragraph.text for paragraph in report.paragraphs),
             )
-            self.assertEqual(len(report.tables), 0)
+            self.assertEqual(len(report.tables), 1)
+            results_table = report.tables[0]
+            self.assertEqual(
+                [cell.text for cell in results_table.rows[0].cells],
+                ["#", "Building", "Fixture / Location", "Lead\n(ppb)"],
+            )
+            self.assertEqual(results_table.rows[1].cells[1].text, "Learning Center")
+            self.assertIn("Hallway A", results_table.rows[1].cells[2].text)
+            self.assertEqual(results_table.rows[1].cells[3].text, "6")
             self.assertEqual(len(fake.generated_reports), 1)
 
     def test_pdf_letterhead_is_accepted_and_embedded_in_word_header(self):
@@ -299,6 +307,11 @@ class AquaTrackWorkflowTests(unittest.TestCase):
                 report.sections[0].header._element.xpath(".//w:drawing")
             )
             self.assertGreater(report.sections[0].top_margin.inches, 1.5)
+            self.assertIn(
+                "Table 1",
+                "\n".join(paragraph.text for paragraph in report.paragraphs),
+            )
+            self.assertEqual(len(report.tables), 1)
 
 
 if __name__ == "__main__":
