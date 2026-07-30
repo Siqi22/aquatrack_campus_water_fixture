@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Water Quality Reporter{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body class="app-surface">
+  <header class="app-header">
+    <div class="app-header__inner {{ 'app-header__inner--wide' if page_shell_class == 'page-shell--wide' else '' }}">
+      <a class="brand" href="{{ url_for('index') }}" aria-label="Water Quality Reporter home">
+        <span class="brand__mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2.7s6.3 6.9 6.3 12A6.3 6.3 0 1 1 5.7 14.7c0-5.1 6.3-12 6.3-12Z"/>
+            <path d="M9.2 15.2a3 3 0 0 0 3 2.8"/>
+          </svg>
+        </span>
+        <span class="brand__copy">
+          <strong>Water Quality Reporter</strong>
+          <span>Lead communication workflow</span>
+        </span>
+      </a>
+      {% if request.endpoint != 'index' %}
+        <a class="btn-icon-text" href="{{ url_for('index') }}" aria-label="Start a new report">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+          <span>New report</span>
+        </a>
+      {% endif %}
+    </div>
+  </header>
+
+  <main class="page-shell {{ page_shell_class|default('') }}">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-stack" aria-live="polite">
+          {% for category, message in messages %}
+            <div class="callout callout-{{ 'error' if category == 'error' else 'info' }}" role="alert">
+              <span class="callout__icon" aria-hidden="true">{{ '!' if category == 'error' else 'i' }}</span>
+              <p>{{ message }}</p>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

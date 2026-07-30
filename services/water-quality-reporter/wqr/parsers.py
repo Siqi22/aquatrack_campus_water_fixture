@@ -72,6 +72,10 @@ _ANALYSIS_DATE_COLUMNS = [
 _SAMPLE_DATE_COLUMNS = [
     "Sample Date", "Collection Date", "Collected Date", "Date",
 ]
+_BUILDING_COLUMNS = [
+    "Building Name", "Building", "Facility Name", "Facility",
+    "School Name", "School", "Site Name", "Site",
+]
 
 _ANALYTE_ALIASES = {
     "lead": "Lead",
@@ -350,6 +354,11 @@ def _date_from_row(row, columns: list[str]) -> tuple[Optional[date], Optional[da
     return collection_date, analysis_date
 
 
+def _building_from_row(row, columns: list[str]) -> str:
+    building_col = _find_col(columns, _BUILDING_COLUMNS)
+    return _clean_text(row.get(building_col)) if building_col else ""
+
+
 def _merge_measurement(sample: Sample, measurement: Measurement):
     """Keep one cell per analyte, replacing a previous generic duplicate."""
     for i, existing in enumerate(sample.measurements):
@@ -391,6 +400,7 @@ def _parse_generic_long(df: pd.DataFrame) -> list[Sample]:
         if key not in samples:
             fixture_id, volume = _parse_client_id(client_id)
             collection_date, analysis_date = _date_from_row(row, columns)
+            building_name = _building_from_row(row, columns)
             samples[key] = Sample(
                 sample_id=lab_id or client_id,
                 client_sample_id=client_id,
@@ -399,6 +409,10 @@ def _parse_generic_long(df: pd.DataFrame) -> list[Sample]:
                 collection_date=collection_date,
                 analysis_date=analysis_date,
                 measurements=[],
+                building_name=building_name,
+                source_fields=(
+                    {"building_name": building_name} if building_name else {}
+                ),
             )
         _merge_measurement(samples[key], meas)
 
@@ -413,9 +427,10 @@ def _parse_generic_wide(df: pd.DataFrame) -> list[Sample]:
 
     lab_col = _find_col(columns, _LAB_ID_COLUMNS)
     unit_col = _find_col(columns, _UNIT_COLUMNS)
+    building_col = _find_col(columns, _BUILDING_COLUMNS)
     analyte_cols: dict[str, str] = {}
     for col in columns:
-        if col in {sample_col, lab_col, unit_col}:
+        if col in {sample_col, lab_col, unit_col, building_col}:
             continue
         if _find_col([col], _ANALYSIS_DATE_COLUMNS + _SAMPLE_DATE_COLUMNS):
             continue
@@ -434,6 +449,7 @@ def _parse_generic_wide(df: pd.DataFrame) -> list[Sample]:
         lab_id = _clean_text(row.get(lab_col)) if lab_col else client_id
         fixture_id, volume = _parse_client_id(client_id)
         collection_date, analysis_date = _date_from_row(row, columns)
+        building_name = _building_from_row(row, columns)
         s = Sample(
             sample_id=lab_id or client_id,
             client_sample_id=client_id,
@@ -442,6 +458,10 @@ def _parse_generic_wide(df: pd.DataFrame) -> list[Sample]:
             collection_date=collection_date,
             analysis_date=analysis_date,
             measurements=[],
+            building_name=building_name,
+            source_fields=(
+                {"building_name": building_name} if building_name else {}
+            ),
         )
         ordered_analytes = [a for a in DEFAULT_ANALYTES if a in analyte_cols]
         ordered_analytes.extend(a for a in analyte_cols if a not in ordered_analytes)

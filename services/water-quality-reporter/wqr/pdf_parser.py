@@ -68,11 +68,11 @@ def parse_generic_pdf(path: str | Path) -> list[Sample]:
 
 
 def parse_doh_school_pdf(path: str | Path) -> list[Sample]:
-    """Parse WA DOH Lead in School Drinking Water Report PDFs.
+    """Parse common WA DOH Lead in School Drinking Water Report PDFs.
 
-    These are not lab certificates. They contain a multi-page results table
-    with columns such as Sample ID, Building Name, Fixture Housing Type,
-    Fixture Location, Fixture Type, and Lead Test Result (ppb).
+    DOH has published both ruled tables and line-less Word-generated tables.
+    The latter need coordinate-aware parsing because ``extract_tables`` often
+    returns no usable rows even though the PDF text is selectable.
     """
     path = Path(path)
     samples: list[Sample] = []
@@ -90,8 +90,128 @@ def parse_doh_school_pdf(path: str | Path) -> list[Sample]:
             for tbl in page.extract_tables():
                 samples.extend(_parse_doh_table(tbl, school_name, collected, analyzed))
 
+        if not samples:
+            samples = _parse_doh_word_tables(pdf, school_name, collected, analyzed)
+
     if not samples:
         raise ValueError("No recognizable WA DOH school drinking-water results table found.")
+    _normalize_doh_building_names(samples)
+    return samples
+
+
+def _word_lines(words: list[dict], tolerance: float = 1.0) -> list[list[dict]]:
+    """Group words into visual lines while preserving left-to-right order."""
+    lines: list[list[dict]] = []
+    for word in sorted(words, key=lambda w: (w["top"], w["x0"])):
+        if not lines or abs(lines[-1][0]["top"] - word["top"]) > tolerance:
+            lines.append([word])
+        else:
+            lines[-1].append(word)
+    return lines
+
+
+def _doh_column_starts(words: list[dict]) -> tuple[list[float], float] | None:
+    """Find the repeated DOH table header and its column starts.
+
+    Portrait reports have seven columns beginning with Sample ID. Newer
+    landscape reports add a row-number column, for a total of eight.
+    """
+    for line in _word_lines(words):
+        texts = [w["text"].lower() for w in line]
+        if "sample" not in texts or "building" not in texts or "result" not in texts:
+            continue
+        starts = sorted(w["x0"] for w in line)
+        if len(starts) in {7, 8}:
+            return starts, line[0]["top"]
+    return None
+
+
+def _join_cell_words(words: list[dict]) -> str:
+    return " ".join(
+        w["text"] for w in sorted(words, key=lambda w: (w["top"], w["x0"]))
+    ).strip()
+
+
+def _parse_doh_word_tables(pdf, school_name: str, collection_date, analysis_date) -> list[Sample]:
+    """Parse line-less DOH tables by assigning words to visual columns."""
+    samples: list[Sample] = []
+    for page in pdf.pages:
+        words = page.extract_words() or []
+        header = _doh_column_starts(words)
+        if not header:
+            continue
+        starts, header_top = header
+        boundaries = [(starts[i] + starts[i + 1]) / 2 for i in range(len(starts) - 1)]
+        data_words = [w for w in words if w["top"] > header_top + 20]
+
+        # This coordinate fallback handles the line-less portrait layouts;
+        # their Sample ID is always the first column. Ruled landscape reports
+        # are handled earlier by ``_parse_doh_table``.
+        sample_column = 0
+        left = starts[sample_column] - 8
+        right = (
+            boundaries[sample_column]
+            if sample_column < len(boundaries)
+            else page.width
+        )
+        anchors = [
+            w for w in data_words
+            if re.fullmatch(r"\d{4,}", w["text"])
+            and left <= w["x0"] < right
+        ]
+        anchors.sort(key=lambda w: w["top"])
+
+        footer_tops = [
+            w["top"] for w in data_words
+            if w["text"].upper().startswith("EXPLANATION")
+        ]
+        table_end = min(footer_tops) if footer_tops else page.height
+        for index, anchor in enumerate(anchors):
+            end_top = anchors[index + 1]["top"] if index + 1 < len(anchors) else table_end
+            block = [w for w in data_words if anchor["top"] <= w["top"] < end_top]
+            cells: list[list[dict]] = [[] for _ in starts]
+            for word in block:
+                column = 0
+                while column < len(boundaries) and word["x0"] >= boundaries[column]:
+                    column += 1
+                cells[column].append(word)
+            values = [_join_cell_words(cell) for cell in cells]
+
+            if len(values) == 8:
+                sample_id, building, housing, location, details, fixture_type, position, result = values
+            else:
+                sample_id, building, housing, location, details, fixture_type, result = values
+                position = ""
+
+            try:
+                lead = _parse_value(result, "Lead", "ppb")
+            except ValueError:
+                continue
+
+            source_name = building or school_name or "School"
+            label_bits = [bit for bit in (fixture_type, location, housing) if bit]
+            fixture_label = " - ".join(label_bits) or "drinking water outlet"
+            if details:
+                fixture_label += f" ({details})"
+            samples.append(Sample(
+                sample_id=sample_id,
+                client_sample_id=sample_id,
+                fixture_id=f"DOH_{sample_id}",
+                volume_ml=0,
+                collection_date=collection_date,
+                analysis_date=analysis_date,
+                measurements=[lead],
+                building_name=source_name,
+                fixture_label=fixture_label,
+                source_fields={
+                    "building_name": building,
+                    "fixture_housing_type": housing,
+                    "fixture_location": location,
+                    "fixture_location_details": details,
+                    "fixture_type": fixture_type,
+                    "fixture_position": position,
+                },
+            ))
     return samples
 
 
@@ -112,18 +232,86 @@ def _extract_first_date(text: str, label: str):
     return _to_date(first)
 
 
+def _continued_table_cell(
+    table: list[list[str]], row_index: int, column_index: int
+) -> str:
+    """Join a visually wrapped cell split across adjacent PDF table rows."""
+    current_row = table[row_index]
+    current_value = (
+        _clean(current_row[column_index])
+        if len(current_row) > column_index
+        else ""
+    )
+    if current_value:
+        return current_value
+
+    parts: list[str] = []
+
+    def is_sample_row(row: list[str]) -> bool:
+        return (
+            len(row) > 1
+            and _clean(row[0]).isdigit()
+            and _clean(row[1]).isdigit()
+        )
+
+    for index in range(row_index - 1, -1, -1):
+        row = table[index]
+        if is_sample_row(row) or not any(_clean(cell) for cell in row):
+            break
+        if len(row) > column_index:
+            value = _clean(row[column_index])
+            if value:
+                parts.insert(0, value)
+
+    for index in range(row_index + 1, len(table)):
+        row = table[index]
+        if is_sample_row(row) or not any(_clean(cell) for cell in row):
+            break
+        if len(row) > column_index:
+            value = _clean(row[column_index])
+            if value:
+                parts.append(value)
+
+    return " ".join(parts).strip()
+
+
+def _normalize_doh_building_names(samples: list[Sample]) -> None:
+    """Merge truncated labels when the same report provides the full label."""
+    names = {
+        sample.building_name.strip()
+        for sample in samples
+        if sample.building_name and sample.building_name.strip()
+    }
+    replacements: dict[str, str] = {}
+    for short in names:
+        matches = [
+            full for full in names
+            if full.lower().startswith(short.lower() + " ")
+        ]
+        if len(matches) == 1:
+            replacements[short] = matches[0]
+
+    for sample in samples:
+        replacement = replacements.get(sample.building_name.strip())
+        if not replacement:
+            continue
+        sample.building_name = replacement
+        if sample.source_fields.get("building_name"):
+            sample.source_fields["building_name"] = replacement
+
+
 def _parse_doh_table(tbl: list[list[str]], school_name: str, collection_date, analysis_date) -> list[Sample]:
     if not tbl or len(tbl) < 2:
         return []
     samples: list[Sample] = []
-    for row in tbl:
+    for row_index, row in enumerate(tbl):
         if not row or len(row) < 9:
             continue
         ordinal = _clean(row[0])
         sample_id = _clean(row[1])
         if not ordinal.isdigit() or not sample_id.isdigit():
             continue
-        building = _clean(row[2]) or school_name
+        building = _continued_table_cell(tbl, row_index, 2)
         housing_type = _clean(row[3])
         location = _clean(row[4])
         details = _clean(row[5])
@@ -135,7 +323,7 @@ def _parse_doh_table(tbl: list[list[str]], school_name: str, collection_date, an
         except ValueError:
             continue
 
-        source_name = school_name or building or "School"
+        source_name = building or school_name or "School"
         fixture_id = f"DOH_{sample_id}"
         label_bits = [b for b in (fixture_type, location, housing_type) if b]
         fixture_label = " - ".join(label_bits) if label_bits else "drinking water outlet"

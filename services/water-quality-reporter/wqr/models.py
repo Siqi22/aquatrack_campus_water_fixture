@@ -108,3 +108,6 @@ class ReportContext:
     notes_md: str = ""                 # optional footer notes
     report_style: str = "uw"           # "uw" or "wa_school"
     organization: str = ""
+    reference_style_applied: bool = False
+    reference_layout: str = "report"
+    header_template_path: str = ""       # optional uploaded DOCX with a Word header

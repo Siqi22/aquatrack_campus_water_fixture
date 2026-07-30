@@ -1,70 +1,115 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Reference Samples</title>
-<style>
-  body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
-         max-width: 720px; margin: 40px auto; padding: 0 20px; color: #222; }
-  h1 { color: #4b2e83; border-bottom: 2px solid #4b2e83; padding-bottom: 8px; }
-  .upload {
-    border: 2px dashed #bbb; border-radius: 10px;
-    padding: 30px; margin: 24px 0; background: #fafafa;
-  }
-  label { display: block; font-weight: 600; margin-top: 14px; }
-  button {
-    background: #4b2e83; color: white; border: none;
-    padding: 10px 18px; border-radius: 6px; font-size: 15px;
-    cursor: pointer; margin-top: 14px;
-  }
-  button:hover { background: #3a2466; }
-  .flash { padding: 12px; border-radius: 6px; margin: 12px 0; }
-  .flash.error { background: #fdecea; color: #b00020; border: 1px solid #f5c2c7; }
-  .setup { background: #e7f3fe; border: 1px solid #b6dafb;
-           padding: 12px 14px; border-radius: 6px; font-size: 14px; }
-  .info { background: #f6f6f6; padding: 14px; border-radius: 6px; font-size: 14px; }
-  .required { color: #b00020; font-weight: 700; }
-  a { color: #4b2e83; text-decoration: none; }
-</style>
-</head>
-<body>
-<h1>Upload Reference Samples</h1>
-<p>These files help the draft match the local report style and lab-output format before you upload the current results.</p>
+{% extends "base.html" %}
+{% block title %}Select fixtures · Water Quality Reporter{% endblock %}
 
-<div class="setup">
-  <strong>Report setup:</strong>
-  School/district report for <strong>{{ school_name }}</strong>{% if organization %}, {{ organization }}{% endif %}.
-  <a href="{{ url_for('index') }}">Change</a>
+{% block content %}
+<a class="link-back" href="{{ url_for('edit_setup', upload_id=upload_id) if upload_id else url_for('index') }}">Back</a>
+<header class="page-header">
+  <p class="section-label">Fixture selection</p>
+  <h1 class="page-title">Select fixture(s)</h1>
+  <p class="page-subtitle">Choose the AquaTrack fixtures to include in this report.</p>
+</header>
+
+<ol class="workflow-steps" aria-label="Report workflow">
+  <li class="workflow-step is-complete" data-step="1"><a class="workflow-step__link" href="{{ url_for('edit_setup', upload_id=upload_id) if upload_id else url_for('index') }}"><span>Select school(s)</span></a></li>
+  <li class="workflow-step is-active" data-step="2"><span class="workflow-step__link" aria-current="step"><span>Select fixture(s)</span></span></li>
+  <li class="workflow-step" data-step="3">{% if upload_id %}<a class="workflow-step__link" href="{{ url_for('report_style', upload_id=upload_id) }}"><span>Report style</span></a>{% else %}<span class="workflow-step__link"><span>Report style</span></span>{% endif %}</li>
+  <li class="workflow-step" data-step="4">{% if upload_id and can_review %}<a class="workflow-step__link" href="{{ url_for('compose', upload_id=upload_id) }}"><span>Review</span></a>{% else %}<span class="workflow-step__link"><span>Review</span></span>{% endif %}</li>
+</ol>
+
+<div class="callout callout-info">
+  <span class="callout__icon" aria-hidden="true">i</span>
+  <p><strong>{{ school_name }}</strong>{% if organization %} · {{ organization }}{% endif %}<br>
+  <a href="{{ url_for('edit_setup', upload_id=upload_id) if upload_id else url_for('index') }}">Change report setup</a></p>
 </div>
 
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% for cat, msg in messages %}
-    <div class="flash {{ cat }}">{{ msg }}</div>
-  {% endfor %}
-{% endwith %}
-
-<form class="upload" method="POST" action="{{ url_for('reference_upload') }}"
-      enctype="multipart/form-data">
+<form method="POST" action="{{ url_for('reference_upload', upload_id=upload_id) }}">
   <input type="hidden" name="report_style" value="{{ report_style }}">
   <input type="hidden" name="organization" value="{{ organization }}">
   <input type="hidden" name="school_name" value="{{ school_name }}">
   <input type="hidden" name="campus_id" value="{{ campus_id }}">
-  {% for fixture_id in fixture_ids %}
-  <input type="hidden" name="fixture_ids" value="{{ fixture_id }}">
-  {% endfor %}
 
-  <label><strong>Sample of your report style</strong> <span class="required">(required)</span></label>
-  <input type="file" name="style_report_file" accept=".pdf,.doc,.docx" required>
+  <section class="card-section">
+    <div class="panel-header panel-header--split">
+      <div>
+        <h2>Fixtures</h2>
+        <p id="fixture-count">{{ selected_fixture_ids|length }} of {{ fixtures|length }} selected</p>
+      </div>
+      <label class="select-all-control">
+        <input id="select-all" type="checkbox" {% if fixtures and selected_fixture_ids|length == fixtures|length %}checked{% endif %}>
+        <span>Select all</span>
+      </label>
+    </div>
+    <div class="panel-body stack">
+      <div class="field-group">
+        <label for="fixture-search">Search fixtures</label>
+        <input id="fixture-search" type="search" placeholder="Building, floor, room, type, or fixture ID">
+      </div>
 
-  <label><strong>Sample lab output/reference format</strong> <span class="required">(required)</span></label>
-  <input type="file" name="reference_lab_file" accept=".pdf,.csv,.xls,.xlsx" required>
+      <div class="fixture-list" id="fixture-list">
+        {% for fixture in fixtures %}
+          {% set location = (fixture.building_name or 'Building') ~ ' · Floor ' ~ (fixture.floor or '—') ~ ' · ' ~ (fixture.nearest_room or 'Location not recorded') %}
+          <label class="fixture-option" data-search="{{ (location ~ ' ' ~ (fixture.category or '') ~ ' ' ~ (fixture.serial_number or '') ~ ' ' ~ fixture.id)|lower }}">
+            <input
+              type="checkbox"
+              name="fixture_ids"
+              value="{{ fixture.id }}"
+              {% if fixture.id in selected_fixture_ids %}checked{% endif %}
+            >
+            <span class="fixture-option__body">
+              <strong>{{ location }}</strong>
+              <span>
+                {{ (fixture.category or 'Fixture')|replace('_', ' ')|title }}
+                ·
+                {% if fixture.current_result_ppb is not none %}
+                  {{ "%.3f"|format(fixture.current_result_ppb|float) }} ppb
+                {% else %}
+                  No lead result
+                {% endif %}
+              </span>
+            </span>
+          </label>
+        {% else %}
+          <div class="empty-fixtures">
+            <strong>No fixtures found</strong>
+            <span>This school does not have fixtures available in AquaTrack.</span>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
 
-  <br>
-  <button type="submit">Continue to current upload</button>
+  <button class="btn-primary btn-block" type="submit" {% if not fixtures %}disabled{% endif %}>Continue to report style <span aria-hidden="true">→</span></button>
 </form>
+{% endblock %}
 
-<div class="info">
-  After this step, upload the current lab/results file and optional COC/sampling form.
-</div>
-</body>
-</html>
+{% block scripts %}
+<script>
+  const fixtureInputs = Array.from(document.querySelectorAll('input[name="fixture_ids"]'));
+  const selectAll = document.getElementById('select-all');
+  const fixtureCount = document.getElementById('fixture-count');
+  const fixtureSearch = document.getElementById('fixture-search');
+
+  function updateFixtureCount() {
+    const selected = fixtureInputs.filter(input => input.checked).length;
+    fixtureCount.textContent = `${selected} of ${fixtureInputs.length} selected`;
+    selectAll.checked = fixtureInputs.length > 0 && selected === fixtureInputs.length;
+    selectAll.indeterminate = selected > 0 && selected < fixtureInputs.length;
+  }
+
+  selectAll.addEventListener('change', () => {
+    fixtureInputs.forEach(input => input.checked = selectAll.checked);
+    updateFixtureCount();
+  });
+
+  fixtureInputs.forEach(input => input.addEventListener('change', updateFixtureCount));
+
+  fixtureSearch.addEventListener('input', () => {
+    const query = fixtureSearch.value.trim().toLowerCase();
+    document.querySelectorAll('.fixture-option').forEach(option => {
+      option.hidden = Boolean(query) && !option.dataset.search.includes(query);
+    });
+  });
+
+  updateFixtureCount();
+</script>
+{% endblock %}

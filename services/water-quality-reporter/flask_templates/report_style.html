@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Report style · Water Quality Reporter{% endblock %}
+
+{% block content %}
+<a class="link-back" href="{{ url_for('reference_upload', upload_id=upload_id) }}">Back</a>
+<header class="page-header">
+  <p class="section-label">Report style</p>
+  <h1 class="page-title">Add your report style</h1>
+  <p class="page-subtitle">Upload an example that reflects the structure and tone you want to use.</p>
+</header>
+
+<ol class="workflow-steps" aria-label="Report workflow">
+  <li class="workflow-step is-complete" data-step="1"><a class="workflow-step__link" href="{{ url_for('edit_setup', upload_id=upload_id) }}"><span>Select school(s)</span></a></li>
+  <li class="workflow-step is-complete" data-step="2"><a class="workflow-step__link" href="{{ url_for('reference_upload', upload_id=upload_id) }}"><span>Select fixture(s)</span></a></li>
+  <li class="workflow-step is-active" data-step="3"><span class="workflow-step__link" aria-current="step"><span>Report style</span></span></li>
+  <li class="workflow-step" data-step="4">{% if can_review %}<a class="workflow-step__link" href="{{ url_for('compose', upload_id=upload_id) }}"><span>Review</span></a>{% else %}<span class="workflow-step__link"><span>Review</span></span>{% endif %}</li>
+</ol>
+
+<div class="callout callout-info">
+  <span class="callout__icon" aria-hidden="true">i</span>
+  <p><strong>{{ school_name }}</strong><br>
+  {{ fixture_count }} fixture{{ '' if fixture_count == 1 else 's' }} identified from {{ result_filename }}.</p>
+</div>
+
+<form method="POST" action="{{ url_for('report_style', upload_id=upload_id) }}" enctype="multipart/form-data">
+  <section class="card-section">
+    <div class="panel-header">
+      <h2>Report style and header</h2>
+      <p>These files guide the communication content and the exported Word header.</p>
+    </div>
+    <div class="panel-body stack">
+      <label class="file-field" for="style_report_file">
+        <strong>Sample of your report style <span class="required">Required</span></strong>
+        <span class="field-hint">PDF or Word document</span>
+        {% if existing_style %}<span class="saved-file">Current file: {{ existing_style.filename }}. Choose another file only to replace it.</span>{% endif %}
+        <input id="style_report_file" type="file" name="style_report_file" accept=".pdf,.doc,.docx" {% if not existing_style %}required{% endif %}>
+      </label>
+
+      <label class="file-field" for="header_template_file">
+        <strong>Header template <span class="required">Required</span></strong>
+        <span class="field-hint">Word document (.docx) with content in the Word header area</span>
+        {% if existing_header %}<span class="saved-file">Current file: {{ existing_header.filename }}. Choose another file only to replace it.</span>{% endif %}
+        <input id="header_template_file" type="file" name="header_template_file" accept=".docx" {% if not existing_header %}required{% endif %}>
+      </label>
+    </div>
+  </section>
+
+  <button class="btn-primary btn-block" type="submit">Continue to review <span aria-hidden="true">→</span></button>
+</form>
+{% endblock %}

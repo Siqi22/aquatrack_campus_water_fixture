@@ -10,6 +10,7 @@ import json
 import os
 import pickle
 import re
+import secrets
 import uuid
 from collections import Counter
 from datetime import date, datetime
@@ -18,15 +19,18 @@ from pathlib import Path
 
 from flask import (
     Flask, request, render_template, redirect, url_for, send_file,
-    flash, abort, session, jsonify, make_response, g,
+    flash, abort, jsonify, session, make_response, g,
 )
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.utils import secure_filename
 
 from wqr import (
-    FixtureRegistry, ReportContext, Measurement,
+    FixtureRegistry, ReportContext, Measurement, Sample,
     parse_ieh_xlsx, parse_ieh_wide_csv, parse_ieh_pdf,
     parse_generic_lab_file, parse_generic_pdf, parse_doh_school_pdf,
+    ClaudePDFConfigurationError, ClaudePDFError,
+    parse_school_water_pdf_with_claude, result_pages_from_samples,
+    ClaudeStyleError, draft_school_communication_from_reference,
     load_profile, render_docx, evaluate_sample,
 )
 from wqr.report import _format_sample_volume, _placeholder_fixture
@@ -36,20 +40,41 @@ from supabase_adapter import SupabaseAdapter, SupabaseFixtureRegistry
 
 HERE = Path(__file__).parent
 DATA = HERE / "data"
-WORK = Path(os.environ.get("WQR_WORK_DIR", "/tmp/water-quality-reporter"))
+WORK = Path(os.environ.get("WQR_WORK_DIR", "/tmp/water-quality-reporter")).expanduser()
+
+# Keep the API key server-side. Source runs may use project/.env; the packaged
+# preview may use Application Support/Water Quality Reporter Preview/.env.
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(HERE / ".env", override=False)
+    load_dotenv(WORK.parent / ".env", override=False)
+except ImportError:
+    pass
+
 WORK.mkdir(parents=True, exist_ok=True)
 
 app = Flask(__name__, template_folder=str(HERE / "flask_templates"))
-app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-only-change-in-production")
+app.secret_key = (
+    os.environ.get("FLASK_SECRET_KEY")
+    or os.environ.get("WQR_SECRET_KEY")
+    or secrets.token_hex(32)
+)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
-    SESSION_COOKIE_SECURE=bool(os.environ.get("VERCEL") or os.environ.get("SESSION_COOKIE_SECURE")),
+    SESSION_COOKIE_SECURE=bool(
+        os.environ.get("VERCEL") or os.environ.get("SESSION_COOKIE_SECURE")
+    ),
 )
 
 supabase = SupabaseAdapter()
-registry = SupabaseFixtureRegistry(supabase) if supabase.configured else FixtureRegistry(DATA / "fixtures.json")
+registry = (
+    SupabaseFixtureRegistry(supabase)
+    if supabase.configured
+    else FixtureRegistry(DATA / "fixtures.json")
+)
 
 DEFAULT_PROFILE_NAME = "wa_k12_default"
 REPORT_ANALYTES = ["Lead", "Iron", "Copper", "Manganese", "Zinc"]
@@ -64,34 +89,42 @@ SOURCE_PREVIEW_TEXT_CHARS = 1800
 
 @app.before_request
 def require_aquatrack_user():
-    public_paths = {"/health", "/auth/launch", "/auth/session"}
-    normalized_path = request.path.rstrip("/") or "/"
-    if (
-        request.endpoint in {"auth_launch", "auth_session", "health"}
-        or normalized_path in public_paths
-        or any(normalized_path.endswith(path) for path in public_paths)
-    ):
+    public_endpoints = {"auth_launch", "auth_session", "health", "preview_health"}
+    public_paths = {
+        "/health",
+        "/auth/launch",
+        "/auth/session",
+        "/__wqr_preview_health__",
+    }
+    if request.endpoint in public_endpoints or request.path.rstrip("/") in public_paths:
         return None
+
     token = supabase.token()
-    user = supabase.verify_user(token) if supabase.configured else {"id": "local-development"}
+    user = (
+        supabase.verify_user(token)
+        if supabase.configured
+        else {"id": "local-development"}
+    )
     if not user:
         return make_response(
             "<!doctype html><title>Sign in required</title>"
             "<body style='font-family:system-ui;max-width:560px;margin:60px auto;padding:20px'>"
-            "<h1>Return to AquaTrack</h1><p>Your secure reporting session has expired.</p>"
-            f"<a href='{os.environ.get('AQUATRACK_URL', '/')}' style='color:#087c92'>Open AquaTrack</a></body>",
+            "<h1>Return to AquaTrack</h1>"
+            "<p>Your secure reporting session has expired.</p>"
+            f"<a href='{os.environ.get('AQUATRACK_URL', '/')}' "
+            "style='color:#087c92'>Open AquaTrack</a></body>",
             401,
         )
     g.current_user = user
     session["user_id"] = user.get("id")
 
 
-@app.route("/health")
+@app.get("/health")
 def health():
     return {"status": "ok", "supabase_configured": supabase.configured}
 
 
-@app.route("/auth/launch")
+@app.get("/auth/launch")
 def auth_launch():
     return """<!doctype html><html><head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -112,13 +145,14 @@ def auth_launch():
           if (!response.ok) throw new Error(await response.text());
           location.replace('../');
         }).catch(() => {
-          document.getElementById('status').textContent = 'Your AquaTrack session could not be verified.';
+          document.getElementById('status').textContent =
+            'Your AquaTrack session could not be verified.';
         });
       }
     </script></body></html>"""
 
 
-@app.route("/auth/session", methods=["POST"])
+@app.post("/auth/session")
 def auth_session():
     token = (request.get_json(silent=True) or {}).get("access_token", "")
     user = supabase.verify_user(token)
@@ -284,14 +318,30 @@ def find_profile(building_name_or_code: str) -> dict:
     return {}
 
 
+def _reported_building_name(sample) -> str:
+    """Prefer the report row's building field over inferred school/code names."""
+    source_fields = getattr(sample, "source_fields", {}) or {}
+    for key in (
+        "building_name", "Building Name", "building",
+        "facility_name", "school_name", "site_name",
+    ):
+        value = source_fields.get(key)
+        if value is not None and str(value).strip():
+            return str(value).strip()
+    return (getattr(sample, "building_name", "") or "").strip()
+
+
 def detected_buildings_from_samples(samples) -> list[dict]:
-    """For each unique building code seen in the upload, return a record:
+    """Return each report-provided building, falling back to inferred codes.
 
         {code, name, has_profile, has_alias, has_fixtures, sample_count}
 
-    Sorted by sample_count desc.
+    Report columns such as Building Name take priority. Results are sorted by
+    sample_count descending.
     """
-    name_counts = Counter(s.building_name for s in samples if getattr(s, "building_name", ""))
+    name_counts = Counter(
+        name for s in samples if (name := _reported_building_name(s))
+    )
     out = []
     for name, count in name_counts.most_common():
         out.append({
@@ -332,7 +382,7 @@ def _summarize_samples_for_building(samples: list, building_code: str,
     for s in samples:
         code = _building_code_for(s.fixture_id)
         if (building_code and code == building_code) or (
-            not building_code and getattr(s, "building_name", "") == building_name
+            not building_code and _reported_building_name(s) == building_name
         ):
             bldg_samples.append(s)
     if not bldg_samples:
@@ -676,12 +726,14 @@ def _infer_building_code_from_samples(samples) -> str | None:
 
 def _suggested_building_for(samples) -> str:
     """Best guess of which building this upload is for."""
+    reported = Counter(
+        name for s in samples if (name := _reported_building_name(s))
+    )
+    if reported:
+        return reported.most_common(1)[0][0]
     code = _infer_building_code_from_samples(samples)
     if code:
         return resolve_building(code)["name"]
-    for s in samples:
-        if getattr(s, "building_name", ""):
-            return s.building_name
     return ""
 
 
@@ -729,6 +781,47 @@ def _parse_upload(filename: str, raw_bytes: bytes):
         tmp.unlink(missing_ok=True)
 
 
+def _parse_school_testing_result(filename: str, raw_bytes: bytes):
+    """Parse a school result file into the canonical fixture-result schema.
+
+    PDFs use Claude's format-agnostic visual extraction first. The older local
+    adapters remain an offline/service-failure fallback for known files only.
+    CSV and Excel inputs continue through the generic tabular parser.
+    Returns ``(samples, parser_source, fixture_result_pages)``.
+    """
+    suffix = Path(filename).suffix.lower()
+    if suffix != ".pdf":
+        return _parse_upload(filename, raw_bytes), "local", []
+
+    claude_error: ClaudePDFError | None = None
+    try:
+        samples = parse_school_water_pdf_with_claude(
+            raw_bytes,
+            filename,
+        )
+        return (
+            samples,
+            "claude-haiku-4-5-20251001",
+            result_pages_from_samples(samples),
+        )
+    except ClaudePDFError as exc:
+        claude_error = exc
+
+    try:
+        samples = _parse_upload(filename, raw_bytes)
+    except ValueError as local_error:
+        if isinstance(claude_error, ClaudePDFConfigurationError):
+            raise ValueError(
+                "This PDF does not match a known offline format, and "
+                "CLAUDE_API_KEY is not configured for format-agnostic parsing."
+            ) from local_error
+        raise ClaudePDFError(
+            "Claude could not extract this PDF, and the known-format fallback "
+            "could not parse it either."
+        ) from local_error
+    return samples, "local-fallback", _school_result_pages_from_bytes(raw_bytes)
+
+
 def _save_session_data(upload_id: str, samples, meta: dict):
     blob = WORK / f"session_{upload_id}.pkl"
     payload = pickle.dumps({"samples": samples, "meta": meta})
@@ -756,6 +849,33 @@ def _load_session_data(upload_id: str):
         if storage_path and not path.exists():
             supabase.materialize(storage_path, path)
     return data
+
+
+def _original_file_for(meta: dict, field: str) -> dict | None:
+    return next(
+        (
+            entry
+            for entry in meta.get("original_files", [])
+            if entry.get("field") == field
+        ),
+        None,
+    )
+
+
+def _session_has_style(meta: dict) -> bool:
+    return _original_file_for(meta, "style_report_file") is not None
+
+
+def _session_has_header(meta: dict) -> bool:
+    return _original_file_for(meta, "header_template_file") is not None
+
+
+def _session_can_review(meta: dict) -> bool:
+    return (
+        _session_has_style(meta)
+        and _session_has_header(meta)
+        and not meta.get("style_needs_refresh", False)
+    )
 
 
 def _clean_source_cell(value) -> str:
@@ -808,12 +928,56 @@ def _raw_source_table(raw_rows, title: str) -> dict | None:
     }
 
 
-def _build_source_preview(path: Path, filename: str) -> dict:
+def _school_result_page_numbers(pdf) -> list[int]:
+    """Return 1-based pages that contain fixture-level result rows.
+
+    DOH reports may begin with explanations and definitions. A result page
+    must contain sample/fixture/result language plus either a source-style
+    numeric sample ID or a non-empty extracted table. This detector is used
+    only by the known-format fallback and by display previews; it never limits
+    the pages sent to Claude. An empty list means no confident local match.
+    """
+    detected: list[int] = []
+    for page_number, page in enumerate(pdf.pages, start=1):
+        text = page.extract_text() or ""
+        lowered = text.lower()
+        has_result_vocabulary = (
+            "sample" in lowered
+            and "fixture" in lowered
+            and "result" in lowered
+        )
+        if not has_result_vocabulary:
+            continue
+        has_sample_ids = bool(re.search(r"(?<!\d)\d{6}(?!\d)", text))
+        has_table_rows = any(
+            table and len(table) >= 2
+            for table in (page.extract_tables() or [])
+        )
+        if has_sample_ids or has_table_rows:
+            detected.append(page_number)
+    return detected
+
+
+def _school_result_pages_from_bytes(raw_bytes: bytes) -> list[int]:
+    import pdfplumber
+
+    with pdfplumber.open(BytesIO(raw_bytes)) as pdf:
+        return _school_result_page_numbers(pdf)
+
+
+def _build_source_preview(
+    path: Path,
+    filename: str,
+    *,
+    result_pages_only: bool = False,
+    relevant_pages_override: list[int] | None = None,
+) -> dict:
     """Small source-file preview for compose-page QC.
 
-    This is deliberately display-only. Parsing confidence and report generation
-    still come from the lab parsers; the preview helps the user compare the
-    original source to the editable parsed table without opening another tab.
+    This is deliberately display-only. Parsing confidence comes from the
+    canonical extraction/validation pipeline; the preview helps the user
+    compare the original source to the editable parsed table without opening
+    another tab.
     """
     suffix = path.suffix.lower()
     preview = {
@@ -822,6 +986,8 @@ def _build_source_preview(path: Path, filename: str) -> dict:
         "tables": [],
         "text": "",
         "error": "",
+        "relevant_pages": [],
+        "omitted_pages": 0,
     }
     try:
         if suffix == ".csv":
@@ -846,8 +1012,38 @@ def _build_source_preview(path: Path, filename: str) -> dict:
             from docx import Document
 
             doc = Document(str(path))
+            header_paragraphs: list[str] = []
+            seen_header_parts: set[str] = set()
+            for section_index, section in enumerate(doc.sections, start=1):
+                header = section.header
+                part_name = str(header.part.partname)
+                if part_name in seen_header_parts:
+                    continue
+                seen_header_parts.add(part_name)
+                header_paragraphs.extend(
+                    p.text.strip() for p in header.paragraphs if p.text.strip()
+                )
+                for table_index, header_table in enumerate(
+                    header.tables[:SOURCE_PREVIEW_MAX_TABLES], start=1
+                ):
+                    raw_table = [
+                        [_clean_source_cell(cell.text) for cell in row.cells]
+                        for row in header_table.rows[:SOURCE_PREVIEW_MAX_ROWS]
+                    ]
+                    table = _raw_source_table(
+                        raw_table,
+                        f"Header table {table_index}",
+                    )
+                    if table:
+                        preview["tables"].append(table)
+
             paragraphs = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
-            preview["text"] = "\n".join(paragraphs)[:SOURCE_PREVIEW_TEXT_CHARS]
+            text_blocks = []
+            if header_paragraphs:
+                text_blocks.append("HEADER\n" + "\n".join(header_paragraphs))
+            if paragraphs:
+                text_blocks.append("DOCUMENT BODY\n" + "\n".join(paragraphs))
+            preview["text"] = "\n\n".join(text_blocks)[:SOURCE_PREVIEW_TEXT_CHARS]
             for table_index, doc_table in enumerate(doc.tables[:SOURCE_PREVIEW_MAX_TABLES], start=1):
                 raw_table = [
                     [_clean_source_cell(cell.text) for cell in row.cells]
@@ -865,7 +1061,24 @@ def _build_source_preview(path: Path, filename: str) -> dict:
 
             text_parts: list[str] = []
             with pdfplumber.open(str(path)) as pdf:
+                all_pages = list(range(1, len(pdf.pages) + 1))
+                if result_pages_only:
+                    detected_pages = (
+                        relevant_pages_override
+                        if relevant_pages_override is not None
+                        else _school_result_page_numbers(pdf)
+                    )
+                    relevant_pages = [
+                        page for page in detected_pages if page in all_pages
+                    ] or all_pages
+                else:
+                    relevant_pages = all_pages
+                preview["relevant_pages"] = relevant_pages
+                preview["omitted_pages"] = len(pdf.pages) - len(relevant_pages)
                 for page_index, page in enumerate(pdf.pages):
+                    page_number = page_index + 1
+                    if page_number not in relevant_pages:
+                        continue
                     if len(" ".join(text_parts)) < SOURCE_PREVIEW_TEXT_CHARS:
                         page_text = page.extract_text() or ""
                         if page_text:
@@ -917,7 +1130,10 @@ def _detect_reference_headings(text: str) -> list[str]:
 def _reference_notes_from_files(files: list[dict]) -> list[str]:
     notes: list[str] = []
     style_file = next((f for f in files if f.get("field") == "style_report_file"), None)
-    lab_file = next((f for f in files if f.get("field") == "reference_lab_file"), None)
+    lab_file = next((
+        f for f in files
+        if f.get("field") in {"school_testing_result_file", "reference_lab_file"}
+    ), None)
 
     if style_file:
         preview = style_file.get("preview", {})
@@ -938,31 +1154,158 @@ def _reference_notes_from_files(files: list[dict]) -> list[str]:
         if tables:
             headers = [h for h in tables[0].get("headers", []) if h]
             if headers:
-                notes.append("Reference lab output columns include: " + ", ".join(headers[:8]) + ".")
+                notes.append("School testing-result columns include: " + ", ".join(headers[:8]) + ".")
         elif preview.get("text"):
-            notes.append("Reference lab output text was extracted for review in the QC panel.")
+            notes.append("School testing-result text was extracted for review in the QC panel.")
 
     if style_file or lab_file:
         notes.append("Use these notes and the QC panel to adjust the editable narrative before generating the DOCX.")
     return notes
 
 
+def _communication_facts(samples, setup: dict) -> dict:
+    """Compact, deterministic facts for reference-style drafting.
+
+    The style model never receives the testing-result PDF. Measurements and
+    classifications are calculated locally and supplied as locked facts.
+    """
+    lead_rows = []
+    fixture_ids = set()
+    analytes = set()
+    building_names = set()
+    collection_dates = set()
+    for sample in samples:
+        fixture_ids.add(sample.fixture_id or sample.sample_id)
+        if sample.collection_date:
+            collection_dates.add(sample.collection_date)
+        analytes.update(m.analyte for m in sample.measurements)
+        reported_building = _reported_building_name(sample)
+        if reported_building:
+            building_names.add(reported_building)
+        lead = sample.measurement("Lead")
+        if lead is None:
+            continue
+        lead_rows.append({
+            "sample_id": sample.client_sample_id or sample.sample_id,
+            "fixture_location": sample.fixture_label or "not provided",
+            "building_name": reported_building or "not provided",
+            "reported_lead_ppb": lead.display,
+            "numeric_lead_ppb": (
+                lead.value if not lead.below_dl and lead.value is not None else None
+            ),
+        })
+
+    elevated = [
+        row for row in lead_rows
+        if row["numeric_lead_ppb"] is not None and row["numeric_lead_ppb"] > 5
+    ]
+    immediate = [
+        row for row in lead_rows
+        if row["numeric_lead_ppb"] is not None and row["numeric_lead_ppb"] > 15
+    ]
+    ordered_dates = sorted(collection_dates)
+    if not ordered_dates:
+        collection_date_range = "not provided"
+    elif ordered_dates[0] == ordered_dates[-1]:
+        collection_date_range = _format_date(ordered_dates[0])
+    else:
+        collection_date_range = (
+            f"{_format_date(ordered_dates[0])} through "
+            f"{_format_date(ordered_dates[-1])}"
+        )
+    return {
+        "school_name": setup.get("school_name") or "[confirm school name]",
+        "organization": setup.get("organization") or "[confirm district or organization]",
+        "collection_date_range": collection_date_range,
+        "sample_count": len(samples),
+        "tested_fixture_or_outlet_count": len(fixture_ids),
+        "analytes_measured": sorted(analytes),
+        "building_names": sorted(building_names),
+        "lead_remediation_threshold_ppb": 5,
+        "lead_immediate_response_threshold_ppb": 15,
+        "outlets_above_5_ppb": len(elevated),
+        "outlets_above_15_ppb": len(immediate),
+        "maximum_detected_lead_ppb": max(
+            (row["numeric_lead_ppb"] for row in lead_rows
+             if row["numeric_lead_ppb"] is not None),
+            default=None,
+        ),
+        "elevated_outlets": elevated[:30],
+        "confirmed_actions": [],
+        "missing_operational_details": [
+            "whether affected outlets were shut off or made inaccessible",
+            "remediation status and timeline",
+            "district website and contact information",
+        ],
+    }
+
+
 SOURCE_FILE_LABELS = {
     "parsed": "Current lab/results file",
     "coc_file": "Original COC / sampling form",
     "style_report_file": "Sample report style",
-    "reference_lab_file": "Sample lab output/reference format",
+    "header_template_file": "Header template",
+    "school_testing_result_file": "School Water Testing Result",
+    "reference_lab_file": "School Water Testing Result",
 }
 
 
-def _source_file_entry(field: str, filename: str, path: Path) -> dict:
+def _validate_header_template(raw_bytes: bytes, filename: str) -> None:
+    if Path(filename).suffix.lower() != ".docx":
+        raise ValueError("The Header template must be a DOCX Word document.")
+    try:
+        from docx import Document
+
+        document = Document(BytesIO(raw_bytes))
+    except Exception as exc:
+        raise ValueError("The Header template could not be read as a DOCX file.") from exc
+
+    has_header_content = False
+    seen_parts: set[str] = set()
+    for section in document.sections:
+        header = section.header
+        part_name = str(header.part.partname)
+        if part_name in seen_parts:
+            continue
+        seen_parts.add(part_name)
+        if any(p.text.strip() for p in header.paragraphs):
+            has_header_content = True
+        if any(
+            cell.text.strip()
+            for table in header.tables
+            for row in table.rows
+            for cell in row.cells
+        ):
+            has_header_content = True
+        if header._element.xpath(".//w:drawing | .//w:pict"):
+            has_header_content = True
+    if not has_header_content:
+        raise ValueError(
+            "The Header template must contain content in the Word header area."
+        )
+
+
+def _source_file_entry(
+    field: str,
+    filename: str,
+    path: Path,
+    *,
+    relevant_pages: list[int] | None = None,
+) -> dict:
     entry = {
         "field": field,
         "label": SOURCE_FILE_LABELS.get(field, field.replace("_", " ").title()),
         "filename": filename,
         "path": str(path),
-        "preview": _build_source_preview(path, filename),
+        "preview": _build_source_preview(
+            path,
+            filename,
+            result_pages_only=field == "school_testing_result_file",
+            relevant_pages_override=relevant_pages,
+        ),
     }
+    if relevant_pages:
+        entry["relevant_pages"] = list(relevant_pages)
     if supabase.configured:
         storage_path = f"{g.current_user['id']}/files/{path.parent.name}/{path.name}"
         supabase.upload_bytes(storage_path, path.read_bytes())
@@ -1024,156 +1367,346 @@ def _load_reference_setup(setup_id: str) -> dict | None:
 
 
 def _report_setup_from_values(values) -> dict:
-    report_style = (values.get("report_style") or "wa_school").strip()
-    if report_style not in {"uw", "wa_school"}:
-        report_style = "wa_school"
-
-    organization = (values.get("organization") or "").strip()
-    school_name = (values.get("school_name") or "").strip()
     campus_id = (values.get("campus_id") or "").strip()
-    fixture_ids = values.getlist("fixture_ids") if hasattr(values, "getlist") else []
-    if report_style == "wa_school" and campus_id and supabase.configured:
-        selected_school = supabase.school(campus_id)
-        if selected_school:
-            school_name = selected_school.get("school") or selected_school.get("name") or school_name
-            organization = selected_school.get("school_district") or organization
-            allowed_fixture_ids = {item["id"] for item in supabase.fixtures(campus_id)}
-            fixture_ids = [item for item in fixture_ids if item in allowed_fixture_ids]
-    if report_style == "uw":
-        organization = ""
-        school_name = ""
-        campus_id = ""
-        fixture_ids = []
-    if fixture_ids:
-        session["selected_fixture_ids"] = fixture_ids
+    selected_school = supabase.school(campus_id) if campus_id and supabase.configured else None
+    school_name = (
+        (selected_school or {}).get("school")
+        or (selected_school or {}).get("name")
+        or ""
+    )
+    organization = (selected_school or {}).get("school_district") or ""
 
     return {
-        "report_style": report_style,
+        "report_style": "wa_school",
         "organization": organization,
         "school_name": school_name,
-        "campus_id": campus_id,
-        "fixture_ids": fixture_ids,
+        "campus_id": campus_id if selected_school else "",
     }
 
 
-def _upload_options_url(setup: dict) -> str:
-    return url_for(
-        "upload_options",
-        report_style=setup.get("report_style", "wa_school"),
-        organization=setup.get("organization", ""),
-        school_name=setup.get("school_name", ""),
-        campus_id=setup.get("campus_id", ""),
-        fixture_ids=setup.get("fixture_ids", []),
-    )
+def _school_options() -> list[dict]:
+    return supabase.schools() if supabase.configured else []
 
 
-def _current_upload_url(setup: dict, setup_id: str = "") -> str:
-    if setup_id:
-        return url_for("upload_options", setup_id=setup_id)
-    return _upload_options_url(setup)
+def _samples_from_inventory(campus_id: str, fixture_ids: list[str]) -> tuple[list, list[dict]]:
+    allowed_fixtures = supabase.fixtures(campus_id)
+    selected_ids = set(fixture_ids)
+    selected = [row for row in allowed_fixtures if row["id"] in selected_ids]
+    if len(selected) != len(selected_ids):
+        abort(403)
 
+    rounds = supabase.testing_rounds([row["id"] for row in selected])
+    latest_round = {}
+    for testing_round in rounds:
+        latest_round.setdefault(testing_round["fixture_id"], testing_round)
 
-def _missing_required_school_references(files) -> list[str]:
-    required = [
-        ("style_report_file", "sample report style"),
-        ("reference_lab_file", "sample lab output/reference format"),
-    ]
-    missing = []
-    for field, label in required:
-        f = files.get(field)
-        if not f or not f.filename:
-            missing.append(label)
-    return missing
+    samples = []
+    for fixture in selected:
+        testing_round = latest_round.get(fixture["id"]) or {}
+        registry_id = fixture.get("serial_number") or fixture["id"]
+        result_ppb = testing_round.get("result_ppb")
+        if result_ppb is None:
+            result_ppb = fixture.get("current_result_ppb")
+
+        measurements = []
+        if result_ppb is not None:
+            measurements.append(Measurement(
+                analyte="Lead",
+                value=float(result_ppb),
+                unit="ppb",
+                below_dl=False,
+                detection_limit=None,
+                method="AquaTrack lead testing record",
+            ))
+
+        sample_date_text = testing_round.get("sample_draw_date") or ""
+        sample_date = date.fromisoformat(sample_date_text) if sample_date_text else None
+        sample_id = (
+            testing_round.get("sample_id")
+            or fixture.get("serial_number")
+            or fixture["id"]
+        )
+        location = (
+            f"{fixture.get('building_name') or 'Building'} · "
+            f"Floor {fixture.get('floor') or '—'} · "
+            f"{fixture.get('nearest_room') or 'Location not recorded'}"
+        )
+        samples.append(Sample(
+            sample_id=sample_id,
+            client_sample_id=sample_id,
+            fixture_id=registry_id,
+            volume_ml=250,
+            collection_date=sample_date,
+            analysis_date=None,
+            measurements=measurements,
+            building_name=fixture.get("building_name") or "",
+            fixture_label=location,
+            source_fields={
+                "aquatrack_fixture_id": fixture["id"],
+                "lead_testing_round_id": testing_round.get("id"),
+                "lead_testing_status": (
+                    fixture.get("current_lead_testing_status") or "not_started"
+                ),
+            },
+        ))
+    return samples, selected
 
 
 # ---- Routes ----------------------------------------------------------------
 
 @app.route("/")
 def index():
-    schools = supabase.schools() if supabase.configured else []
     return render_template(
         "start.html",
-        schools=schools,
+        upload_id="",
+        campus_id="",
+        school_name="",
+        schools=_school_options(),
         aquatrack_url=os.environ.get("AQUATRACK_URL", "/"),
     )
 
 
-@app.route("/api/schools/<campus_id>/fixtures")
-def school_fixtures(campus_id: str):
-    school = supabase.school(campus_id)
-    if not school:
-        abort(404)
-    rows = supabase.fixtures(campus_id)
-    return jsonify({
-        "school": school,
-        "fixtures": [{
-            "id": item["id"],
-            "building": item.get("building_name") or "Building",
-            "floor": str(item.get("floor") or ""),
-            "room": item.get("nearest_room") or "",
-            "category": item.get("category") or "Fixture",
-            "serial_number": item.get("serial_number") or "",
-            "result_ppb": item.get("current_result_ppb"),
-            "status": item.get("current_lead_testing_status") or "not_started",
-        } for item in rows],
-    })
+@app.get("/__wqr_preview_health__")
+def preview_health():
+    return "water-quality-reporter-preview:2026-07-29-docx-style-fix"
+
+
+@app.route("/setup/<upload_id>", methods=["GET", "POST"])
+def edit_setup(upload_id):
+    data = _load_session_data(upload_id)
+    if data is None:
+        flash("Saved report progress could not be found. Please start again.", "error")
+        return redirect(url_for("index"))
+
+    meta = data["meta"]
+    if request.method == "POST":
+        setup = _report_setup_from_values(request.form)
+        if not setup["school_name"]:
+            flash("Please select a school.", "error")
+            return render_template(
+                "start.html",
+                upload_id=upload_id,
+                can_review=_session_can_review(meta),
+                schools=_school_options(),
+                aquatrack_url=os.environ.get("AQUATRACK_URL", "/"),
+                **setup,
+            ), 400
+        setup_changed = any(meta.get(key, "") != value for key, value in setup.items())
+        meta.update(setup)
+        if setup_changed:
+            meta["fixture_ids"] = []
+            meta["unknown_fixtures"] = []
+        compose_draft = dict(meta.get("compose_draft") or {})
+        if compose_draft:
+            compose_draft["school_name"] = setup["school_name"]
+            meta["compose_draft"] = compose_draft
+        if setup_changed and _session_has_style(meta):
+            meta["style_needs_refresh"] = True
+        _save_session_data(upload_id, data["samples"], meta)
+        return redirect(url_for("reference_upload", upload_id=upload_id))
+
+    return render_template(
+        "start.html",
+        upload_id=upload_id,
+        campus_id=meta.get("campus_id", ""),
+        school_name=meta.get("school_name", ""),
+        report_style=meta.get("report_style", "wa_school"),
+        can_review=_session_can_review(meta),
+        schools=_school_options(),
+        aquatrack_url=os.environ.get("AQUATRACK_URL", "/"),
+    )
 
 
 @app.route("/upload-options", methods=["GET", "POST"])
 def upload_options():
-    setup_id = request.values.get("setup_id", "").strip()
-    if setup_id:
-        staged = _load_reference_setup(setup_id)
-        if not staged:
-            flash("Reference upload could not be found. Please start again.", "error")
-            return redirect(url_for("index"))
-        setup = staged["setup"]
-        return render_template(
-            "upload.html",
-            setup_id=setup_id,
-            reference_files=staged.get("reference_files", []),
-            **setup,
-        )
-
     setup = _report_setup_from_values(request.values)
-    if request.method == "GET" and "report_style" not in request.args:
-        return redirect(url_for("index"))
-    if setup["report_style"] == "wa_school" and not setup["school_name"]:
-        flash("Please enter a school or building name, or choose UW report.", "error")
-        return redirect(url_for("index"))
-    if setup["report_style"] == "wa_school":
-        return render_template("reference_upload.html", **setup)
-    return render_template("upload.html", setup_id="", reference_files=[], **setup)
-
-
-@app.route("/reference-upload", methods=["GET", "POST"])
-def reference_upload():
-    setup = _report_setup_from_values(request.values)
-    if setup["report_style"] == "uw":
-        return redirect(_upload_options_url(setup))
-    if not setup["school_name"]:
-        flash("Please enter a school or building name first.", "error")
-        return redirect(url_for("index"))
     if request.method == "GET":
-        return render_template("reference_upload.html", **setup)
+        return redirect(url_for("index"))
+    if not setup["school_name"]:
+        flash("Please select a school.", "error")
+        return redirect(url_for("index"))
 
-    missing_refs = _missing_required_school_references(request.files)
-    if missing_refs:
-        flash(
-            "Please upload the required "
-            + " and ".join(missing_refs) + ".",
-            "error",
+    upload_id = uuid.uuid4().hex[:12]
+    session["selected_fixture_ids"] = []
+    _save_session_data(upload_id, [], {
+        **setup,
+        "fixture_ids": [],
+        "filename": "AquaTrack lead testing records",
+        "uploaded_at": datetime.now().isoformat(),
+        "unknown_fixtures": [],
+        "original_files": [],
+        "style_draft": {},
+        "style_adaptation_error": "",
+        "style_needs_refresh": False,
+    })
+    return redirect(url_for("reference_upload", upload_id=upload_id))
+
+
+@app.route("/reference-upload", defaults={"upload_id": None}, methods=["GET", "POST"])
+@app.route("/reference-upload/<upload_id>", methods=["GET", "POST"])
+def reference_upload(upload_id=None):
+    saved = _load_session_data(upload_id) if upload_id else None
+    if not upload_id or saved is None:
+        flash("Saved report progress could not be found. Please start again.", "error")
+        return redirect(url_for("index"))
+
+    meta = saved["meta"]
+    setup = {
+        "report_style": "wa_school",
+        "organization": meta.get("organization", ""),
+        "school_name": meta.get("school_name", ""),
+        "campus_id": meta.get("campus_id", ""),
+    }
+    if not setup["school_name"]:
+        flash("Please select a school first.", "error")
+        return redirect(url_for("index"))
+    fixtures = supabase.fixtures(setup["campus_id"])
+    selected_ids = set(meta.get("fixture_ids") or [row["id"] for row in fixtures])
+    template_context = {
+        **setup,
+        "upload_id": upload_id,
+        "fixtures": fixtures,
+        "selected_fixture_ids": selected_ids,
+        "can_review": _session_can_review(meta),
+    }
+    if request.method == "GET":
+        return render_template("reference_upload.html", **template_context)
+
+    fixture_ids = request.form.getlist("fixture_ids")
+    if not fixture_ids:
+        flash("Please select at least one fixture.", "error")
+        return render_template("reference_upload.html", **template_context), 400
+
+    try:
+        samples, selected_fixtures = _samples_from_inventory(
+            setup["campus_id"],
+            fixture_ids,
         )
-        return render_template("reference_upload.html", **setup), 400
+    except Exception as e:
+        flash(f"Could not load the selected fixtures: {e}", "error")
+        return render_template("reference_upload.html", **template_context), 400
 
-    setup_id = uuid.uuid4().hex[:12]
-    reference_files = []
-    for field in ("style_report_file", "reference_lab_file"):
-        saved = _save_reference_upload(setup_id, field, request.files.get(field))
-        if saved:
-            reference_files.append(saved)
-    _save_reference_setup(setup_id, setup, reference_files)
-    return redirect(url_for("upload_options", setup_id=setup_id))
+    session["selected_fixture_ids"] = fixture_ids
+    unknown = sorted(set(registry.unknown_ids([s.fixture_id for s in samples])))
+    updated_meta = {
+        **meta,
+        "fixture_ids": fixture_ids,
+        "filename": "AquaTrack lead testing records",
+        "uploaded_at": datetime.now().isoformat(),
+        "unknown_fixtures": unknown,
+        "selected_fixture_count": len(selected_fixtures),
+        "parser_source": "AquaTrack database",
+        "style_draft": {},
+        "style_adaptation_error": "",
+        "style_needs_refresh": _session_has_style(meta),
+        **setup,
+    }
+    _save_session_data(upload_id, samples, updated_meta)
+    return redirect(url_for("report_style", upload_id=upload_id))
+
+
+@app.route("/report-style/<upload_id>", methods=["GET", "POST"])
+def report_style(upload_id):
+    data = _load_session_data(upload_id)
+    if data is None:
+        flash("Testing-result upload could not be found. Please start again.", "error")
+        return redirect(url_for("index"))
+
+    samples = data["samples"]
+    meta = data["meta"]
+    setup = {
+        "report_style": meta.get("report_style", "wa_school"),
+        "organization": meta.get("organization", ""),
+        "school_name": meta.get("school_name", ""),
+    }
+    existing_style = _original_file_for(meta, "style_report_file")
+    existing_header = _original_file_for(meta, "header_template_file")
+    template_context = {
+        "upload_id": upload_id,
+        "fixture_count": len(samples),
+        "result_filename": meta.get("filename", "the testing result"),
+        "existing_style": existing_style,
+        "existing_header": existing_header,
+        "can_review": (
+            existing_style is not None
+            and existing_header is not None
+            and not meta.get("style_needs_refresh", False)
+        ),
+        **setup,
+    }
+    if request.method == "GET":
+        return render_template("report_style.html", **template_context)
+
+    style_file = request.files.get("style_report_file")
+    if not style_file or not style_file.filename:
+        if not existing_style:
+            flash("Please upload the required sample of your report style.", "error")
+            return render_template("report_style.html", **template_context), 400
+        style_path = Path(existing_style["path"])
+        if not style_path.exists():
+            flash("The saved report-style sample could not be found. Please upload it again.", "error")
+            return render_template("report_style.html", **template_context), 400
+        style_bytes = style_path.read_bytes()
+        style_filename = existing_style["filename"]
+        saved_style = existing_style
+    else:
+        style_bytes = style_file.read()
+        style_file.stream.seek(0)
+        style_filename = style_file.filename
+        saved_style = _save_original_upload(upload_id, "style_report_file", style_file)
+
+    header_file = request.files.get("header_template_file")
+    if not header_file or not header_file.filename:
+        if not existing_header:
+            flash("Please upload the required Header template.", "error")
+            return render_template("report_style.html", **template_context), 400
+        header_path = Path(existing_header["path"])
+        if not header_path.exists():
+            flash("The saved Header template could not be found. Please upload it again.", "error")
+            return render_template("report_style.html", **template_context), 400
+        saved_header = existing_header
+    else:
+        header_bytes = header_file.read()
+        try:
+            _validate_header_template(header_bytes, header_file.filename)
+        except ValueError as exc:
+            flash(str(exc), "error")
+            return render_template("report_style.html", **template_context), 400
+        header_file.stream.seek(0)
+        saved_header = _save_original_upload(
+            upload_id, "header_template_file", header_file
+        )
+
+    originals = list(meta.get("original_files", []))
+    originals = [
+        entry
+        for entry in originals
+        if entry.get("field") not in {"style_report_file", "header_template_file"}
+    ]
+    if saved_style:
+        originals.append(saved_style)
+    if saved_header:
+        originals.append(saved_header)
+
+    style_draft = {}
+    style_adaptation_error = ""
+    try:
+        style_draft = draft_school_communication_from_reference(
+            style_bytes,
+            style_filename,
+            _communication_facts(samples, setup),
+        )
+    except ClaudeStyleError as exc:
+        style_adaptation_error = str(exc)
+
+    meta.update({
+        "original_files": originals,
+        "style_draft": style_draft,
+        "style_adaptation_error": style_adaptation_error,
+        "style_needs_refresh": False,
+    })
+    _save_session_data(upload_id, samples, meta)
+    return redirect(url_for("compose", upload_id=upload_id))
 
 
 @app.route("/upload", methods=["POST"])
@@ -1249,6 +1782,42 @@ def original_file(upload_id, file_idx: int):
     return send_file(path, as_attachment=False, download_name=entry["filename"])
 
 
+def _compose_draft_from_form() -> dict:
+    contacts = []
+    for i in (1, 2):
+        contacts.append({
+            "name": request.form.get(f"contact{i}_name", "").strip(),
+            "title": request.form.get(f"contact{i}_title", "").strip(),
+            "phone": request.form.get(f"contact{i}_phone", "").strip(),
+            "email": request.form.get(f"contact{i}_email", "").strip(),
+        })
+    selected_buildings = [
+        value.strip() for value in request.form.getlist("building") if value.strip()
+    ]
+    return {
+        "building": selected_buildings[0] if selected_buildings else "",
+        "buildings": selected_buildings,
+        "sampling_dates": request.form.get("sampling_dates", "").strip(),
+        "organization": request.form.get("organization", "").strip(),
+        "school_name": request.form.get("school_name", "").strip(),
+        "intro": request.form.get("introduction", "").strip(),
+        "actions": request.form.get("actions_taken", "").strip(),
+        "notes": request.form.get("notes", "").strip(),
+        "contacts": contacts,
+    }
+
+
+@app.route("/compose/<upload_id>/save-draft", methods=["POST"])
+def save_compose_draft(upload_id):
+    data = _load_session_data(upload_id)
+    if data is None:
+        return jsonify({"saved": False, "error": "Report progress was not found."}), 404
+    _apply_table_edits(data["samples"])
+    data["meta"]["compose_draft"] = _compose_draft_from_form()
+    _save_session_data(upload_id, data["samples"], data["meta"])
+    return jsonify({"saved": True})
+
+
 @app.route("/compose/<upload_id>", methods=["GET", "POST"])
 def compose(upload_id):
     data = _load_session_data(upload_id)
@@ -1258,14 +1827,39 @@ def compose(upload_id):
     samples = data["samples"]
     unknown = data["meta"]["unknown_fixtures"]
     original_files = data["meta"].get("original_files", [])
-    initial_report_style = data["meta"].get("report_style", "wa_school")
-    if initial_report_style not in {"uw", "wa_school"}:
-        initial_report_style = "wa_school"
-    initial_organization = data["meta"].get("organization", "")
+    preview_field_order = {
+        "school_testing_result_file": 0,
+        "style_report_file": 1,
+        "header_template_file": 2,
+    }
+    preview_files = sorted(
+        (
+            {**entry, "file_idx": file_idx}
+            for file_idx, entry in enumerate(original_files)
+            if entry.get("field") in preview_field_order
+        ),
+        key=lambda entry: preview_field_order[entry.get("field")],
+    )
+    # AquaTrack's Communication workspace is district-only. Keep the refined
+    # reporter workflow while preventing legacy report modes from resurfacing
+    # through saved session metadata.
+    initial_report_style = "wa_school"
+    compose_draft = data["meta"].get("compose_draft") or {}
+    initial_organization = compose_draft.get(
+        "organization", data["meta"].get("organization", "")
+    )
     initial_school_name = data["meta"].get("school_name", "")
-    for entry in original_files:
-        if "preview" not in entry:
-            entry["preview"] = _build_source_preview(Path(entry["path"]), entry["filename"])
+    style_draft = data["meta"].get("style_draft") or {}
+    style_adaptation_error = data["meta"].get("style_adaptation_error", "")
+    for entry in preview_files:
+        is_school_result = entry.get("field") == "school_testing_result_file"
+        if "preview" not in entry or is_school_result:
+            entry["preview"] = _build_source_preview(
+                Path(entry["path"]),
+                entry["filename"],
+                result_pages_only=is_school_result,
+                relevant_pages_override=entry.get("relevant_pages"),
+            )
 
     if request.method == "POST":
         return _handle_compose_post(upload_id, samples)
@@ -1294,7 +1888,14 @@ def compose(upload_id):
             "sample_count": len(samples),
         })
 
-    suggested = buildings[0]["name"]
+    available_buildings = {entry["name"] for entry in buildings}
+    saved_buildings = compose_draft.get("buildings") or []
+    if not saved_buildings and compose_draft.get("building"):
+        saved_buildings = [compose_draft["building"]]
+    selected_buildings = [
+        name for name in saved_buildings if name in available_buildings
+    ] or [entry["name"] for entry in buildings]
+    suggested = selected_buildings[0]
 
     preview_rows = _preview_rows(samples)
 
@@ -1318,11 +1919,18 @@ def compose(upload_id):
     )
     defaults_map = {}
     for entry in buildings:
-        defaults_map[entry["name"]] = defaults_for(
+        defaults = defaults_for(
             entry["name"], has_exceedances, samples,
             report_style=initial_report_style,
             display_name=default_display_name,
         )
+        if style_draft:
+            defaults.update({
+                "intro": style_draft.get("intro", defaults["intro"]),
+                "actions": style_draft.get("actions", defaults["actions"]),
+                "notes": style_draft.get("notes", ""),
+            })
+        defaults_map[entry["name"]] = defaults
 
     suggested_defaults = (defaults_map.get(suggested) or {
         "intro": _default_intro(
@@ -1336,6 +1944,17 @@ def compose(upload_id):
             {}, neutral=initial_report_style == "wa_school",
         ),
     })
+    if compose_draft:
+        suggested_defaults = dict(suggested_defaults)
+        suggested_defaults.update({
+            "intro": compose_draft.get("intro", suggested_defaults.get("intro", "")),
+            "actions": compose_draft.get("actions", suggested_defaults.get("actions", "")),
+            "notes": compose_draft.get("notes", suggested_defaults.get("notes", "")),
+            "contacts": compose_draft.get(
+                "contacts", suggested_defaults.get("contacts", [])
+            ),
+        })
+        defaults_map[suggested] = suggested_defaults
 
     # Codes that need confirmation: detected but not in profile/alias
     unprofiled_codes = [d for d in detected if d["source"] == "unknown"]
@@ -1345,8 +1964,9 @@ def compose(upload_id):
         upload_id=upload_id,
         samples=samples,
         preview_rows=preview_rows,
-        preview_analytes=_ordered_analytes_for(samples, include_missing_defaults=True),
+        preview_analytes=["Lead"],
         buildings=buildings,
+        selected_buildings=selected_buildings,
         suggested_building=suggested,
         suggested_defaults=suggested_defaults,
         defaults_map_json=json.dumps(defaults_map),
@@ -1356,14 +1976,20 @@ def compose(upload_id):
         is_multi_building=len(detected) > 1,
         has_exceedances=has_exceedances,
         unprofiled_codes=unprofiled_codes,
-        sampling_date_range=_sample_date_range(samples),
+        sampling_date_range=(
+            compose_draft.get("sampling_dates") or _sample_date_range(samples)
+        ),
         nomenclature_help=NOMENCLATURE_HELP,
-        original_files=original_files,
-        reference_notes=_reference_notes_from_files(original_files),
+        preview_files=preview_files,
+        reference_style_applied=bool(style_draft),
+        reference_style_summary=style_draft.get("style_summary", ""),
+        style_adaptation_error=style_adaptation_error,
         initial_report_style=initial_report_style,
         initial_organization=initial_organization,
         initial_school_name=initial_school_name,
-        report_school_name=initial_school_name or suggested,
+        report_school_name=(
+            compose_draft.get("school_name") or initial_school_name or suggested
+        ),
     )
 
 
@@ -1437,17 +2063,18 @@ def _preview_rows(samples) -> list[dict]:
 
     def preview_display(m) -> str:
         if m is None:
-            return "not detected"
+            return "not reported"
         if m.below_dl and m.detection_limit is None:
             return "not detected"
         return m.display
 
     for idx, s in enumerate(samples):
         code = _building_code_for(s.fixture_id)
+        reported_building = _reported_building_name(s)
         building = {
-            "name": getattr(s, "building_name", "") or "Unknown Building",
+            "name": reported_building or "Unknown Building",
             "code": "",
-        } if getattr(s, "building_name", "") else (
+        } if reported_building else (
             resolve_building(code) if code else {"name": "Unknown Building", "code": ""}
         )
         fixture = registry.get(s.fixture_id)
@@ -1544,34 +2171,21 @@ def _sample_date_range(samples) -> str:
 
 
 def _docx_analytes_for(samples) -> list[str]:
-    """Only include metals with at least one detected numeric result in DOCX.
-
-    The preview intentionally keeps all five metals and shows "not detected"
-    when a result is missing or ND. The generated report table is cleaner when
-    wholly blank/undetected columns are omitted.
-    """
-    out: list[str] = []
-    for analyte in _ordered_analytes_for(samples, include_missing_defaults=False):
-        has_detected = any(
-            (m := s.measurement(analyte)) is not None
-            and not m.below_dl
-            and m.value is not None
-            for s in samples
-        )
-        if has_detected:
-            out.append(analyte)
-    return out
+    """School Review and exported DOCX display Lead results only."""
+    return ["Lead"] if any(s.measurement("Lead") is not None for s in samples) else []
 
 
 def _handle_compose_post(upload_id: str, samples):
     """Process the compose form submission and return the DOCX file."""
     _apply_table_edits(samples)
-    building = request.form.get("building", "").strip()
-    if not building:
+    selected_buildings = [
+        value.strip() for value in request.form.getlist("building") if value.strip()
+    ]
+    if not selected_buildings:
         detected = detected_buildings_from_samples(samples)
-        building = detected[0]["name"] if detected else "Unknown Building"
-    if not building:
-        flash("Please choose a building.", "error")
+        selected_buildings = [entry["name"] for entry in detected]
+    if not selected_buildings:
+        flash("Please choose at least one building.", "error")
         return redirect(url_for("compose", upload_id=upload_id))
 
     # Filter samples to this building. We accept samples in two ways:
@@ -1580,13 +2194,17 @@ def _handle_compose_post(upload_id: str, samples):
     # The second path lets us generate draft reports for buildings whose
     # fixtures haven't been registered yet — placeholder fixtures get
     # synthesized in _build_rows.
-    bldg_fixture_ids = {f.fixture_id for f in registry.by_building(building)}
+    bldg_fixture_ids = {
+        fixture.fixture_id
+        for building_name in selected_buildings
+        for fixture in registry.by_building(building_name)
+    }
     detected = detected_buildings_from_samples(samples)
 
     def sample_matches_building(s) -> bool:
-        if not detected and building == "Unknown Building":
+        if not detected and "Unknown Building" in selected_buildings:
             return True
-        if getattr(s, "building_name", "") == building:
+        if _reported_building_name(s) in selected_buildings:
             return True
         if s.fixture_id in bldg_fixture_ids:
             return True
@@ -1594,12 +2212,12 @@ def _handle_compose_post(upload_id: str, samples):
         if not code:
             return False
         rec = resolve_building(code)
-        return rec["name"] == building
+        return rec["name"] in selected_buildings
 
     filtered = [s for s in samples if sample_matches_building(s)]
     if not filtered:
         flash(
-            f"No samples in this upload match {building!r}. "
+            f"No samples in this upload match {selected_buildings!r}. "
             f"Sample fixtures: {sorted({s.fixture_id for s in samples})}. "
             f"Pick a different building.",
             "error",
@@ -1609,15 +2227,14 @@ def _handle_compose_post(upload_id: str, samples):
     levels = load_profile(DEFAULT_PROFILE_NAME)
     saved = _load_session_data(upload_id) or {}
     meta = saved.get("meta", {})
-    locked_report_style = meta.get("report_style", "wa_school")
-    if locked_report_style not in {"uw", "wa_school"}:
-        locked_report_style = "wa_school"
-    report_building = request.form.get("school_name", "").strip() or building
-    report_style = locked_report_style
-    organization = (
-        "" if report_style == "uw"
-        else request.form.get("organization", "").strip()
+    meta["compose_draft"] = _compose_draft_from_form()
+    _save_session_data(upload_id, samples, meta)
+    report_building = (
+        request.form.get("school_name", "").strip()
+        or ", ".join(selected_buildings)
     )
+    report_style = "wa_school"
+    organization = request.form.get("organization", "").strip()
 
     contacts = []
     for i in (1, 2):
@@ -1630,6 +2247,12 @@ def _handle_compose_post(upload_id: str, samples):
             "phone": request.form.get(f"contact{i}_phone", "").strip(),
             "email": request.form.get(f"contact{i}_email", "").strip(),
         })
+
+    header_entry = _original_file_for(meta, "header_template_file")
+    header_template_path = Path(header_entry["path"]) if header_entry else None
+    if not header_template_path or not header_template_path.exists():
+        flash("The required Header template could not be found. Please upload it again.", "error")
+        return redirect(url_for("report_style", upload_id=upload_id))
 
     ctx = ReportContext(
         building=report_building,
@@ -1647,11 +2270,14 @@ def _handle_compose_post(upload_id: str, samples):
         notes_md=request.form.get("notes", "").strip(),
         report_style=report_style,
         organization=organization,
+        reference_style_applied=bool(meta.get("style_draft")),
+        reference_layout=(meta.get("style_draft") or {}).get("layout", "report"),
+        header_template_path=str(header_template_path),
     )
 
     buf = BytesIO()
     render_docx(ctx, registry, buf)
-    safe_building = re.sub(r"[^A-Za-z0-9]+", "_", building).strip("_")
+    safe_building = re.sub(r"[^A-Za-z0-9]+", "_", report_building).strip("_")
     date_part = ctx.report_date.isoformat() if ctx.report_date else "undated"
     filename = f"{safe_building}_water_results_{date_part}.docx"
     if supabase.configured:

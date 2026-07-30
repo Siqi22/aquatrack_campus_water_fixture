@@ -4,6 +4,7 @@ DOCX is the right output format for these memos: EH&S authors will
 nearly always tweak wording before sending to building occupants.
 """
 from __future__ import annotations
+from copy import deepcopy
 import re
 from io import BytesIO
 from pathlib import Path
@@ -193,7 +194,18 @@ def _table_fixture_label(row: dict) -> str:
     """
     sample = row["sample"]
     fixture = row["fixture"]
-    label_code, label_room = _split_fixture_label(getattr(sample, "fixture_label", ""))
+    source_label = re.sub(
+        r"\s+", " ", getattr(sample, "fixture_label", "") or ""
+    ).strip()
+    label_code, label_room = _split_fixture_label(source_label)
+
+    # Lab/agency reports commonly provide a complete free-form description,
+    # e.g. "Water Fountain - Rm27 - Fountain/Tap Combo". Preserve that source
+    # text verbatim instead of discarding it merely because it does not match
+    # the older "COM room B002" shorthand used by UW fixture IDs.
+    if source_label and not label_code and not label_room:
+        return source_label
+
     code = label_code or _building_code_from_fixture_id(sample.fixture_id) or fixture.building
     room = (
         label_room
@@ -205,13 +217,30 @@ def _table_fixture_label(row: dict) -> str:
     return code or sample.fixture_id
 
 
+def _table_building_label(row: dict) -> str:
+    """Prefer the report's row-level Building Name for the DOCX table."""
+    sample = row["sample"]
+    source_fields = getattr(sample, "source_fields", {}) or {}
+    for value in (
+        getattr(sample, "building_name", ""),
+        source_fields.get("building_name", ""),
+        source_fields.get("Building Name", ""),
+        source_fields.get("building", ""),
+        getattr(row["fixture"], "building", ""),
+    ):
+        text = re.sub(r"\s+", " ", str(value or "")).strip()
+        if text:
+            return text
+    return "not specified"
+
+
 def _render_results_table(doc: Document, rows: list[dict],
                           analytes: list[str]):
     """Render the Table 1 results grid matching the UW report style.
 
     Layout target:
       - Simple sample number
-      - Compact sample volume
+      - Source-reported building name
       - Fixture/location label in the wider text column
       - One column per analyte, each header is "Analyte" / "(unit)" stacked
       - Tight cell padding, vertically centered, compact page flow
@@ -237,23 +266,23 @@ def _render_results_table(doc: Document, rows: list[dict],
     n_analytes = len(analytes)
     if n_analytes <= 3:
         sample_w = 0.42
-        volume_w = 0.58
+        building_w = 0.95
         location_w = 2.15
         analyte_w = 0.72
         header_pt = 7.5
     elif n_analytes == 4:
         sample_w = 0.42
-        volume_w = 0.58
+        building_w = 0.95
         location_w = 2.05
         analyte_w = 0.68
         header_pt = 7.5
     else:  # 5 analytes — tightest case
         sample_w = 0.42
-        volume_w = 0.56
+        building_w = 0.9
         location_w = 1.9
         analyte_w = 0.64
         header_pt = 7.2
-    col_widths_in = [sample_w, volume_w, location_w] + [analyte_w] * n_analytes
+    col_widths_in = [sample_w, building_w, location_w] + [analyte_w] * n_analytes
     _set_table_fixed_width(table, sum(col_widths_in))
     for i, w in enumerate(col_widths_in):
         table.columns[i].width = Inches(w)
@@ -270,7 +299,7 @@ def _render_results_table(doc: Document, rows: list[dict],
     _set_cell_text(cells[0], "#", bold=True, color=UW_PURPLE,
                    size=Pt(header_pt),
                    align=WD_ALIGN_PARAGRAPH.CENTER)
-    _set_cell_text(cells[1], "Volume",
+    _set_cell_text(cells[1], "Building",
                    bold=True, color=UW_PURPLE,
                    size=Pt(header_pt),
                    align=WD_ALIGN_PARAGRAPH.CENTER)
@@ -304,7 +333,7 @@ def _render_results_table(doc: Document, rows: list[dict],
         _set_cell_text(rcells[0], str(i),
                        size=Pt(7.8),
                        align=WD_ALIGN_PARAGRAPH.CENTER)
-        _set_cell_text(rcells[1], row["sample_volume"],
+        _set_cell_text(rcells[1], _table_building_label(row),
                        size=Pt(7.8),
                        align=WD_ALIGN_PARAGRAPH.CENTER)
         _set_cell_text(rcells[2], body,
@@ -332,6 +361,27 @@ def _add_heading(doc: Document, text: str, level: int = 1):
     run.bold = True
     run.font.size = Pt(13 if level == 1 else 11)
     run.font.color.rgb = UW_PURPLE
+
+
+def _ensure_renderer_styles(doc: Document):
+    """Restore the built-in styles required by the report renderer.
+
+    Header-only DOCX files exported by tools such as Pages or document
+    generators can omit Word's Normal, Table Grid, and List Bullet styles.
+    Copy only the missing definitions from python-docx's standard template so
+    the uploaded header and media stay intact while the generated body remains
+    a conventional editable Word document.
+    """
+    required = ("Normal", "Normal Table", "Table Grid", "List Bullet")
+    existing = {style.name for style in doc.styles}
+    if any(name not in existing for name in required):
+        standard = Document()
+        for name in required:
+            if name not in existing:
+                doc.styles._element.append(
+                    deepcopy(standard.styles[name]._element)
+                )
+    return doc.styles["Normal"]
 
 
 def _contact_clause(c: dict) -> str:
@@ -371,12 +421,12 @@ def _questions_prose(ehs: dict, fac: dict) -> str:
 
 
 def _add_md_paragraphs(doc: Document, md_text: str):
-    """Tiny markdown subset: blank-line paragraph breaks, **bold**, *italic*."""
+    """Tiny markdown subset: paragraphs, bullets, **bold**, and *italic*."""
     if not md_text:
         return
-    for para in re.split(r"\n\s*\n", md_text.strip()):
-        p = doc.add_paragraph()
-        tokens = re.split(r"(\*\*[^*]+\*\*|\*[^*]+\*)", para)
+
+    def add_inline(p, text: str):
+        tokens = re.split(r"(\*\*[^*]+\*\*|\*[^*]+\*)", text)
         for tok in tokens:
             if not tok:
                 continue
@@ -388,6 +438,16 @@ def _add_md_paragraphs(doc: Document, md_text: str):
                 run.italic = True
             else:
                 p.add_run(tok)
+
+    for para in re.split(r"\n\s*\n", md_text.strip()):
+        lines = [line.strip() for line in para.splitlines() if line.strip()]
+        if lines and all(re.match(r"^[-•]\s+", line) for line in lines):
+            for line in lines:
+                p = doc.add_paragraph(style="List Bullet")
+                add_inline(p, re.sub(r"^[-•]\s+", "", line))
+            continue
+        p = doc.add_paragraph()
+        add_inline(p, para)
 
 
 def _set_table_borderless(table):
@@ -718,15 +778,18 @@ def _build_findings_summary(ctx: "ReportContext", registry) -> str:
                 seen.add(s.fixture_id)
                 pb_count += 1
 
-    fe_warn_count = count_exceeding("Iron", {"warn"})
-    cu_count = count_exceeding("Copper")
-    mn_count = count_exceeding("Manganese")
-    zn_count = count_exceeding("Zinc")
+    lead_only = set(ctx.analytes_shown) == {"Lead"}
+    fe_warn_count = 0 if lead_only else count_exceeding("Iron", {"warn"})
+    cu_count = 0 if lead_only else count_exceeding("Copper")
+    mn_count = 0 if lead_only else count_exceeding("Manganese")
+    zn_count = 0 if lead_only else count_exceeding("Zinc")
     fe_threshold = find_threshold("Iron", "warn")
 
     # If absolutely nothing was elevated, single calm sentence.
     if (pb_count == 0 and fe_warn_count == 0
             and cu_count == 0 and mn_count == 0 and zn_count == 0):
+        if lead_only:
+            return "Lead levels measured were below the review levels used in this report."
         return ("Lead, iron, copper, manganese, and zinc levels measured "
                 "were below the default review levels and secondary "
                 "standards used in this report.")
@@ -734,7 +797,7 @@ def _build_findings_summary(ctx: "ReportContext", registry) -> str:
     sentences: list[str] = []
 
     # Cu/Mn/Zn below limits — only mention if all three are clean
-    if cu_count == 0 and mn_count == 0 and zn_count == 0:
+    if not lead_only and cu_count == 0 and mn_count == 0 and zn_count == 0:
         sentences.append(
             "Copper, manganese, and zinc levels measured were all below "
             "federal regulatory limits."
@@ -797,6 +860,9 @@ def _build_findings_summary(ctx: "ReportContext", registry) -> str:
     # Closing sentence if anything elevated
     if pb_count > 0 or fe_warn_count > 0:
         sentences.append(
+            "These results suggest that lead may be leaching from plumbing "
+            "materials and/or water fixtures."
+            if lead_only else
             "These results suggest that lead and/or other metals may be "
             "leaching from plumbing materials and/or water fixtures."
         )
@@ -808,40 +874,56 @@ def render_docx(ctx: ReportContext, registry: FixtureRegistry,
                 output: str | Path | BytesIO) -> Path | BytesIO:
     """Render the report. Pass a path to write to disk, or a BytesIO for
     in-memory (e.g. Flask send_file)."""
-    doc = Document()
+    header_template_path = getattr(ctx, "header_template_path", "")
+    if header_template_path:
+        doc = Document(str(header_template_path))
+        body = doc._element.body
+        for child in list(body):
+            if child.tag != qn("w:sectPr"):
+                body.remove(child)
+    else:
+        doc = Document()
     section = doc.sections[0]
-    section.left_margin = Inches(0.6)
-    section.right_margin = Inches(0.6)
+    if not header_template_path:
+        section.left_margin = Inches(0.6)
+        section.right_margin = Inches(0.6)
 
     # Tighten default style a bit
-    style = doc.styles["Normal"]
+    style = _ensure_renderer_styles(doc)
     style.font.name = "Calibri"
     style.font.size = Pt(11)
 
-    # ---- Header banner ----
-    if getattr(ctx, "report_style", "uw") == "wa_school":
-        _add_neutral_header(doc, getattr(ctx, "organization", ""))
-    else:
-        _add_header_with_logo(doc)
+    reference_letter = (
+        getattr(ctx, "reference_style_applied", False)
+        and getattr(ctx, "reference_layout", "report") == "letter"
+    )
+    if not reference_letter:
+        # ---- Header banner ----
+        if not header_template_path:
+            if getattr(ctx, "report_style", "uw") == "wa_school":
+                _add_neutral_header(doc, getattr(ctx, "organization", ""))
+            else:
+                _add_header_with_logo(doc)
 
-    # ---- Memo metadata ----
-    # Date is intentionally blank when report_date is None — author fills in
-    # the final date manually in Word before signing.
-    date_text = ctx.report_date.strftime("%B %d, %Y") if ctx.report_date else ""
-    for label, value in [
-        ("Date", date_text),
-        ("To", f"{ctx.building} Community" if getattr(ctx, "report_style", "uw") == "wa_school"
-         else f"{ctx.building} Occupants"),
-        ("From", getattr(ctx, "organization", "") or "Environmental Health & Safety Department"),
-        ("Subject", "Water Sampling Test Results"),
-    ]:
-        p = doc.add_paragraph()
-        r = p.add_run(f"{label}: ")
-        r.bold = True
-        p.add_run(value)
+        # ---- Memo metadata ----
+        # Date is intentionally blank when report_date is None — author fills
+        # in the final date manually in Word before signing.
+        date_text = ctx.report_date.strftime("%B %d, %Y") if ctx.report_date else ""
+        for label, value in [
+            ("Date", date_text),
+            ("To", f"{ctx.building} Community" if getattr(ctx, "report_style", "uw") == "wa_school"
+             else f"{ctx.building} Occupants"),
+            ("From", getattr(ctx, "organization", "") or "Environmental Health & Safety Department"),
+            ("Subject", "Water Sampling Test Results"),
+        ]:
+            p = doc.add_paragraph()
+            r = p.add_run(f"{label}: ")
+            r.bold = True
+            p.add_run(value)
 
     # ---- Introduction ----
-    _add_heading(doc, "Introduction")
+    if not getattr(ctx, "reference_style_applied", False):
+        _add_heading(doc, "Introduction")
     _add_md_paragraphs(doc, ctx.introduction_md)
 
     # ---- Testing information ----
@@ -851,9 +933,10 @@ def render_docx(ctx: ReportContext, registry: FixtureRegistry,
     #   3. Table 1
     #   4. Detection-limit footnote
     #   5. Findings paragraph (which metals exceeded, with counts/locations)
-    _add_heading(doc, "Testing Information")
-    doc.add_paragraph(_build_testing_info_intro(ctx))
-    doc.add_paragraph(_LEAD_REGULATORY_CONTEXT)
+    if not getattr(ctx, "reference_style_applied", False):
+        _add_heading(doc, "Testing Information")
+        doc.add_paragraph(_build_testing_info_intro(ctx))
+        doc.add_paragraph(_LEAD_REGULATORY_CONTEXT)
 
     # ---- Table 1 ----
     p = doc.add_paragraph()
@@ -877,21 +960,23 @@ def render_docx(ctx: ReportContext, registry: FixtureRegistry,
     r.italic = True
 
     # Findings summary — generated from the actual measurements
-    doc.add_paragraph(_build_findings_summary(ctx, registry))
+    if not getattr(ctx, "reference_style_applied", False):
+        doc.add_paragraph(_build_findings_summary(ctx, registry))
 
     # ---- Actions taken ----
-    _add_heading(doc, "Actions Taken")
+    if not getattr(ctx, "reference_style_applied", False):
+        _add_heading(doc, "Actions Taken")
     _add_md_paragraphs(doc, ctx.actions_taken_md)
 
-    # ---- Health info (boilerplate) ----
-    # Verbatim from the recurring UW Art Building / Gowen Hall memos.
-    _add_heading(doc, "Lead Sources and Health Information")
-    doc.add_paragraph(
+    if not getattr(ctx, "reference_style_applied", False):
+        # ---- Health info (standard-template boilerplate) ----
+        _add_heading(doc, "Lead Sources and Health Information")
+        doc.add_paragraph(
         "People can be exposed to lead from a variety of environmental "
         "sources. Each exposure contributes to the amount of lead in the "
         "body. Some common exposure sources include:"
     )
-    bullets = [
+        bullets = [
         "Dust from old, deteriorating lead paint",
         "Contaminated soil",
         "Lead dust tracked into the home from external sources, such as "
@@ -903,10 +988,10 @@ def render_docx(ctx: ReportContext, registry: FixtureRegistry,
             "components or other plumbing elements corroding. Common sources "
             "of lead in drinking water include fixture components, premise "
             "plumbing, solder, fittings, and/or lead service lines.",
-    ]
-    for bullet in bullets:
-        doc.add_paragraph(bullet, style="List Bullet")
-    doc.add_paragraph(
+        ]
+        for bullet in bullets:
+            doc.add_paragraph(bullet, style="List Bullet")
+        doc.add_paragraph(
         "Children six years old and younger are the most susceptible to the "
         "effects of lead. Their growing bodies absorb more lead than adults, "
         "and their brains and nervous systems are more sensitive to the "
@@ -921,26 +1006,27 @@ def render_docx(ctx: ReportContext, registry: FixtureRegistry,
     # When the standard EH&S + Facilities pair is provided, render as a
     # single prose paragraph matching the recurring UW memo wording.
     # Otherwise fall back to a bulleted list (for one contact, three+, etc.).
-    _add_heading(doc, "Questions")
-    if len(ctx.contacts) == 2 and all(c.get("name") for c in ctx.contacts):
-        c1, c2 = ctx.contacts
-        doc.add_paragraph(_questions_prose(c1, c2))
-    else:
-        doc.add_paragraph(
+        _add_heading(doc, "Questions")
+        if len(ctx.contacts) == 2 and all(c.get("name") for c in ctx.contacts):
+            c1, c2 = ctx.contacts
+            doc.add_paragraph(_questions_prose(c1, c2))
+        else:
+            doc.add_paragraph(
             "If you have any questions about the water testing results or this "
             "communication, contact:"
-        )
-        for c in ctx.contacts:
-            bits = [c.get("name", ""), c.get("title", "")]
-            contact_line = " — ".join([b for b in bits if b])
-            if c.get("phone"):
-                contact_line += f" — {c['phone']}"
-            if c.get("email"):
-                contact_line += f", {c['email']}"
-            doc.add_paragraph(contact_line, style="List Bullet")
+            )
+            for c in ctx.contacts:
+                bits = [c.get("name", ""), c.get("title", "")]
+                contact_line = " — ".join([b for b in bits if b])
+                if c.get("phone"):
+                    contact_line += f" — {c['phone']}"
+                if c.get("email"):
+                    contact_line += f", {c['email']}"
+                doc.add_paragraph(contact_line, style="List Bullet")
 
     if ctx.notes_md:
-        _add_heading(doc, "Notes")
+        if not getattr(ctx, "reference_style_applied", False):
+            _add_heading(doc, "Notes")
         _add_md_paragraphs(doc, ctx.notes_md)
 
     if isinstance(output, BytesIO):

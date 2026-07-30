@@ -1,167 +1,25 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Compose Report</title>
-<style>
-  body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
-         max-width: 1500px; margin: 30px auto; padding: 0 20px; color: #222; }
-  h1, h2 { color: #4b2e83; }
-  h1 { border-bottom: 2px solid #4b2e83; padding-bottom: 8px; }
-  fieldset { border: 1px solid #ddd; border-radius: 8px;
-             padding: 16px; margin: 16px 0; }
-  legend { font-weight: bold; color: #4b2e83; padding: 0 8px; }
-  label { display: block; font-weight: 600; margin-top: 10px; font-size: 14px; }
-  input[type=text], input[type=date], input[type=email], textarea {
-    width: 100%; padding: 8px; border: 1px solid #bbb; border-radius: 4px;
-    font-size: 14px; font-family: inherit; box-sizing: border-box;
-  }
-  table.preview input { min-width: 70px; padding: 4px 6px; font-size: 12px; }
-  table.preview input.sample-id { min-width: 130px; }
-  table.preview input.fixture-label { min-width: 220px; }
-  textarea { min-height: 110px; }
-  table.preview { border-collapse: collapse; width: 100%; font-size: 13px; }
-  table.preview th, table.preview td {
-    border: 1px solid #ccc; padding: 6px 8px; text-align: left;
-  }
-  table.preview th { background: #ece6f5; color: #4b2e83; }
-  table.preview td.metal { text-align: center; }
-  .preview-wrap { overflow: auto; }
-  td.warn { background: #fde7d3; }
-  td.violation { background: #f8c7c7; }
-  .not-reported { color: #666; font-style: italic; }
-  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; }
-  .building-choice {
-    display: block; border: 1px solid #ddd; border-radius: 6px;
-    padding: 10px 12px; margin: 8px 0; font-weight: normal;
-    background: #fafafa;
-  }
-  .building-choice input { margin-right: 8px; }
-  .building-choice strong { color: #4b2e83; }
-  .warn-banner { background: #fff3cd; border: 1px solid #ffe58f;
-                 padding: 12px; border-radius: 6px; margin: 12px 0; }
-  .info-banner { background: #e7f3fe; border: 1px solid #b6dafb;
-                 padding: 10px 14px; border-radius: 6px;
-                 font-size: 13px; margin: 8px 0; display: none; }
-  button { background: #4b2e83; color: white; border: none;
-           padding: 12px 22px; border-radius: 6px; font-size: 16px;
-           cursor: pointer; margin-top: 16px; }
-  button:hover { background: #3a2466; }
-  button.secondary {
-    background: #fff; color: #4b2e83; border: 1px solid #4b2e83;
-    padding: 8px 12px; font-size: 13px; margin-top: 0;
-  }
-  button.secondary:hover { background: #f4f1f8; }
-  small { color: #666; }
-  a.back { color: #4b2e83; text-decoration: none; font-size: 14px; }
-  .pill {
-    display: inline-block; padding: 2px 6px; border-radius: 3px;
-    font-size: 11px; margin-left: 6px;
-  }
-  .pill.has { background: #d4edda; color: #155724; }
-  .pill.no { background: #f8d7da; color: #721c24; }
-  .qc-panel {
-    border: 1px solid #d7d0e5; border-radius: 8px; padding: 14px;
-    margin: 16px 0 20px; background: #fff;
-  }
-  .qc-header {
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 12px; margin-bottom: 10px;
-  }
-  .qc-header h2 { margin: 0; }
-  .source-tabs {
-    display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 12px;
-  }
-  .source-tab {
-    margin: 0; padding: 7px 10px; font-size: 13px; border-radius: 999px;
-    border: 1px solid #c9bddb; background: #fff; color: #4b2e83;
-  }
-  .source-tab:hover { background: #f4f1f8; }
-  .source-tab.active { background: #4b2e83; color: #fff; border-color: #4b2e83; }
-  .source-tab.active:hover { background: #3a2466; }
-  .qc-panel.source-hidden .qc-body,
-  .qc-panel.source-hidden .style-notes { display: none; }
-  .source-pane {
-    border: 1px solid #ddd; border-radius: 6px; padding: 12px;
-    max-height: 72vh; overflow: auto; background: #fff;
-  }
-  .style-notes {
-    background: #f6f6f6; border: 1px solid #ddd; border-radius: 6px;
-    padding: 10px 14px; margin: 10px 0 12px; font-size: 13px;
-  }
-  .style-notes ul { margin: 8px 0 0 20px; padding: 0; }
-  .source-preview { display: none; }
-  .source-preview.active { display: block; }
-  .source-title {
-    display: flex; align-items: baseline; justify-content: space-between;
-    gap: 12px; margin-bottom: 10px; font-size: 13px;
-  }
-  .pdf-frame {
-    width: 100%; height: 420px; border: 1px solid #ddd;
-    border-radius: 4px; background: #f7f7f7; margin-bottom: 12px;
-  }
-  .source-table-wrap {
-    overflow: auto; max-height: 340px; margin: 8px 0 14px;
-    border: 1px solid #ddd; border-radius: 4px;
-  }
-  table.source-table {
-    border-collapse: collapse; min-width: 100%; width: max-content;
-    font-size: 12px;
-  }
-  table.source-table th, table.source-table td {
-    border: 1px solid #ddd; padding: 5px 7px; text-align: left;
-    vertical-align: top; max-width: 220px;
-  }
-  table.source-table th {
-    background: #f6f3fa; color: #4b2e83; position: sticky; top: 0;
-  }
-  .source-text {
-    white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 12px; background: #f8f8f8; border: 1px solid #ddd;
-    border-radius: 4px; padding: 10px; max-height: 260px; overflow: auto;
-  }
-  .source-empty { color: #666; font-size: 13px; }
-  @media (max-width: 950px) {
-    .source-pane { max-height: none; }
-  }
-</style>
-</head>
-<body>
+{% extends "base.html" %}
+{% set page_shell_class = "page-shell--wide" %}
+{% block title %}Review report · Water Quality Reporter{% endblock %}
 
-<a class="back" href="{{ url_for('index') }}">&larr; Start a new report</a>
-<h1>Compose Report</h1>
+{% block content %}
+<a class="link-back" data-save-draft href="{{ url_for('report_style', upload_id=upload_id) }}">Back</a>
+<header class="page-header">
+  <h1 class="page-title">Review and Edit</h1>
+</header>
 
-<div class="info-banner" style="display:block;">
+<ol class="workflow-steps" aria-label="Report workflow">
+  <li class="workflow-step is-complete" data-step="1"><a class="workflow-step__link" data-save-draft href="{{ url_for('edit_setup', upload_id=upload_id) }}"><span>Select school(s)</span></a></li>
+  <li class="workflow-step is-complete" data-step="2"><a class="workflow-step__link" data-save-draft href="{{ url_for('reference_upload', upload_id=upload_id) }}"><span>Select fixture(s)</span></a></li>
+  <li class="workflow-step is-complete" data-step="3"><a class="workflow-step__link" data-save-draft href="{{ url_for('report_style', upload_id=upload_id) }}"><span>Report style</span></a></li>
+  <li class="workflow-step is-active" data-step="4"><span class="workflow-step__link" aria-current="step"><span>Review</span></span></li>
+</ol>
+
+<div class="info-banner">
   <strong>Report setup:</strong>
-  {% if initial_report_style == 'uw' %}
-    University of Washington report.
-  {% else %}
-    School/district report for <strong>{{ report_school_name }}</strong>{% if initial_organization %}, {{ initial_organization }}{% endif %}.
-  {% endif %}
+  School/district report for <strong>{{ report_school_name }}</strong>{% if initial_organization %}, {{ initial_organization }}{% endif %}.
   <a href="{{ url_for('index') }}">Change</a>
 </div>
-
-{% if unknown %}
-<div class="warn-banner">
-  <strong>Unknown fixtures in this upload:</strong>
-  {{ unknown | join(', ') }}.
-  They will still appear in the preview and generated draft with an inferred
-  fixture type when possible.
-</div>
-{% endif %}
-
-{% if is_multi_building %}
-<div class="info-banner" style="display:block; background:#e7f3fe; border-color:#b6dafb;">
-  <strong>This upload contains samples from multiple buildings:</strong>
-  {% for b in detected_buildings %}
-    {{ b.code }} ({{ b.name }}): {{ b.sample_count }} sample{{ '' if b.sample_count == 1 else 's' }}{% if not loop.last %}; {% endif %}
-  {% endfor %}.
-  Generate one report per building. After downloading, click
-  <a href="{{ url_for('compose', upload_id=upload_id) }}">back here</a>
-  to choose another detected building from the same upload.
-</div>
-{% endif %}
 
 {% if unprofiled_codes %}
 <div class="warn-banner">
@@ -181,81 +39,53 @@
 </div>
 {% endif %}
 
-<form method="POST">
+<form method="POST" id="compose-form">
 
-{% if original_files %}
-<section class="qc-panel">
-  <div class="qc-header">
-    <h2>Source/QC Files</h2>
-    <button type="button" class="secondary" id="toggle-source">Hide QC</button>
+{% if preview_files %}
+<section class="card-section source-preview-panel">
+  <div class="panel-header">
+    <h2>Uploaded file previews</h2>
+    <p>Review the example communication and Word header template.</p>
   </div>
-  {% if reference_notes %}
-  <div class="style-notes">
-    <strong>Reference style notes:</strong>
-    <ul>
-      {% for note in reference_notes %}
-        <li>{{ note }}</li>
-      {% endfor %}
-    </ul>
-  </div>
-  {% endif %}
-  <div class="qc-body" id="qc-body">
-    <div class="source-tabs">
-      {% for file in original_files %}
+  <div class="qc-body">
+    <div class="source-tabs" role="tablist" aria-label="Uploaded file previews">
+      {% for file in preview_files %}
         <button type="button" class="source-tab {% if loop.first %}active{% endif %}"
-                data-target="source-preview-{{ loop.index0 }}">
+                data-target="source-preview-{{ loop.index0 }}" role="tab">
           {{ file.label or file.filename }}
         </button>
       {% endfor %}
     </div>
     <div class="source-pane">
-      {% for file in original_files %}
-      <div class="source-preview {% if loop.first %}active{% endif %}" id="source-preview-{{ loop.index0 }}">
+      {% for file in preview_files %}
+      <div class="source-preview {% if loop.first %}active{% endif %}" id="source-preview-{{ loop.index0 }}" role="tabpanel">
         <div class="source-title">
           <strong>{{ file.label or file.filename }}</strong>
-          <a href="{{ url_for('original_file', upload_id=upload_id, file_idx=loop.index0) }}" target="_blank">open source</a>
+          <a href="{{ url_for('original_file', upload_id=upload_id, file_idx=file.file_idx) }}" target="_blank">open source</a>
         </div>
         <p><small>{{ file.filename }}</small></p>
-
-        {% if file.preview.error %}
-          <div class="warn-banner">{{ file.preview.error }}</div>
-        {% endif %}
-
+        {% if file.preview.error %}<div class="warn-banner">{{ file.preview.error }}</div>{% endif %}
         {% if file.preview.is_pdf %}
           <iframe class="pdf-frame"
-                  src="{{ url_for('original_file', upload_id=upload_id, file_idx=loop.index0) }}"
+                  src="{{ url_for('original_file', upload_id=upload_id, file_idx=file.file_idx) }}{% if file.preview.relevant_pages %}#page={{ file.preview.relevant_pages[0] }}{% endif %}"
                   title="{{ file.filename }}"></iframe>
         {% endif %}
-
         {% if file.preview.tables %}
           {% for table in file.preview.tables %}
-            <p><small><strong>{{ table.title }}</strong>{% if table.truncated %} - first {{ table.rows|length }} rows shown{% endif %}</small></p>
+            <p><small><strong>{{ table.title }}</strong></small></p>
             <div class="source-table-wrap">
               <table class="source-table">
-                <thead>
-                  <tr>
-                    {% for header in table.headers %}
-                      <th>{{ header }}</th>
-                    {% endfor %}
-                  </tr>
-                </thead>
+                <thead><tr>{% for header in table.headers %}<th>{{ header }}</th>{% endfor %}</tr></thead>
                 <tbody>
                   {% for row in table.rows %}
-                    <tr>
-                      {% for cell in row %}
-                        <td>{{ cell }}</td>
-                      {% endfor %}
-                    </tr>
+                    <tr>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>
                   {% endfor %}
                 </tbody>
               </table>
             </div>
           {% endfor %}
-        {% elif file.preview.text %}
-          <pre class="source-text">{{ file.preview.text }}</pre>
-        {% else %}
-          <p class="source-empty">No inline table preview was available for this file.</p>
         {% endif %}
+        {% if file.preview.text %}<pre class="source-text">{{ file.preview.text }}</pre>{% endif %}
       </div>
       {% endfor %}
     </div>
@@ -263,16 +93,10 @@
 </section>
 {% endif %}
 
-<div class="warn-banner">
-  <strong>QC reminders before generating:</strong>
-  Confirm sample IDs follow <code>{{ nomenclature_help }}</code> when possible;
-  check sample dates, units, detection-limit symbols such as <code>&lt;1</code>,
-  paired first-draw/follow-up volumes, fixture type/location, and whether any
-  rows from the original COC or lab output are missing from the parsed table.
+<div class="section-heading">
+  <h2>AquaTrack lead data · {{ samples|length }} fixtures</h2>
+  <p>Review and edit the selected Lead results and fixture details.</p>
 </div>
-
-<h2>Parsed lab data ({{ samples|length }} samples)</h2>
-<p><small>Review and edit parsed text/numbers here before generating. The preview keeps all default metals and any additional variables found in the data.</small></p>
 <div class="preview-wrap">
 <table class="preview">
   <tr>
@@ -292,7 +116,7 @@
     <td><input class="fixture-label" type="text" name="sample_{{ r.idx }}_fixture_label" value="{{ r.fixture_location }}"></td>
     {% for analyte in preview_analytes %}
       {% set cell = r.cells[analyte] %}
-      <td class="metal {{ cell.severity }}{% if cell.display == 'not detected' %} not-reported{% endif %}">
+      <td class="metal {{ cell.severity }}{% if cell.display in ['not detected', 'not reported'] %} not-reported{% endif %}">
         <input type="text" name="{{ cell.input_name }}" value="{{ cell.display }}">
       </td>
     {% endfor %}
@@ -301,36 +125,24 @@
 </table>
 </div>
 
-<fieldset>
+<fieldset class="card-section">
 <legend>Report parameters</legend>
-{% if buildings|length == 1 %}
-  <input type="hidden" name="building" value="{{ buildings[0].name }}">
-  <p><strong>Detected building:</strong>
-    {{ buildings[0].name }}{% if buildings[0].code and buildings[0].code not in buildings[0].name %} ({{ buildings[0].code }}){% endif %}
-    — {{ buildings[0].sample_count }} sample{{ '' if buildings[0].sample_count == 1 else 's' }} in this upload
-  </p>
-{% else %}
-  <label>Detected building for this report</label>
-  {% for b in buildings %}
-    <label class="building-choice">
-      <input type="radio" name="building" value="{{ b.name }}"
-             {% if b.name == suggested_building %}checked{% endif %} required>
-      <strong>{{ b.name }}{% if b.code and b.code not in b.name %} ({{ b.code }}){% endif %}</strong>
-      — {{ b.sample_count }} sample{{ '' if b.sample_count == 1 else 's' }} in this upload
-    </label>
-  {% endfor %}
-{% endif %}
+<div class="fieldset-body">
+<label>Detected building(s) for this report</label>
+{% for b in buildings %}
+  <label class="building-choice">
+    <input type="checkbox" name="building" value="{{ b.name }}"
+           {% if b.name in selected_buildings %}checked{% endif %}>
+    <strong>{{ b.name }}{% if b.code and b.code not in b.name %} ({{ b.code }}){% endif %}</strong>
+    — {{ b.sample_count }} sample{{ '' if b.sample_count == 1 else 's' }} in this upload
+  </label>
+{% endfor %}
 <input type="hidden" name="sampling_dates" value="{{ sampling_date_range }}">
 <div class="row">
   <div>
     <label>Report style</label>
-    {% if initial_report_style == 'uw' %}
-      <input type="hidden" name="report_style" value="uw">
-      <p class="building-choice"><strong>UW-style report</strong></p>
-    {% else %}
-      <input type="hidden" name="report_style" value="wa_school">
-      <p class="building-choice"><strong>Neutral WA school/district report</strong></p>
-    {% endif %}
+    <input type="hidden" name="report_style" value="wa_school">
+    <p class="building-choice"><strong>School/district report</strong></p>
   </div>
   <div>
     <label for="organization">District / organization</label>
@@ -339,27 +151,31 @@
     <input type="text" name="school_name" id="school_name" value="{{ report_school_name }}">
   </div>
 </div>
-<p><small>The DOCX will omit result columns with no detected numeric values, while this preview continues to show “not detected.”</small></p>
+<p><small>The Review and exported DOCX show Lead results only.</small></p>
+</div>
 </fieldset>
 
-<fieldset>
-<legend>Narrative (markdown: **bold**, *italic*, blank line for paragraph)</legend>
+<fieldset class="card-section">
+<legend>Report narrative</legend>
+<div class="fieldset-body">
+<p class="field-hint mt-0">Markdown is supported: <code>**bold**</code>, <code>*italic*</code>, and a blank line for a new paragraph.</p>
 <label for="introduction">Introduction</label>
 <textarea name="introduction" id="introduction" required>{{ suggested_defaults.intro }}</textarea>
 
 <label for="actions_taken">Actions Taken</label>
 <textarea name="actions_taken" id="actions_taken">{{ suggested_defaults.actions }}</textarea>
 
-<label for="notes">Notes (optional, appears at end)</label>
-<textarea name="notes" style="min-height:60px;"></textarea>
+<label for="notes">Notes <span class="muted">(optional, appears at end)</span></label>
+<textarea name="notes" id="notes" style="min-height:120px;">{{ suggested_defaults.notes or '' }}</textarea>
+</div>
 </fieldset>
 
-<fieldset>
+<fieldset class="card-section">
 <legend>Contacts</legend>
+<div class="fieldset-body">
 {% for i in [1, 2] %}
 <p><strong>Contact {{ i }}</strong>
-  {% if i == 1 %}<small>(typically EH&S)</small>
-  {% else %}<small>(typically UW Facilities)</small>{% endif %}
+  <small>(optional)</small>
 </p>
 <div class="row3">
   <div>
@@ -384,62 +200,23 @@
   </div>
 </div>
 {% endfor %}
+</div>
 </fieldset>
 
-<button type="submit">Generate &amp; download .docx</button>
+<div class="compose-actions">
+  <button type="submit">Generate and download .docx</button>
+</div>
 </form>
 
+{% endblock %}
+
+{% block scripts %}
 <script>
-  // Map of building name -> defaults (intro, actions, contacts)
-  const DEFAULTS = {{ defaults_map_json | safe }};
-
-  const buildingInputs = Array.from(document.querySelectorAll('input[name="building"]'));
-  const introEl = document.getElementById('introduction');
-  const actionsEl = document.getElementById('actions_taken');
-
-  // Track whether the user has manually edited each textarea.
-  // We only auto-replace text the user hasn't touched.
-  const dirty = { intro: false, actions: false };
-  ['intro', 'actions'].forEach(name => {
-    const el = (name === 'intro') ? introEl : actionsEl;
-    el.addEventListener('input', () => { dirty[name] = true; });
-  });
-
-  function currentBuilding() {
-    const selected = buildingInputs.find(input => input.checked) || buildingInputs[0];
-    return selected ? selected.value : '';
-  }
-
-  function applyDefaults(buildingName) {
-    const d = DEFAULTS[buildingName];
-    if (!d) return;
-    if (!dirty.intro)   introEl.value = d.intro;
-    if (!dirty.actions) actionsEl.value = d.actions;
-
-    for (let i = 0; i < 2; i++) {
-      const c = d.contacts[i] || {};
-      const fields = ['name', 'title', 'phone', 'email'];
-      fields.forEach(f => {
-        const input = document.getElementById(`contact${i+1}_${f}`);
-        if (!input) return;
-        // Only overwrite empty fields, so user-typed contacts stick
-        if (!input.value) input.value = c[f] || '';
-      });
-    }
-  }
-
-  buildingInputs.forEach(input => {
-    input.addEventListener('change', () => applyDefaults(currentBuilding()));
-  });
-
-  // Show status on initial load
-  applyDefaults(currentBuilding());
-
   const sourceTabs = Array.from(document.querySelectorAll('.source-tab'));
   const sourcePreviews = Array.from(document.querySelectorAll('.source-preview'));
   sourceTabs.forEach(tabButton => {
     tabButton.addEventListener('click', () => {
-      sourceTabs.forEach(btn => btn.classList.remove('active'));
+      sourceTabs.forEach(button => button.classList.remove('active'));
       sourcePreviews.forEach(panel => panel.classList.remove('active'));
       tabButton.classList.add('active');
       const target = document.getElementById(tabButton.dataset.target);
@@ -447,16 +224,26 @@
     });
   });
 
-  const toggleSource = document.getElementById('toggle-source');
-  const qcBody = document.getElementById('qc-body');
-  if (toggleSource && qcBody) {
-    toggleSource.addEventListener('click', () => {
-      const qcPanel = qcBody.closest('.qc-panel');
-      const hidden = qcPanel.classList.toggle('source-hidden');
-      toggleSource.textContent = hidden ? 'Show QC' : 'Hide QC';
+  const composeForm = document.getElementById('compose-form');
+  document.querySelectorAll('[data-save-draft]').forEach(link => {
+    link.addEventListener('click', async event => {
+      if (!composeForm) return;
+      event.preventDefault();
+      const destination = link.href;
+      link.setAttribute('aria-busy', 'true');
+      try {
+        const response = await fetch({{ url_for('save_compose_draft', upload_id=upload_id) | tojson }}, {
+          method: 'POST',
+          body: new FormData(composeForm),
+          credentials: 'same-origin',
+        });
+        if (!response.ok) throw new Error('Draft save failed');
+        window.location.assign(destination);
+      } catch (error) {
+        link.removeAttribute('aria-busy');
+        window.alert('Your changes could not be saved. Please try again.');
+      }
     });
-  }
+  });
 </script>
-
-</body>
-</html>
+{% endblock %}

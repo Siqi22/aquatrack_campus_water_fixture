@@ -1,93 +1,81 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Water Quality Reporter</title>
-<style>
-  body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
-         max-width: 720px; margin: 40px auto; padding: 0 20px; color: #222; }
-  h1 { color: #4b2e83; border-bottom: 2px solid #4b2e83; padding-bottom: 8px; }
-  .upload {
-    border: 2px dashed #bbb; border-radius: 10px;
-    padding: 30px; margin: 24px 0; background: #fafafa;
-  }
-  button {
-    background: #4b2e83; color: white; border: none;
-    padding: 10px 18px; border-radius: 6px; font-size: 15px;
-    cursor: pointer; margin-top: 10px;
-  }
-  button:hover { background: #3a2466; }
-  .flash { padding: 12px; border-radius: 6px; margin: 12px 0; }
-  .flash.error { background: #fdecea; color: #b00020; border: 1px solid #f5c2c7; }
-  .info { background: #f6f6f6; padding: 14px; border-radius: 6px; font-size: 14px; }
-  .setup { background: #e7f3fe; border: 1px solid #b6dafb;
-           padding: 12px 14px; border-radius: 6px; font-size: 14px; }
-  .reference-note { background: #f6f6f6; padding: 12px 14px;
-                    border-radius: 6px; font-size: 14px; margin: 16px 0; }
-  a { color: #4b2e83; text-decoration: none; }
-  code { background: #eee; padding: 1px 5px; border-radius: 3px; }
-</style>
-</head>
-<body>
-<h1>Water Quality Reporter</h1>
-<p>Upload water-quality results and generate an editable Word report.</p>
+{% extends "base.html" %}
+{% block title %}Upload results · Water Quality Reporter{% endblock %}
 
-<div class="setup">
-  <strong>Report setup:</strong>
-  {% if report_style == 'uw' %}
-    University of Washington report.
-  {% else %}
-    School/district report for <strong>{{ school_name }}</strong>{% if organization %}, {{ organization }}{% endif %}.
-  {% endif %}
-  <a href="{{ url_for('index') }}">Change</a>
+{% block content %}
+<a class="link-back" href="{{ url_for('index') }}">Back</a>
+<header class="page-header">
+  <p class="section-label">Current results</p>
+  <h1 class="page-title">Upload testing files</h1>
+  <p class="page-subtitle">Add the current results to create an editable Word report.</p>
+</header>
+
+<ol class="workflow-steps" aria-label="Report workflow">
+  <li class="workflow-step is-complete" data-step="1"><a class="workflow-step__link" href="{{ url_for('index') }}"><span>Select school(s)</span></a></li>
+  <li class="workflow-step is-active" data-step="2"><span class="workflow-step__link" aria-current="step"><span>Select fixture(s)</span></span></li>
+  <li class="workflow-step" data-step="3"><span class="workflow-step__link"><span>Report style</span></span></li>
+  <li class="workflow-step" data-step="4"><span class="workflow-step__link"><span>Review</span></span></li>
+</ol>
+
+<div class="callout callout-info">
+  <span class="callout__icon" aria-hidden="true">i</span>
+  <p>
+    <strong>{{ school_name }}</strong>{% if organization %} · {{ organization }}{% endif %}
+    <br><a href="{{ url_for('index') }}">Change report setup</a>
+  </p>
 </div>
 
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% for cat, msg in messages %}
-    <div class="flash {{ cat }}">{{ msg }}</div>
-  {% endfor %}
-{% endwith %}
-
-<form class="upload" method="POST" action="{{ url_for('upload') }}"
-      enctype="multipart/form-data">
+<form method="POST" action="{{ url_for('upload') }}" enctype="multipart/form-data">
   <input type="hidden" name="report_style" value="{{ report_style }}">
   <input type="hidden" name="organization" value="{{ organization }}">
   <input type="hidden" name="school_name" value="{{ school_name }}">
-  <input type="hidden" name="campus_id" value="{{ campus_id }}">
-  {% for fixture_id in fixture_ids %}
-  <input type="hidden" name="fixture_ids" value="{{ fixture_id }}">
-  {% endfor %}
   <input type="hidden" name="setup_id" value="{{ setup_id }}">
 
   {% if reference_files %}
-  <div class="reference-note">
-    <strong>Reference samples uploaded:</strong>
-    {% for file in reference_files %}
-      {{ file.label }}{% if not loop.last %}; {% endif %}
-    {% endfor %}.
-    <a href="{{ url_for('reference_upload', report_style=report_style, organization=organization, school_name=school_name) }}">Replace</a>
-  </div>
+    <div class="callout callout-info">
+      <span class="callout__icon" aria-hidden="true">✓</span>
+      <p><strong>Reference samples ready</strong><br>
+        {% for file in reference_files %}{{ file.label }}{% if not loop.last %}; {% endif %}{% endfor %}.
+        <a href="{{ url_for('reference_upload', report_style=report_style, organization=organization, school_name=school_name) }}">Replace</a>
+      </p>
+    </div>
   {% endif %}
 
-  <label><strong>Current lab/results file</strong></label>
-  <input type="file" name="file" accept=".pdf,.csv,.xls,.xlsx" required>
-  <p><small>IEH, generic lab CSV/XLSX/PDF tables, and WA DOH school result PDFs are supported.</small></p>
+  <section class="card-section">
+    <div class="panel-header">
+      <h2>Testing files</h2>
+      <p>The results file is required. The sampling form is optional.</p>
+    </div>
+    <div class="panel-body stack">
+      <label class="file-field" for="results_file">
+        <strong>Current lab or results file <span class="required">Required</span></strong>
+        <span class="field-hint">IEH, generic lab tables, and WA DOH school-result PDFs are supported.</span>
+        <input id="results_file" type="file" name="file" accept=".pdf,.csv,.xls,.xlsx" required>
+      </label>
 
-  <label><strong>Original COC / sampling form</strong> <small>(optional)</small></label>
-  <input type="file" name="coc_file" accept=".pdf,.csv,.xls,.xlsx,.doc,.docx">
+      <label class="file-field" for="coc_file">
+        <strong>Original COC or sampling form <span class="muted">Optional</span></strong>
+        <span class="field-hint">PDF, spreadsheet, or Word document</span>
+        <input id="coc_file" type="file" name="coc_file" accept=".pdf,.csv,.xls,.xlsx,.doc,.docx">
+      </label>
+    </div>
+  </section>
 
-  <br>
-  <button type="submit">Upload &amp; preview</button>
+  <button class="btn-primary btn-block" type="submit">Upload and review <span aria-hidden="true">→</span></button>
 </form>
 
-<div class="info">
-  <strong>Accepted formats:</strong>
-  <ul>
-    <li><code>.pdf</code> — IEH Certificate of Analysis, WA DOH school results, or a clearly structured lab table</li>
-    <li><code>.csv</code>, <code>.xls</code>, <code>.xlsx</code> — IEH or generic long/wide lab results</li>
-  </ul>
-  <p>Recommended sample ID nomenclature for new collection:
-     <code>Building_Fixture Type_Floor_Room_Volume</code>.</p>
-</div>
-</body>
-</html>
+<section class="card-section" aria-labelledby="formats-heading">
+  <div class="panel-header">
+    <h2 id="formats-heading">Accepted formats</h2>
+  </div>
+  <div class="panel-body grid-2">
+    <div class="info-tile">
+      <div class="info-tile__label">PDF</div>
+      <div class="info-tile__value">IEH certificates, WA DOH results, or structured lab tables</div>
+    </div>
+    <div class="info-tile">
+      <div class="info-tile__label">Spreadsheet</div>
+      <div class="info-tile__value">CSV, XLS, or XLSX lab results in long or wide form</div>
+    </div>
+  </div>
+</section>
+{% endblock %}
