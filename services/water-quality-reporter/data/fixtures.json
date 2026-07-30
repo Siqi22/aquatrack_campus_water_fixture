@@ -1,0 +1,386 @@
+[
+  {
+    "fixture_id": "ART_PF_008",
+    "building": "Art Building",
+    "floor": "Basement",
+    "room": "Rm 008",
+    "fixture_type": "porcelain fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "ART_PF_015",
+    "building": "Art Building",
+    "floor": "Basement",
+    "room": "Rm 015",
+    "fixture_type": "porcelain fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "ART_PF_025",
+    "building": "Art Building",
+    "floor": "Basement",
+    "room": "Rm 025",
+    "fixture_type": "porcelain fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "ART_PF_104",
+    "building": "Art Building",
+    "floor": "First Floor",
+    "room": "Rm 104",
+    "fixture_type": "porcelain fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "ART_PF_211",
+    "building": "Art Building",
+    "floor": "Second Floor",
+    "room": "Rm 211",
+    "fixture_type": "porcelain fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "ART_PF_230",
+    "building": "Art Building",
+    "floor": "Second Floor",
+    "room": "Rm 230",
+    "fixture_type": "porcelain fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "ART_PF_322",
+    "building": "Art Building",
+    "floor": "Third Floor",
+    "room": "Rm 322",
+    "fixture_type": "porcelain fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "COM_MF_132",
+    "building": "Communications Building",
+    "floor": "First Floor",
+    "room": "Rm 132",
+    "fixture_type": "metal fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "COM_MF_205",
+    "building": "Communications Building",
+    "floor": "Second Floor",
+    "room": "Rm 205",
+    "fixture_type": "metal fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "COM_MF_241",
+    "building": "Communications Building",
+    "floor": "Second Floor",
+    "room": "Rm 241",
+    "fixture_type": "metal fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "COM_MF_305",
+    "building": "Communications Building",
+    "floor": "Third Floor",
+    "room": "Rm 305",
+    "fixture_type": "metal fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "COM_MF_B002",
+    "building": "Communications Building",
+    "floor": "Basement",
+    "room": "Rm B002",
+    "fixture_type": "metal fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "GOU_MF_302",
+    "building": "Gould Hall",
+    "floor": "Third Floor",
+    "room": "Rm 302",
+    "fixture_type": "metal fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "GOU_MF_402",
+    "building": "Gould Hall",
+    "floor": "Fourth Floor",
+    "room": "Rm 402",
+    "fixture_type": "metal fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "GWN_MF_301",
+    "building": "Gowen Hall",
+    "floor": "Third Floor",
+    "room": "Rm 301",
+    "fixture_type": "metal fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "GWN_PF_029",
+    "building": "Gowen Hall",
+    "floor": "Basement",
+    "room": "Rm 029",
+    "fixture_type": "porcelain fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "GWN_PF_125",
+    "building": "Gowen Hall",
+    "floor": "First Floor",
+    "room": "Rm 125",
+    "fixture_type": "porcelain fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "GWN_PF_201",
+    "building": "Gowen Hall",
+    "floor": "Second Floor",
+    "room": "Rm 201",
+    "fixture_type": "porcelain fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "GWN_PF_M231",
+    "building": "Gowen Hall",
+    "floor": "Mezzanine",
+    "room": "Rm M231",
+    "fixture_type": "porcelain fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "HUT_MF_116",
+    "building": "Hutchinson Hall",
+    "floor": "First Floor",
+    "room": "Rm 116",
+    "fixture_type": "metal fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "HUT_MF_166",
+    "building": "Hutchinson Hall",
+    "floor": "First Floor",
+    "room": "Rm 166",
+    "fixture_type": "metal fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "HUT_MF_213",
+    "building": "Hutchinson Hall",
+    "floor": "Second Floor",
+    "room": "Rm 213",
+    "fixture_type": "metal fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "HUT_PF_129",
+    "building": "Hutchinson Hall",
+    "floor": "First Floor",
+    "room": "Rm 129",
+    "fixture_type": "porcelain fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "MUS_PF_017",
+    "building": "Music Building",
+    "floor": "Basement",
+    "room": "Rm 017",
+    "fixture_type": "porcelain fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "MUS_PF_046",
+    "building": "Music Building",
+    "floor": "Basement",
+    "room": "Rm 046",
+    "fixture_type": "porcelain fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "MUS_PF_212",
+    "building": "Music Building",
+    "floor": "Second Floor",
+    "room": "Rm 212",
+    "fixture_type": "porcelain fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "MUS_PF_319",
+    "building": "Music Building",
+    "floor": "Third Floor",
+    "room": "Rm 319",
+    "fixture_type": "porcelain fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "MUS_PF_337",
+    "building": "Music Building",
+    "floor": "Third Floor",
+    "room": "Rm 337",
+    "fixture_type": "porcelain fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "SIG1_BRS",
+    "building": "Sieg Building",
+    "floor": "Unknown",
+    "room": "(unknown)",
+    "fixture_type": "drinking water fixture",
+    "notes": ""
+  },
+  {
+    "fixture_id": "SIG1_PF",
+    "building": "Sieg Building",
+    "floor": "Unknown",
+    "room": "(unknown)",
+    "fixture_type": "drinking water fixture",
+    "notes": ""
+  },
+  {
+    "fixture_id": "SIG1_PF_200",
+    "building": "Sieg Building",
+    "floor": "Second Floor",
+    "room": "Rm 200",
+    "fixture_type": "porcelain fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "SIG2_BRS",
+    "building": "Sieg Building",
+    "floor": "Unknown",
+    "room": "(unknown)",
+    "fixture_type": "drinking water fixture",
+    "notes": ""
+  },
+  {
+    "fixture_id": "SIG2_PF",
+    "building": "Sieg Building",
+    "floor": "Unknown",
+    "room": "(unknown)",
+    "fixture_type": "drinking water fixture",
+    "notes": ""
+  },
+  {
+    "fixture_id": "SIG2_PF_200",
+    "building": "Sieg Building",
+    "floor": "Second Floor",
+    "room": "Rm 200",
+    "fixture_type": "porcelain fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "SIG3_BRS",
+    "building": "Sieg Building",
+    "floor": "Unknown",
+    "room": "(unknown)",
+    "fixture_type": "drinking water fixture",
+    "notes": ""
+  },
+  {
+    "fixture_id": "SIG3_PF",
+    "building": "Sieg Building",
+    "floor": "Unknown",
+    "room": "(unknown)",
+    "fixture_type": "drinking water fixture",
+    "notes": ""
+  },
+  {
+    "fixture_id": "SIG3_PF_200",
+    "building": "Sieg Building",
+    "floor": "Second Floor",
+    "room": "Rm 200",
+    "fixture_type": "porcelain fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "SIG4_BRS",
+    "building": "Sieg Building",
+    "floor": "Unknown",
+    "room": "(unknown)",
+    "fixture_type": "drinking water fixture",
+    "notes": ""
+  },
+  {
+    "fixture_id": "SIG4_PF",
+    "building": "Sieg Building",
+    "floor": "Unknown",
+    "room": "(unknown)",
+    "fixture_type": "drinking water fixture",
+    "notes": ""
+  },
+  {
+    "fixture_id": "SIG4_PF_200",
+    "building": "Sieg Building",
+    "floor": "Second Floor",
+    "room": "Rm 200",
+    "fixture_type": "porcelain fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "SIG_BRS_2",
+    "building": "Sieg Building",
+    "floor": "Basement",
+    "room": "Rm 2",
+    "fixture_type": "bottle refill station",
+    "notes": ""
+  },
+  {
+    "fixture_id": "THO_MF_116",
+    "building": "Thomson Hall",
+    "floor": "First Floor",
+    "room": "Rm 116",
+    "fixture_type": "metal fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "THO_MF_415",
+    "building": "Thomson Hall",
+    "floor": "Fourth Floor",
+    "room": "Rm 415",
+    "fixture_type": "metal fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "THO_PF_215",
+    "building": "Thomson Hall",
+    "floor": "Second Floor",
+    "room": "Rm 215",
+    "fixture_type": "porcelain fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "THO_PF_231",
+    "building": "Thomson Hall",
+    "floor": "Second Floor",
+    "room": "Rm 231",
+    "fixture_type": "porcelain fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "THO_PF_316",
+    "building": "Thomson Hall",
+    "floor": "Third Floor",
+    "room": "Rm 316",
+    "fixture_type": "porcelain fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "THO_PF_331",
+    "building": "Thomson Hall",
+    "floor": "Third Floor",
+    "room": "Rm 331",
+    "fixture_type": "porcelain fountain",
+    "notes": ""
+  },
+  {
+    "fixture_id": "THO_PF_431",
+    "building": "Thomson Hall",
+    "floor": "Fourth Floor",
+    "room": "Rm 431",
+    "fixture_type": "porcelain fountain",
+    "notes": ""
+  }
+]

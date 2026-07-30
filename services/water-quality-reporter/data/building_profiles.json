@@ -1,0 +1,150 @@
+{
+  "_comment": "Schema: each entry holds ONLY data stable across reports for a building. Per-report narrative lives in the compose form, NOT here. JSON keys match UW codes used in lab sample IDs (e.g. ART_PF_025 -> ART). When the lab uses non-standard codes (e.g. GOU vs the official GLD), match the lab's convention so sample IDs auto-route correctly. Add/remove entries as buildings come online.",
+
+  "ART": {
+    "code": "ART",
+    "building_name": "Art Building",
+    "audience": "Art Building Occupants",
+    "ehs_contact_name": "Abebe Aberra",
+    "ehs_contact_title": "Environmental Public Health Manager",
+    "ehs_contact_phone": "206-616-1623",
+    "ehs_contact_email": "aberra@uw.edu",
+    "facilities_contact_name": "Dennis Garberg",
+    "facilities_contact_title": "UW Facilities Associate Director for Maintenance and Construction",
+    "facilities_contact_phone": "206-221-6501",
+    "facilities_contact_email": "dgarberg@uw.edu"
+  },
+
+  "SIG": {
+    "code": "SIG",
+    "building_name": "Sieg Building",
+    "audience": "Sieg Building Occupants"
+  },
+
+  "HUT": {
+    "code": "HUT",
+    "building_name": "Hutchinson Hall",
+    "audience": "Hutchinson Hall Occupants"
+  },
+
+  "BAG": {
+    "code": "BAG",
+    "building_name": "Bagley Hall",
+    "audience": "Bagley Hall Occupants"
+  },
+
+  "GWN": {
+    "code": "GWN",
+    "building_name": "Gowen Hall",
+    "audience": "Gowen Hall Occupants"
+  },
+
+  "THO": {
+    "code": "THO",
+    "building_name": "Thomson Hall",
+    "audience": "Thomson Hall Occupants"
+  },
+
+  "MUS": {
+    "code": "MUS",
+    "building_name": "Music Building",
+    "audience": "Music Building Occupants"
+  },
+
+  "GOU": {
+    "code": "GOU",
+    "building_name": "Gould Hall",
+    "audience": "Gould Hall Occupants",
+    "_note": "Lab uses 'GOU' though the official UW Time Schedule code is 'GLD'. Match the lab convention so sample IDs auto-route."
+  },
+
+  "COM": {
+    "code": "COM",
+    "building_name": "Communications Building",
+    "audience": "Communications Building Occupants"
+  },
+
+  "MEB": {
+    "code": "MEB",
+    "building_name": "Mechanical Engineering Building",
+    "audience": "Mechanical Engineering Building Occupants"
+  },
+
+  "MGH": {
+    "code": "MGH",
+    "building_name": "Mary Gates Hall",
+    "audience": "Mary Gates Hall Occupants"
+  },
+
+  "MOR": {
+    "code": "MOR",
+    "building_name": "More Hall",
+    "audience": "More Hall Occupants"
+  },
+
+  "MUE": {
+    "code": "MUE",
+    "building_name": "Mueller Hall",
+    "audience": "Mueller Hall Occupants"
+  },
+
+  "ROB": {
+    "code": "ROB",
+    "building_name": "Roberts Hall",
+    "audience": "Roberts Hall Occupants"
+  },
+
+  "DEN": {
+    "code": "DEN",
+    "building_name": "Denny Hall",
+    "audience": "Denny Hall Occupants"
+  },
+
+  "MLR": {
+    "code": "MLR",
+    "building_name": "Miller Hall",
+    "audience": "Miller Hall Occupants"
+  },
+
+  "RAI": {
+    "code": "RAI",
+    "building_name": "Raitt Hall",
+    "audience": "Raitt Hall Occupants"
+  },
+
+  "SAV": {
+    "code": "SAV",
+    "building_name": "Savery Hall",
+    "audience": "Savery Hall Occupants"
+  },
+
+  "SMI": {
+    "code": "SMI",
+    "building_name": "Smith Hall",
+    "audience": "Smith Hall Occupants"
+  },
+
+  "SUZ": {
+    "code": "SUZ",
+    "building_name": "Suzzallo Library",
+    "audience": "Suzzallo Library Occupants"
+  },
+
+  "ALB": {
+    "code": "ALB",
+    "building_name": "Allen Library",
+    "audience": "Allen Library Occupants"
+  },
+
+  "OUG": {
+    "code": "OUG",
+    "building_name": "Odegaard Undergraduate Library",
+    "audience": "Odegaard Undergraduate Library Occupants"
+  },
+
+  "MNY": {
+    "code": "MNY",
+    "building_name": "Meany Hall",
+    "audience": "Meany Hall Occupants"
+  }
+}

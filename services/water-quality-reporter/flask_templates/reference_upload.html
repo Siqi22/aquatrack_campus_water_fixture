@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Reference Samples</title>
+<style>
+  body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+         max-width: 720px; margin: 40px auto; padding: 0 20px; color: #222; }
+  h1 { color: #4b2e83; border-bottom: 2px solid #4b2e83; padding-bottom: 8px; }
+  .upload {
+    border: 2px dashed #bbb; border-radius: 10px;
+    padding: 30px; margin: 24px 0; background: #fafafa;
+  }
+  label { display: block; font-weight: 600; margin-top: 14px; }
+  button {
+    background: #4b2e83; color: white; border: none;
+    padding: 10px 18px; border-radius: 6px; font-size: 15px;
+    cursor: pointer; margin-top: 14px;
+  }
+  button:hover { background: #3a2466; }
+  .flash { padding: 12px; border-radius: 6px; margin: 12px 0; }
+  .flash.error { background: #fdecea; color: #b00020; border: 1px solid #f5c2c7; }
+  .setup { background: #e7f3fe; border: 1px solid #b6dafb;
+           padding: 12px 14px; border-radius: 6px; font-size: 14px; }
+  .info { background: #f6f6f6; padding: 14px; border-radius: 6px; font-size: 14px; }
+  .required { color: #b00020; font-weight: 700; }
+  a { color: #4b2e83; text-decoration: none; }
+</style>
+</head>
+<body>
+<h1>Upload Reference Samples</h1>
+<p>These files help the draft match the local report style and lab-output format before you upload the current results.</p>
+
+<div class="setup">
+  <strong>Report setup:</strong>
+  School/district report for <strong>{{ school_name }}</strong>{% if organization %}, {{ organization }}{% endif %}.
+  <a href="{{ url_for('index') }}">Change</a>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in messages %}
+    <div class="flash {{ cat }}">{{ msg }}</div>
+  {% endfor %}
+{% endwith %}
+
+<form class="upload" method="POST" action="{{ url_for('reference_upload') }}"
+      enctype="multipart/form-data">
+  <input type="hidden" name="report_style" value="{{ report_style }}">
+  <input type="hidden" name="organization" value="{{ organization }}">
+  <input type="hidden" name="school_name" value="{{ school_name }}">
+  <input type="hidden" name="campus_id" value="{{ campus_id }}">
+  {% for fixture_id in fixture_ids %}
+  <input type="hidden" name="fixture_ids" value="{{ fixture_id }}">
+  {% endfor %}
+
+  <label><strong>Sample of your report style</strong> <span class="required">(required)</span></label>
+  <input type="file" name="style_report_file" accept=".pdf,.doc,.docx" required>
+
+  <label><strong>Sample lab output/reference format</strong> <span class="required">(required)</span></label>
+  <input type="file" name="reference_lab_file" accept=".pdf,.csv,.xls,.xlsx" required>
+
+  <br>
+  <button type="submit">Continue to current upload</button>
+</form>
+
+<div class="info">
+  After this step, upload the current lab/results file and optional COC/sampling form.
+</div>
+</body>
+</html>

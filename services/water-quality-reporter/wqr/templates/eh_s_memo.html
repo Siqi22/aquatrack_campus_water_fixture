@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Water Sampling Test Results — {{ ctx.building }}</title>
+<style>
+  @page { size: Letter; margin: 0.75in; }
+  body {
+    font-family: "Helvetica", "Arial", sans-serif;
+    font-size: 11pt;
+    line-height: 1.45;
+    color: #222;
+  }
+  .header {
+    border-bottom: 2px solid #4b2e83;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+  }
+  .header .org {
+    color: #4b2e83;
+    font-size: 16pt;
+    font-weight: bold;
+    letter-spacing: 1px;
+  }
+  .header .sub {
+    color: #4b2e83;
+    font-size: 10pt;
+    letter-spacing: 2px;
+  }
+  .meta { margin: 18px 0 24px 0; }
+  .meta div { margin: 2px 0; }
+  h2 {
+    color: #4b2e83;
+    font-size: 13pt;
+    margin-top: 22px;
+    margin-bottom: 8px;
+  }
+  p { margin: 8px 0; }
+  table.results {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 12px 0;
+    font-size: 10pt;
+  }
+  table.results th, table.results td {
+    border: 1px solid #888;
+    padding: 6px 8px;
+    text-align: center;
+    vertical-align: middle;
+  }
+  table.results th {
+    background: #ece6f5;
+    color: #4b2e83;
+    font-weight: bold;
+  }
+  table.results td.location {
+    text-align: left;
+  }
+  td.warn { background: #fde7d3; }       /* aesthetic exceedance */
+  td.violation { background: #f8c7c7; }  /* health-based exceedance */
+  .footnote { font-size: 9pt; color: #555; margin-top: 6px; }
+  ol { margin: 6px 0 6px 22px; }
+  ul { margin: 6px 0 6px 22px; }
+  .contacts { margin-top: 8px; }
+  .contacts li { margin: 4px 0; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="org">ENVIRONMENTAL HEALTH &amp; SAFETY</div>
+  <div class="sub">UNIVERSITY of WASHINGTON</div>
+</div>
+
+<div class="meta">
+  <div><strong>Date:</strong> {{ ctx.report_date.strftime("%B %d, %Y") }}</div>
+  <div><strong>To:</strong> {{ ctx.building }} Occupants</div>
+  <div><strong>From:</strong> Environmental Health &amp; Safety Department</div>
+  <div><strong>Subject:</strong> Water Sampling Test Results</div>
+</div>
+
+<h2>Introduction</h2>
+{{ ctx.introduction_md | md }}
+
+<h2>Testing Information</h2>
+<p>The results in <strong>Table 1</strong> below are from samples collected on
+{{ ctx.sampling_date_range }}. Highlighted samples in Table 1 show fixtures that
+exceed the action levels described in this memo.</p>
+
+<p>{{ thresholds_paragraph | safe }}</p>
+
+<p><strong>Table 1: Drinking Water Fixture Sampling Results — Metal Concentrations</strong></p>
+
+<table class="results">
+  <thead>
+    <tr>
+      <th>Sample #</th>
+      <th>Fixture &amp; Location<br>(floor, room)</th>
+      {% for analyte in ctx.analytes_shown %}
+        <th>{{ analyte }}<br>
+          {% if analyte == "Lead" %}(ppb){% else %}(ppm){% endif %}
+        </th>
+      {% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+  {% for row in rows %}
+    <tr>
+      <td>{{ loop.index }}</td>
+      <td class="location">
+        {{ row.fixture.fixture_type }}<br>
+        ({{ row.fixture.floor }}, {{ row.fixture.room }})
+      </td>
+      {% for analyte in ctx.analytes_shown %}
+        {% set cell = row.cells[analyte] %}
+        <td class="{{ cell.severity }}">{{ cell.display }}</td>
+      {% endfor %}
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<p class="footnote">
+  Values reported as "&lt;X" indicate concentrations below the laboratory's
+  detection limit of X. Highlighted cells exceed the action levels listed above.
+</p>
+
+{% if violation_prose %}
+<p>{{ violation_prose | safe }}</p>
+{% endif %}
+
+<h2>Actions Taken</h2>
+{{ ctx.actions_taken_md | md }}
+
+<h2>Lead Sources and Health Information</h2>
+<p>People can be exposed to lead from a variety of environmental sources.
+Each exposure contributes to the amount of lead in the body. Common exposure
+sources include dust from old lead paint, contaminated soil, certain imported
+foods and cookware, and drinking water. Lead can enter drinking water at the
+point-of-use due to lead-containing fixture components or plumbing corroding.</p>
+
+<p>Children six years old and younger are the most susceptible to the effects
+of lead. Adults with elevated exposure can have increased risks of heart
+disease, high blood pressure, kidney damage, or nervous system problems.</p>
+
+<h2>Questions</h2>
+<p>If you have any questions about the water testing results or this
+communication, contact:</p>
+<ul class="contacts">
+{% for c in ctx.contacts %}
+  <li>{{ c.name }}, {{ c.title }} —
+      {% if c.phone %}{{ c.phone }}{% endif %}
+      {% if c.email %}, <a href="mailto:{{ c.email }}">{{ c.email }}</a>{% endif %}
+  </li>
+{% endfor %}
+</ul>
+
+{% if ctx.notes_md %}
+  <h2>Notes</h2>
+  {{ ctx.notes_md | md }}
+{% endif %}
+
+</body>
+</html>

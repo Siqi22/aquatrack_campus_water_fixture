@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Water Quality Reporter</title>
+<style>
+  body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+         max-width: 760px; margin: 40px auto; padding: 0 20px; color: #222; }
+  h1 { color: #4b2e83; border-bottom: 2px solid #4b2e83; padding-bottom: 8px; }
+  fieldset { border: 1px solid #ddd; border-radius: 8px; padding: 18px;
+             margin: 18px 0; background: #fff; }
+  legend { font-weight: bold; color: #4b2e83; padding: 0 8px; }
+  label { display: block; font-weight: 600; margin-top: 12px; font-size: 14px; }
+  input[type=text] {
+    width: 100%; padding: 9px; border: 1px solid #bbb; border-radius: 4px;
+    font-size: 14px; font-family: inherit; box-sizing: border-box;
+  }
+  select { width: 100%; padding: 9px; border: 1px solid #bbb; border-radius: 4px;
+           font-size: 14px; background: white; }
+  .fixture-tools { display:flex; justify-content:space-between; align-items:center;
+                   gap:12px; margin-top:16px; }
+  .fixture-list { max-height:320px; overflow:auto; border:1px solid #ddd;
+                  border-radius:8px; margin-top:8px; }
+  .fixture-row { display:flex; gap:10px; padding:10px 12px; margin:0;
+                 border-bottom:1px solid #eee; cursor:pointer; font-weight:normal; }
+  .fixture-row:last-child { border-bottom:0; }
+  .fixture-row small { color:#667585; display:block; margin-top:2px; }
+  .back { display:inline-block; color:#087c92; text-decoration:none; margin-bottom:12px; }
+  .choice {
+    display: block; border: 1px solid #ddd; border-radius: 6px;
+    padding: 12px; margin: 10px 0; font-weight: normal; background: #fafafa;
+  }
+  .choice input { margin-right: 8px; }
+  .choice strong { color: #4b2e83; }
+  .hint { color: #666; font-size: 13px; margin: 5px 0 0; }
+  .flash { padding: 12px; border-radius: 6px; margin: 12px 0; }
+  .flash.error { background: #fdecea; color: #b00020; border: 1px solid #f5c2c7; }
+  button {
+    background: #4b2e83; color: white; border: none;
+    padding: 11px 20px; border-radius: 6px; font-size: 15px;
+    cursor: pointer; margin-top: 8px;
+  }
+  button:hover { background: #3a2466; }
+</style>
+</head>
+<body>
+<a class="back" href="{{ aquatrack_url }}">← Back to AquaTrack</a>
+<h1>Water Quality Reporter</h1>
+<p>Start by choosing the report type. Then upload the lab files on the next page.</p>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in messages %}
+    <div class="flash {{ cat }}">{{ msg }}</div>
+  {% endfor %}
+{% endwith %}
+
+<form method="POST" action="{{ url_for('upload_options') }}">
+  <fieldset>
+    <legend>Report setup</legend>
+    <label class="choice">
+      <input type="radio" name="report_style" value="wa_school" checked>
+      <strong>School or district report</strong>
+      <p class="hint">Use a neutral Washington school format. Enter the school or building name below.</p>
+    </label>
+
+    <label for="campus_id">School</label>
+    <select name="campus_id" id="campus_id">
+      <option value="">Select a school</option>
+      {% for school in schools %}
+      <option value="{{ school.id }}">{{ school.school or school.name }}</option>
+      {% endfor %}
+    </select>
+    <input type="hidden" name="school_name" id="school_name">
+    <input type="hidden" name="organization" id="organization">
+
+    <div id="fixture_section" hidden>
+      <div class="fixture-tools">
+        <div><strong>Select fixtures</strong><p class="hint" id="fixture_count"></p></div>
+        <label style="margin:0;font-weight:normal"><input type="checkbox" id="select_all" checked> Select All</label>
+      </div>
+      <div class="fixture-list" id="fixture_list"></div>
+    </div>
+
+    <label class="choice">
+      <input type="radio" name="report_style" value="uw">
+      <strong>University of Washington report</strong>
+      <p class="hint">Keep the existing UW report style, header, contacts, and wording.</p>
+    </label>
+  </fieldset>
+
+  <button type="submit">Continue to upload</button>
+</form>
+
+<script>
+  const styleInputs = Array.from(document.querySelectorAll('input[name="report_style"]'));
+  const schoolSelect = document.getElementById('campus_id');
+  const schoolName = document.getElementById('school_name');
+  const organization = document.getElementById('organization');
+  const fixtureSection = document.getElementById('fixture_section');
+  const fixtureList = document.getElementById('fixture_list');
+  const fixtureCount = document.getElementById('fixture_count');
+  const selectAll = document.getElementById('select_all');
+
+  function checkedFixtures() {
+    return Array.from(document.querySelectorAll('input[name="fixture_ids"]:checked'));
+  }
+
+  function updateFixtureCount() {
+    const total = document.querySelectorAll('input[name="fixture_ids"]').length;
+    const selected = checkedFixtures().length;
+    fixtureCount.textContent = `${selected} of ${total} fixtures selected`;
+    selectAll.checked = total > 0 && selected === total;
+  }
+
+  async function loadFixtures() {
+    const campusId = schoolSelect.value;
+    fixtureList.innerHTML = '';
+    fixtureSection.hidden = !campusId;
+    if (!campusId) return;
+    fixtureCount.textContent = 'Loading fixtures…';
+    const response = await fetch(`{{ url_for('index') }}api/schools/${campusId}/fixtures`);
+    if (!response.ok) {
+      fixtureCount.textContent = 'Fixtures could not be loaded.';
+      return;
+    }
+    const data = await response.json();
+    schoolName.value = data.school.school || data.school.name || '';
+    organization.value = data.school.school_district || '';
+    data.fixtures.forEach(fixture => {
+      const row = document.createElement('label');
+      row.className = 'fixture-row';
+      const result = fixture.result_ppb == null ? 'No lead result' : `${Number(fixture.result_ppb).toFixed(3)} ppb`;
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.name = 'fixture_ids';
+      checkbox.value = fixture.id;
+      checkbox.checked = true;
+      checkbox.addEventListener('change', updateFixtureCount);
+
+      const details = document.createElement('span');
+      const location = document.createElement('strong');
+      location.textContent = `${fixture.building} · Floor ${fixture.floor} · Room ${fixture.room || '—'}`;
+      const summary = document.createElement('small');
+      summary.textContent = `${fixture.category} · ${result}`;
+      details.append(location, summary);
+      row.append(checkbox, details);
+      fixtureList.appendChild(row);
+    });
+    updateFixtureCount();
+  }
+
+  function updateFields() {
+    const selected = styleInputs.find(input => input.checked);
+    const isUw = selected && selected.value === 'uw';
+    schoolSelect.disabled = isUw;
+    schoolSelect.required = !isUw;
+    fixtureSection.hidden = isUw || !schoolSelect.value;
+    if (isUw) {
+      schoolName.value = '';
+      organization.value = '';
+    }
+  }
+
+  styleInputs.forEach(input => input.addEventListener('change', updateFields));
+  schoolSelect.addEventListener('change', loadFixtures);
+  selectAll.addEventListener('change', () => {
+    document.querySelectorAll('input[name="fixture_ids"]').forEach(input => input.checked = selectAll.checked);
+    updateFixtureCount();
+  });
+  document.querySelector('form').addEventListener('submit', event => {
+    const selected = styleInputs.find(input => input.checked);
+    if (selected?.value === 'wa_school' && checkedFixtures().length === 0) {
+      event.preventDefault();
+      alert('Select at least one fixture.');
+    }
+  });
+  updateFields();
+</script>
+</body>
+</html>
