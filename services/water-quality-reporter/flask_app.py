@@ -2301,15 +2301,14 @@ def _handle_compose_post(upload_id: str, samples):
 
     contacts = []
     for i in (1, 2):
-        name = request.form.get(f"contact{i}_name", "").strip()
-        if not name:
-            continue
-        contacts.append({
-            "name": name,
+        contact = {
+            "name": request.form.get(f"contact{i}_name", "").strip(),
             "title": request.form.get(f"contact{i}_title", "").strip(),
             "phone": request.form.get(f"contact{i}_phone", "").strip(),
             "email": request.form.get(f"contact{i}_email", "").strip(),
-        })
+        }
+        if any(contact.values()):
+            contacts.append(contact)
 
     header_entry = _original_file_for(meta, "header_template_file")
     header_template_path = Path(header_entry["path"]) if header_entry else None

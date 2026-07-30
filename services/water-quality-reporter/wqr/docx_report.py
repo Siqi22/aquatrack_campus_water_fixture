@@ -420,6 +420,51 @@ def _questions_prose(ehs: dict, fac: dict) -> str:
     )
 
 
+def _add_contacts_section(doc: Document, contacts: list[dict],
+                          *, use_standard_prose: bool = False):
+    """Append user-provided contact details to the downloaded report.
+
+    Reference-style reports still need the verified contact fields collected
+    on the compose screen, even though their other standard narrative wrappers
+    are suppressed.
+    """
+    populated = [
+        contact for contact in contacts
+        if any(str(contact.get(field, "")).strip()
+               for field in ("name", "title", "phone", "email"))
+    ]
+    if not populated:
+        return
+
+    _add_heading(doc, "Questions")
+    if (
+        use_standard_prose
+        and len(populated) == 2
+        and all(contact.get("name") for contact in populated)
+    ):
+        doc.add_paragraph(_questions_prose(populated[0], populated[1]))
+        return
+
+    doc.add_paragraph(
+        "If you have any questions about the water testing results or this "
+        "communication, contact:"
+    )
+    for contact in populated:
+        bits = [contact.get("name", ""), contact.get("title", "")]
+        contact_line = " — ".join([bit for bit in bits if bit])
+        if contact.get("phone"):
+            contact_line += (
+                f" — {contact['phone']}" if contact_line
+                else contact["phone"]
+            )
+        if contact.get("email"):
+            contact_line += (
+                f", {contact['email']}" if contact_line
+                else contact["email"]
+            )
+        doc.add_paragraph(contact_line, style="List Bullet")
+
+
 def _add_md_paragraphs(doc: Document, md_text: str):
     """Tiny markdown subset: paragraphs, bullets, **bold**, and *italic*."""
     if not md_text:
@@ -1068,27 +1113,13 @@ def render_docx(ctx: ReportContext, registry: FixtureRegistry,
         "damage, or nervous system problems."
     )
 
-    # ---- Questions / contacts ----
-    # When the standard EH&S + Facilities pair is provided, render as a
-    # single prose paragraph matching the recurring UW memo wording.
-    # Otherwise fall back to a bulleted list (for one contact, three+, etc.).
-        _add_heading(doc, "Questions")
-        if len(ctx.contacts) == 2 and all(c.get("name") for c in ctx.contacts):
-            c1, c2 = ctx.contacts
-            doc.add_paragraph(_questions_prose(c1, c2))
-        else:
-            doc.add_paragraph(
-            "If you have any questions about the water testing results or this "
-            "communication, contact:"
-            )
-            for c in ctx.contacts:
-                bits = [c.get("name", ""), c.get("title", "")]
-                contact_line = " — ".join([b for b in bits if b])
-                if c.get("phone"):
-                    contact_line += f" — {c['phone']}"
-                if c.get("email"):
-                    contact_line += f", {c['email']}"
-                doc.add_paragraph(contact_line, style="List Bullet")
+    # Always include user-provided contact details. Reference-style reports
+    # suppress standard narrative sections but must not drop form data.
+    _add_contacts_section(
+        doc,
+        ctx.contacts,
+        use_standard_prose=not getattr(ctx, "reference_style_applied", False),
+    )
 
     if ctx.notes_md:
         if not getattr(ctx, "reference_style_applied", False):

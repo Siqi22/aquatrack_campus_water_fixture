@@ -233,6 +233,10 @@ class AquaTrackWorkflowTests(unittest.TestCase):
                     "introduction": "Example introduction.",
                     "actions_taken": "Example actions.",
                     "notes": "",
+                    "contact1_name": "Jamie Rivera",
+                    "contact1_title": "District Communications",
+                    "contact1_phone": "555-0100",
+                    "contact1_email": "jamie@example.org",
                 },
             )
             self.assertEqual(generated.status_code, 200)
@@ -258,6 +262,13 @@ class AquaTrackWorkflowTests(unittest.TestCase):
             self.assertEqual(results_table.rows[1].cells[1].text, "Learning Center")
             self.assertIn("Hallway A", results_table.rows[1].cells[2].text)
             self.assertEqual(results_table.rows[1].cells[3].text, "6")
+            report_paragraphs = [paragraph.text for paragraph in report.paragraphs]
+            self.assertIn("Questions", report_paragraphs)
+            self.assertIn(
+                "Jamie Rivera — District Communications — 555-0100, "
+                "jamie@example.org",
+                report_paragraphs,
+            )
             self.assertEqual(len(fake.generated_reports), 1)
 
     def test_pdf_letterhead_is_accepted_and_embedded_in_word_header(self):
