@@ -993,37 +993,13 @@ def render_docx(ctx: ReportContext, registry: FixtureRegistry,
     _add_md_paragraphs(doc, ctx.introduction_md)
 
     # ---- Testing information ----
-    # Layout per UW EH&S memo style:
-    #   1. Intro paragraph (sampling context + highlight legend)
-    #   2. Lead regulatory context paragraph (15/10/5 ppb tiers)
-    #   3. Table 1
-    #   4. Detection-limit footnote
-    #   5. Findings paragraph (which metals exceeded, with counts/locations)
+    # Communication reports summarize verified results narratively. The
+    # fixture-level data remains in AquaTrack and is intentionally not repeated
+    # as a report table.
     if not getattr(ctx, "reference_style_applied", False):
         _add_heading(doc, "Testing Information")
         doc.add_paragraph(_build_testing_info_intro(ctx))
         doc.add_paragraph(_LEAD_REGULATORY_CONTEXT)
-
-    # ---- Table 1 ----
-    p = doc.add_paragraph()
-    p.paragraph_format.keep_with_next = True
-    p.paragraph_format.space_before = Pt(4)
-    p.paragraph_format.space_after = Pt(3)
-    r = p.add_run("Table 1: Drinking Water Fixture Sampling Results — Metal Concentrations")
-    r.bold = True
-
-    rows = _build_rows(ctx.samples, registry, ctx.action_levels,
-                       ctx.analytes_shown)
-    _render_results_table(doc, rows, ctx.analytes_shown)
-
-    # Footnote
-    p = doc.add_paragraph()
-    r = p.add_run(
-        'Values reported as "<X" indicate concentrations below the laboratory\'s '
-        "detection limit of X. Highlighted cells exceed the default review levels."
-    )
-    r.font.size = Pt(9)
-    r.italic = True
 
     # Findings summary — generated from the actual measurements
     if not getattr(ctx, "reference_style_applied", False):

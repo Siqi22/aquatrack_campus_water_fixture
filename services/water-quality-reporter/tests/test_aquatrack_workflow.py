@@ -189,8 +189,8 @@ class AquaTrackWorkflowTests(unittest.TestCase):
                 fixture_selection.headers["Location"],
                 data={
                     "style_report_file": (
-                        BytesIO(docx_bytes()),
-                        "style.docx",
+                        BytesIO(pdf_header_bytes()),
+                        "style.pdf",
                     ),
                     "header_template_file": (
                         BytesIO(docx_bytes("Example District Header")),
@@ -205,8 +205,23 @@ class AquaTrackWorkflowTests(unittest.TestCase):
             review = client.get(style.headers["Location"])
             self.assertEqual(review.status_code, 200)
             self.assertIn(b"Review and Edit", review.data)
-            self.assertIn(b"6", review.data)
+            self.assertIn(b"Sample report style", review.data)
+            self.assertIn(b"source-page-image", review.data)
+            self.assertNotIn(b"source-table-wrap", review.data)
+            self.assertNotIn(b"page/3.png", review.data)
+            self.assertNotIn(b"Header template", review.data)
+            self.assertNotIn(b"AquaTrack lead data", review.data)
             self.assertNotIn(b"University of Washington", review.data)
+
+            style_preview = client.get(
+                f"/original/{upload_id}/0/page/1.png"
+            )
+            self.assertEqual(style_preview.status_code, 200)
+            self.assertEqual(style_preview.mimetype, "image/png")
+            self.assertNotIn(
+                "attachment",
+                style_preview.headers.get("Content-Disposition", "").lower(),
+            )
 
             generated = client.post(
                 style.headers["Location"],
@@ -230,6 +245,11 @@ class AquaTrackWorkflowTests(unittest.TestCase):
                 "Example District Header",
                 [p.text for p in report.sections[0].header.paragraphs],
             )
+            self.assertNotIn(
+                "Table 1",
+                "\n".join(paragraph.text for paragraph in report.paragraphs),
+            )
+            self.assertEqual(len(report.tables), 0)
             self.assertEqual(len(fake.generated_reports), 1)
 
     def test_pdf_letterhead_is_accepted_and_embedded_in_word_header(self):

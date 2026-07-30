@@ -44,8 +44,8 @@
 {% if preview_files %}
 <section class="card-section source-preview-panel">
   <div class="panel-header">
-    <h2>Uploaded file previews</h2>
-    <p>Review the example communication and Word header template.</p>
+    <h2>Sample report style</h2>
+    <p>Review the example communication used to guide this draft.</p>
   </div>
   <div class="qc-body">
     <div class="source-tabs" role="tablist" aria-label="Uploaded file previews">
@@ -66,64 +66,25 @@
         <p><small>{{ file.filename }}</small></p>
         {% if file.preview.error %}<div class="warn-banner">{{ file.preview.error }}</div>{% endif %}
         {% if file.preview.is_pdf %}
-          <iframe class="pdf-frame"
-                  src="{{ url_for('original_file', upload_id=upload_id, file_idx=file.file_idx) }}{% if file.preview.relevant_pages %}#page={{ file.preview.relevant_pages[0] }}{% endif %}"
-                  title="{{ file.filename }}"></iframe>
+          <div class="source-page-stack">
+            {% set preview_pages = file.preview.relevant_pages[:2] if file.preview.relevant_pages else [1] %}
+            {% for page_number in preview_pages %}
+              <img
+                class="source-page-image"
+                src="{{ url_for('original_pdf_page', upload_id=upload_id, file_idx=file.file_idx, page_number=page_number) }}"
+                alt="{{ file.filename }} page {{ page_number }}"
+                loading="lazy"
+              >
+            {% endfor %}
+          </div>
         {% endif %}
-        {% if file.preview.tables %}
-          {% for table in file.preview.tables %}
-            <p><small><strong>{{ table.title }}</strong></small></p>
-            <div class="source-table-wrap">
-              <table class="source-table">
-                <thead><tr>{% for header in table.headers %}<th>{{ header }}</th>{% endfor %}</tr></thead>
-                <tbody>
-                  {% for row in table.rows %}
-                    <tr>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-            </div>
-          {% endfor %}
-        {% endif %}
-        {% if file.preview.text %}<pre class="source-text">{{ file.preview.text }}</pre>{% endif %}
+        {% if file.preview.text and not file.preview.is_pdf %}<pre class="source-text">{{ file.preview.text }}</pre>{% endif %}
       </div>
       {% endfor %}
     </div>
   </div>
 </section>
 {% endif %}
-
-<div class="section-heading">
-  <h2>AquaTrack lead data · {{ samples|length }} fixtures</h2>
-  <p>Review and edit the selected Lead results and fixture details.</p>
-</div>
-<div class="preview-wrap">
-<table class="preview">
-  <tr>
-    <th>Sample ID</th>
-    <th>Detected Building</th>
-    <th>Sample Volume</th>
-    <th>Fixture / Location</th>
-    {% for analyte in preview_analytes %}
-      <th>{{ analyte }}</th>
-    {% endfor %}
-  </tr>
-  {% for r in preview_rows %}
-  <tr>
-    <td><input class="sample-id" type="text" name="sample_{{ r.idx }}_id" value="{{ r.sample_id }}"></td>
-    <td>{{ r.building }}</td>
-    <td><input type="text" name="sample_{{ r.idx }}_volume" value="{{ r.sample_volume }}"></td>
-    <td><input class="fixture-label" type="text" name="sample_{{ r.idx }}_fixture_label" value="{{ r.fixture_location }}"></td>
-    {% for analyte in preview_analytes %}
-      {% set cell = r.cells[analyte] %}
-      <td class="metal {{ cell.severity }}{% if cell.display in ['not detected', 'not reported'] %} not-reported{% endif %}">
-        <input type="text" name="{{ cell.input_name }}" value="{{ cell.display }}">
-      </td>
-    {% endfor %}
-  </tr>
-  {% endfor %}
-</table>
-</div>
 
 <fieldset class="card-section">
 <legend>Report parameters</legend>
@@ -151,7 +112,6 @@
     <input type="text" name="school_name" id="school_name" value="{{ report_school_name }}">
   </div>
 </div>
-<p><small>The Review and exported DOCX show Lead results only.</small></p>
 </div>
 </fieldset>
 

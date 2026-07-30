@@ -1806,6 +1806,50 @@ def original_file(upload_id, file_idx: int):
     return send_file(path, as_attachment=False, download_name=entry["filename"])
 
 
+@app.get("/original/<upload_id>/<int:file_idx>/page/<int:page_number>.png")
+def original_pdf_page(upload_id, file_idx: int, page_number: int):
+    """Render a PDF page as PNG so Review never relies on browser PDF plugins."""
+    data = _load_session_data(upload_id)
+    if data is None:
+        abort(404)
+    files = data.get("meta", {}).get("original_files", [])
+    if file_idx < 0 or file_idx >= len(files):
+        abort(404)
+    entry = files[file_idx]
+    path = Path(entry["path"])
+    if path.suffix.lower() != ".pdf" or not path.exists():
+        abort(404)
+
+    import pypdfium2 as pdfium
+
+    document = pdfium.PdfDocument(str(path))
+    try:
+        if page_number < 1 or page_number > len(document):
+            abort(404)
+        page = document[page_number - 1]
+        try:
+            bitmap = page.render(scale=1.8)
+            try:
+                image = bitmap.to_pil().convert("RGB").copy()
+            finally:
+                bitmap.close()
+        finally:
+            page.close()
+    finally:
+        document.close()
+
+    output = BytesIO()
+    image.save(output, format="PNG", optimize=True)
+    output.seek(0)
+    return send_file(
+        output,
+        mimetype="image/png",
+        as_attachment=False,
+        download_name=f"{path.stem}-page-{page_number}.png",
+        max_age=300,
+    )
+
+
 def _compose_draft_from_form() -> dict:
     contacts = []
     for i in (1, 2):
@@ -1854,7 +1898,6 @@ def compose(upload_id):
     preview_field_order = {
         "school_testing_result_file": 0,
         "style_report_file": 1,
-        "header_template_file": 2,
     }
     preview_files = sorted(
         (
@@ -1921,8 +1964,6 @@ def compose(upload_id):
     ] or [entry["name"] for entry in buildings]
     suggested = selected_buildings[0]
 
-    preview_rows = _preview_rows(samples)
-
     # Decide which Actions Taken template to prefill. We use the same default
     # threshold profile as the preview table so the actions match what the
     # author sees highlighted.
@@ -1987,8 +2028,6 @@ def compose(upload_id):
         "compose.html",
         upload_id=upload_id,
         samples=samples,
-        preview_rows=preview_rows,
-        preview_analytes=["Lead"],
         buildings=buildings,
         selected_buildings=selected_buildings,
         suggested_building=suggested,

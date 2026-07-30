@@ -65,14 +65,15 @@ addressed. Use building_names, collection_date_range, outlet counts, and lead
 results from LOCKED FACTS when the reference includes corresponding details.
 Do not retain any case name or case detail from the reference document.
 
-Classify the reference layout as letter, memo, or report. The application
-inserts a verified fixture-results table after introduction_md,
-so do not recreate the table. Return Markdown limited to **bold**, *italic*,
-blank-line paragraph breaks, and hyphen bullets. Put the reference-style title,
-greeting, background, and results-summary section in introduction_md. Put the
-reference-style response/action section in actions_md. Put health context,
-resources, closing material, and learn-more sections in notes_md when those
-elements occur in the reference. Keep the draft editable and audience-facing.
+Classify the reference layout as letter, memo, or report. The application does
+not add a fixture-results table, so summarize the relevant verified results
+narratively and do not recreate a table. Return Markdown limited to **bold**,
+*italic*, blank-line paragraph breaks, and hyphen bullets. Put the
+reference-style title, greeting, background, and results-summary section in
+introduction_md. Put the reference-style response/action section in actions_md.
+Put health context, resources, closing material, and learn-more sections in
+notes_md when those elements occur in the reference. Keep the draft editable
+and audience-facing.
 """
 
 
