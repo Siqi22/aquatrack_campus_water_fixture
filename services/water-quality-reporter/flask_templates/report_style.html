@@ -11,7 +11,7 @@
 <ol class="workflow-steps" aria-label="Report workflow">
   <li class="workflow-step is-complete" data-step="1"><a class="workflow-step__link" href="{{ url_for('edit_setup', upload_id=upload_id) }}"><span>Select school(s)</span></a></li>
   <li class="workflow-step is-complete" data-step="2"><a class="workflow-step__link" href="{{ url_for('reference_upload', upload_id=upload_id) }}"><span>Select fixture(s)</span></a></li>
-  <li class="workflow-step is-active" data-step="3"><span class="workflow-step__link" aria-current="step"><span>Report style</span></span></li>
+  <li class="workflow-step is-active" data-step="3"><span class="workflow-step__link" aria-current="step"><span>Sample report</span></span></li>
   <li class="workflow-step" data-step="4">{% if can_review %}<a class="workflow-step__link" href="{{ url_for('compose', upload_id=upload_id) }}"><span>Review</span></a>{% else %}<span class="workflow-step__link"><span>Review</span></span>{% endif %}</li>
 </ol>
 

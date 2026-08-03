@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, ChevronDown, FileCheck2, Search, Upload } from 'lucide-react';
+import { ChevronDown, FileCheck2, Link2, Plus, Search, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { parseSpreadsheetFile } from '@/lib/spreadsheet';
@@ -104,16 +104,117 @@ export function LeadReportUpload({onImported,reviewUnresolved=false}:{onImported
 }
 
 function ReviewCard({row,fixtures,onChange,onCreate}:{row:ReviewRow;fixtures:Fixture[];onChange:(patch:Partial<ReviewRow>,rematch?:boolean)=>void;onCreate:()=>Promise<void>}){
-  const[search,setSearch]=useState('');const[editing,setEditing]=useState(false);const[findingAnother,setFindingAnother]=useState(false);const[creating,setCreating]=useState(false);const suggested=fixtures.find(fixture=>fixture.id===row.selectedFixtureId);const result=useMemo(()=>{try{return normalizeLeadResult(row.resultValue,row.resultUnit)}catch{return null}},[row.resultValue,row.resultUnit]);
-  const normalizedSearch=search.trim().toLowerCase();const choices=fixtures.filter(fixture=>[fixture.id,fixture.buildingName,fixture.floor,fixture.roomNumber,fixture.nearestRoom,fixture.category,fixture.brand,fixture.model].filter(Boolean).join(' ').toLowerCase().includes(normalizedSearch)).slice(0,100);
-  const showFixtureFinder=findingAnother||['multiple_matches','no_match'].includes(row.match.status);
-  return <div className={`card-section ${row.imported?'opacity-70':''}`}><div className="panel-header"><div><p className="text-sm font-semibold">{row.school||'—'} · Row {row.rowNumber}</p><p className="text-xs text-muted-foreground">{row.fixtureDescription||row.fixtureType||'—'} · {result?formatLeadMeasurement(row.resultValue,row.resultUnit,result.ppb):'Invalid result'}</p></div><MatchBadge row={row}/></div><div className="panel-body space-y-3">
-    <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-xs"><Cell label="School" value={row.school}/><Cell label="Fixture Location" value={suggested?`${suggested.buildingName} · Room ${suggested.roomNumber}`:[row.building,row.room&&`Room ${row.room}`].filter(Boolean).join(' · ')}/><Cell label="Fixture Description" value={row.fixtureDescription||row.fixtureType}/><Cell label="Lead Result" value={result?formatLeadMeasurement(row.resultValue,row.resultUnit,result.ppb): 'Invalid result'}/></div>
-    {!showFixtureFinder&&!row.imported&&!row.excluded&&<Button type="button" variant="outline" size="sm" onClick={()=>setFindingAnother(true)}><Search className="mr-1 h-4 w-4"/>Find another fixture</Button>}
-    {showFixtureFinder&&<div className="space-y-2"><div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground"/><Input className="pl-9" value={search} onChange={event=>setSearch(event.target.value)} placeholder="Search by building, floor, room, or fixture type…"/></div>{normalizedSearch&&<div className="max-h-52 overflow-y-auto rounded-xl border bg-background p-1">{choices.slice(0,10).map(fixture=><button type="button" key={fixture.id} disabled={row.imported||row.excluded} onClick={()=>{onChange({selectedFixtureId:fixture.id,confirmed:false});setSearch('')}} className={`block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-secondary ${fixture.id===row.selectedFixtureId?'bg-secondary':''}`}><span className="font-medium">{fixture.buildingName} · Room {fixture.roomNumber}</span><span className="mt-0.5 block text-xs text-muted-foreground">Floor {fixture.floor} · {label(fixture.category)}{fixture.brand?` · ${fixture.brand}`:''}{fixture.model?` ${fixture.model}`:''}</span></button>)}{!choices.length&&<p className="px-3 py-4 text-center text-sm text-muted-foreground">No fixtures found. Try a building name, room number, or fixture type.</p>}</div>}{row.match.status==='no_match'&&!row.imported&&!row.excluded&&<Button type="button" variant="outline" disabled={creating} onClick={()=>{setCreating(true);void onCreate().catch(error=>toast.error(errorMessage(error),{duration:8000})).finally(()=>setCreating(false))}}>{creating?'Creating school and fixture…':'Create fixture from report'}</Button>}</div>}
-    <Collapsible open={editing} onOpenChange={setEditing}><CollapsibleTrigger asChild><Button variant="ghost" size="sm"><ChevronDown className="mr-1 h-4 w-4"/>Edit report details</Button></CollapsibleTrigger><CollapsibleContent className="grid grid-cols-2 gap-2 pt-2">{(['school','building','floor','room','fixtureDescription','fixtureType','sampleId','sampleDate','resultValue','resultUnit'] as const).map(field=><div key={field}><label className="text-[10px] text-muted-foreground">{label(field)}</label><Input type={field==='sampleDate'?'date':'text'} value={row[field]} onChange={event=>onChange({[field]:event.target.value,confirmed:false} as Partial<ReviewRow>)}/></div>)}<Button className="col-span-2" variant="outline" onClick={()=>{onChange({},true);setEditing(false)}}>Check Match Again</Button></CollapsibleContent></Collapsible>
-    <div className="flex flex-wrap items-center gap-2"><Button type="button" size="sm" variant={row.confirmed?'default':'outline'} disabled={!row.selectedFixtureId||row.excluded||row.imported} onClick={()=>onChange({confirmed:!row.confirmed})}>Confirm</Button><Button type="button" size="sm" variant="outline" disabled={row.imported} className={row.excluded?'border-muted-foreground bg-secondary':''} onClick={()=>onChange({excluded:!row.excluded,confirmed:false})}>Exclude</Button>{!row.selectedFixtureId&&<span className="flex items-center gap-1 text-xs text-destructive"><AlertCircle className="h-4 w-4"/>Choose an existing fixture</span>}</div>
-  </div></div>;
+  const [search,setSearch]=useState('');
+  const [editing,setEditing]=useState(false);
+  const [findingAnother,setFindingAnother]=useState(false);
+  const [creating,setCreating]=useState(false);
+  const [searchAttempted,setSearchAttempted]=useState(false);
+  const [pendingFixtureId,setPendingFixtureId]=useState<string>();
+  const suggested=fixtures.find(fixture=>fixture.id===row.selectedFixtureId);
+  const pendingFixture=fixtures.find(fixture=>fixture.id===pendingFixtureId);
+  const result=useMemo(()=>{try{return normalizeLeadResult(row.resultValue,row.resultUnit)}catch{return null}},[row.resultValue,row.resultUnit]);
+  const normalizedSearch=search.trim().toLowerCase();
+  const choices=normalizedSearch?fixtures.filter(fixture=>[fixture.id,fixture.buildingName,fixture.floor,fixture.roomNumber,fixture.nearestRoom,fixture.category,fixture.brand,fixture.model].filter(Boolean).join(' ').toLowerCase().includes(normalizedSearch)).slice(0,100):[];
+  const unresolved=['multiple_matches','no_match'].includes(row.match.status)&&!row.confirmed;
+  const showFixtureFinder=!row.imported&&!row.excluded&&(findingAnother||unresolved);
+
+  function openFixtureFinder(){
+    setFindingAnother(true);
+    setPendingFixtureId(undefined);
+    setSearch('');
+    setSearchAttempted(false);
+  }
+
+  function linkEntry(){
+    if(!pendingFixtureId)return;
+    onChange({selectedFixtureId:pendingFixtureId,confirmed:true,excluded:false});
+    setFindingAnother(false);
+    setPendingFixtureId(undefined);
+    setSearch('');
+    setSearchAttempted(false);
+  }
+
+  function createEntry(){
+    setCreating(true);
+    void onCreate()
+      .then(()=>{
+        setFindingAnother(false);
+        setSearch('');
+        setSearchAttempted(false);
+      })
+      .catch(error=>toast.error(errorMessage(error),{duration:8000}))
+      .finally(()=>setCreating(false));
+  }
+
+  return <div className={`card-section ${row.imported?'opacity-70':''}`}>
+    <div className="panel-header">
+      <div>
+        <p className="text-sm font-semibold">{row.school||'—'} · Row {row.rowNumber}</p>
+        <p className="text-xs text-muted-foreground">{row.fixtureDescription||row.fixtureType||'—'} · {result?formatLeadMeasurement(row.resultValue,row.resultUnit,result.ppb):'Invalid result'}</p>
+      </div>
+      <MatchBadge row={row}/>
+    </div>
+    <div className="panel-body space-y-3">
+      <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
+        <Cell label="School" value={row.school}/>
+        <Cell label="Fixture Location" value={suggested?`${suggested.buildingName} · Room ${suggested.roomNumber}`:[row.building,row.room&&`Room ${row.room}`].filter(Boolean).join(' · ')}/>
+        <Cell label="Fixture Description" value={row.fixtureDescription||row.fixtureType}/>
+        <Cell label="Lead Result" value={result?formatLeadMeasurement(row.resultValue,row.resultUnit,result.ppb):'Invalid result'}/>
+      </div>
+
+      {!showFixtureFinder&&!row.imported&&!row.excluded&&<Button type="button" variant="outline" size="sm" onClick={openFixtureFinder}><Search className="mr-1 h-4 w-4"/>Find another fixture</Button>}
+
+      {showFixtureFinder&&<section className="space-y-3 rounded-xl border border-border bg-secondary/20 p-3">
+        <div>
+          <p className="text-sm font-semibold">Include this result</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">Search existing fixtures first. Link a match, or create a new entry if no match exists.</p>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium" htmlFor={`fixture-search-${row.id}`}>1. Search existing fixtures</label>
+          <div className="relative">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground"/>
+            <Input id={`fixture-search-${row.id}`} className="pl-9" value={search} onChange={event=>{setSearch(event.target.value);if(event.target.value.trim())setSearchAttempted(true);setPendingFixtureId(undefined)}} placeholder="Building, floor, room, or fixture type"/>
+          </div>
+        </div>
+
+        {normalizedSearch&&<div className="max-h-52 overflow-y-auto rounded-xl border bg-background p-1">
+          {choices.slice(0,10).map(fixture=><button type="button" key={fixture.id} onClick={()=>{setPendingFixtureId(fixture.id);setSearch('')}} className="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-secondary">
+            <span className="font-medium">{fixture.buildingName} · Room {fixture.roomNumber}</span>
+            <span className="mt-0.5 block text-xs text-muted-foreground">Floor {fixture.floor} · {label(fixture.category)}{fixture.brand?` · ${fixture.brand}`:''}{fixture.model?` ${fixture.model}`:''}</span>
+          </button>)}
+          {!choices.length&&<p className="px-3 py-4 text-center text-sm text-muted-foreground">No matching fixtures found.</p>}
+        </div>}
+
+        {pendingFixture&&<div className="rounded-xl border border-primary/30 bg-background p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Match found</p>
+          <p className="mt-1 text-sm font-semibold">{pendingFixture.buildingName} · Room {pendingFixture.roomNumber}</p>
+          <p className="text-xs text-muted-foreground">Floor {pendingFixture.floor} · {label(pendingFixture.category)}</p>
+          <Button type="button" className="mt-3 w-full" size="sm" onClick={linkEntry}><Link2 className="mr-1.5 h-4 w-4"/>Link entry</Button>
+        </div>}
+
+        {searchAttempted&&!pendingFixture&&<div className="rounded-xl border border-dashed bg-background p-3">
+          <p className="text-sm font-semibold">2. No match?</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">Create a new fixture entry from the school, building, and location in this report.</p>
+          <Button type="button" className="mt-3" variant="outline" size="sm" disabled={creating} onClick={createEntry}><Plus className="mr-1.5 h-4 w-4"/>{creating?'Creating new entry…':'Create new entry'}</Button>
+        </div>}
+      </section>}
+
+      <Collapsible open={editing} onOpenChange={setEditing}>
+        <CollapsibleTrigger asChild><Button variant="ghost" size="sm"><ChevronDown className="mr-1 h-4 w-4"/>Edit report details</Button></CollapsibleTrigger>
+        <CollapsibleContent className="grid grid-cols-2 gap-2 pt-2">
+          {(['school','building','floor','room','fixtureDescription','fixtureType','sampleId','sampleDate','resultValue','resultUnit'] as const).map(field=><div key={field}><label className="text-[10px] text-muted-foreground">{label(field)}</label><Input type={field==='sampleDate'?'date':'text'} value={row[field]} onChange={event=>onChange({[field]:event.target.value,confirmed:false} as Partial<ReviewRow>)}/></div>)}
+          <Button className="col-span-2" variant="outline" onClick={()=>{onChange({},true);setEditing(false);setFindingAnother(false);setSearchAttempted(false);setPendingFixtureId(undefined)}}>Check Match Again</Button>
+        </CollapsibleContent>
+      </Collapsible>
+
+      <div className="flex flex-wrap items-center gap-2">
+        {!showFixtureFinder&&row.selectedFixtureId&&!row.confirmed&&!row.excluded&&!row.imported&&<Button type="button" size="sm" variant="outline" onClick={()=>onChange({confirmed:true})}>Confirm match</Button>}
+        {row.confirmed&&!row.excluded&&!row.imported&&<Button type="button" size="sm" disabled>Included</Button>}
+        <Button type="button" size="sm" variant="outline" disabled={row.imported} className={row.excluded?'border-muted-foreground bg-secondary':''} onClick={()=>{onChange({excluded:!row.excluded,confirmed:false});if(row.excluded)openFixtureFinder()}}>{row.excluded?'Include instead':'Exclude'}</Button>
+      </div>
+    </div>
+  </div>;
 }
 function rowToDb(row:ReviewRow,reportId:string){let ppb:null|number=null;try{ppb=normalizeLeadResult(row.resultValue,row.resultUnit).ppb}catch{return{}}return{report_upload_id:reportId,row_number:row.rowNumber,raw_text_or_raw_data:row.raw,sample_id:row.sampleId||null,school_district:row.schoolDistrict||null,school_name:row.school||null,building_name:row.building||null,room:row.room||null,fixture_description:row.fixtureDescription||null,fixture_type:row.fixtureType||null,sample_date:row.sampleDate||null,result_value:row.resultValue,result_unit:row.resultUnit,normalized_result_ppb:ppb,proposed_fixture_id:row.match.fixtureId||null,match_status:row.match.status,match_confidence:row.match.confidence,match_reasons:row.match.reasons}}
 async function sha256(file:File){return [...new Uint8Array(await crypto.subtle.digest('SHA-256',await file.arrayBuffer()))].map(value=>value.toString(16).padStart(2,'0')).join('')}

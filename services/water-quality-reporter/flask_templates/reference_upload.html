@@ -11,14 +11,14 @@
 <ol class="workflow-steps" aria-label="Report workflow">
   <li class="workflow-step is-complete" data-step="1"><a class="workflow-step__link" href="{{ url_for('edit_setup', upload_id=upload_id) if upload_id else url_for('index') }}"><span>Select school(s)</span></a></li>
   <li class="workflow-step is-active" data-step="2"><span class="workflow-step__link" aria-current="step"><span>Select fixture(s)</span></span></li>
-  <li class="workflow-step" data-step="3">{% if upload_id %}<a class="workflow-step__link" href="{{ url_for('report_style', upload_id=upload_id) }}"><span>Report style</span></a>{% else %}<span class="workflow-step__link"><span>Report style</span></span>{% endif %}</li>
+  <li class="workflow-step" data-step="3">{% if upload_id %}<a class="workflow-step__link" href="{{ url_for('report_style', upload_id=upload_id) }}"><span>Sample report</span></a>{% else %}<span class="workflow-step__link"><span>Sample report</span></span>{% endif %}</li>
   <li class="workflow-step" data-step="4">{% if upload_id and can_review %}<a class="workflow-step__link" href="{{ url_for('compose', upload_id=upload_id) }}"><span>Review</span></a>{% else %}<span class="workflow-step__link"><span>Review</span></span>{% endif %}</li>
 </ol>
 
 <div class="callout callout-info">
   <span class="callout__icon" aria-hidden="true">i</span>
   <p><strong>{{ school_name }}</strong>{% if organization %} · {{ organization }}{% endif %}<br>
-  <a href="{{ url_for('edit_setup', upload_id=upload_id) if upload_id else url_for('index') }}">Change report setup</a></p>
+  <a href="{{ url_for('edit_setup', upload_id=upload_id) if upload_id else url_for('index') }}">Select a different school</a></p>
 </div>
 
 <form method="POST" action="{{ url_for('reference_upload', upload_id=upload_id) }}">
