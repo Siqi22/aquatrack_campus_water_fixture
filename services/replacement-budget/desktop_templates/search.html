@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% from "_search_form.html" import district_search %}
+
+{% block title %}School Water Lead | Washington District Reports{% endblock %}
+
+{% block content %}
+<main class="page search-page">
+  <div class="search-layout">
+    <div class="search-intro">
+      <header class="page-header">
+        <p class="section-label">Washington State</p>
+        <h1 class="page-title">School water lead testing</h1>
+        <p class="page-subtitle">
+          Find district testing coverage, affected fixtures, estimated material costs,
+          and certified vendors in one report.
+        </p>
+      </header>
+
+      <section class="info-grid" aria-label="Report contents">
+        <div class="info-tile">{{ icon('school') }}<span>Testing coverage</span></div>
+        <div class="info-tile">{{ icon('fixture') }}<span>Fixture results</span></div>
+        <div class="info-tile">{{ icon('spreadsheet') }}<span>Excel report</span></div>
+      </section>
+    </div>
+
+    <section class="card-soft search-card">
+      <div class="panel-heading">
+        <span class="panel-icon">{{ icon('school') }}</span>
+        <div>
+          <h2>Find your district</h2>
+          <p>Start typing, then choose a district from the list.</p>
+        </div>
+      </div>
+      {{ district_search(initial_query) }}
+      {% if search_error %}<p class="search-error" role="alert">{{ search_error }}</p>{% endif %}
+    </section>
+  </div>
+</main>
+{% endblock %}

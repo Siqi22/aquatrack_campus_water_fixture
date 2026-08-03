@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% from "_search_form.html" import district_search %}
+
+{% block title %}{{ district_name }} | School Water Lead{% endblock %}
+
+{% block content %}
+<main class="page results-page">
+  <header class="page-header results-heading">
+    <a href="{{ url_for('index') }}" class="btn-icon" aria-label="Back to district search">
+      {{ icon('chevron-left') }}
+    </a>
+    <div class="page-heading-copy">
+      <p class="section-label">District results</p>
+      <h1 class="page-title">{{ district_name }}</h1>
+      <p class="page-subtitle">Testing overview and remediation planning details</p>
+    </div>
+  </header>
+
+  <section class="card-soft compact-search-card" aria-label="Search another district">
+    {{ district_search(initial_query) }}
+  </section>
+
+  {% if error %}
+    <section class="callout-error" role="alert">
+      {{ icon('alert') }}
+      <div>
+        <h2>District not found</h2>
+        <p>{{ error }}</p>
+        <p>Try another spelling or choose a name from the autocomplete list.</p>
+      </div>
+    </section>
+  {% else %}
+    <section class="card-soft visualization-card">
+      <div class="panel-heading panel-heading-compact">
+        <span class="panel-icon">{{ icon('droplets') }}</span>
+        <div>
+          <h2>District visualization</h2>
+          <p>A visual summary of district testing will appear here.</p>
+        </div>
+      </div>
+      <div class="viz-placeholder" aria-hidden="true">
+        {{ icon('droplets') }}
+        <span>Visualization coming soon</span>
+      </div>
+    </section>
+
+    <section class="card-soft summary-card">
+      <div class="summary-header">
+        <div>
+          <p class="section-label">At a glance</p>
+          <h2>Report summary</h2>
+        </div>
+        <div class="export-wrapper">
+          <a class="btn-primary export-button" href="{{ url_for('download_report', district_name=district_name) }}">
+            {{ icon('download') }} Export Excel
+          </a>
+        </div>
+      </div>
+
+      <div class="summary-grid">
+        <div class="quick-stat">
+          {{ icon('school') }}
+          <span class="stat-value">{{ summary.schools_tested }}<span class="stat-value-total"> / {{ summary.schools_total }}</span></span>
+          <span class="stat-label">Schools tested</span>
+        </div>
+        <div class="quick-stat">
+          {{ icon('alert', 'urgent-icon' if summary.schools_contaminated > 0 else '') }}
+          <span class="stat-value{% if summary.schools_contaminated > 0 %} urgent-text{% endif %}">{{ summary.schools_contaminated }}</span>
+          <span class="stat-label">Affected schools</span>
+        </div>
+        <div class="quick-stat">
+          {{ icon('fixture') }}
+          <span class="stat-value">{{ summary.fixtures_tested }}</span>
+          <span class="stat-label">Fixtures tested</span>
+        </div>
+        <div class="quick-stat">
+          {{ icon('droplets', 'urgent-icon' if summary.fixtures_contaminated > 0 else '') }}
+          <span class="stat-value{% if summary.fixtures_contaminated > 0 %} urgent-text{% endif %}">{{ summary.fixtures_contaminated }}</span>
+          <span class="stat-label">Affected fixtures{% if summary.fixtures_contaminated > 0 %} · {{ summary.pct_fixtures_contaminated }}%{% endif %}</span>
+        </div>
+        <div class="quick-stat">
+          {{ icon('spreadsheet') }}
+          <span class="stat-value stat-value-small">{{ summary.testing_rounds | join(', ') if summary.testing_rounds else '—' }}</span>
+          <span class="stat-label">Testing rounds</span>
+        </div>
+      </div>
+
+      <div class="cost-highlight-card">
+        <div class="cost-icon">{{ icon('spreadsheet') }}</div>
+        <div class="cost-copy">
+          <span class="cost-label">Estimated material replacement cost</span>
+          <span class="cost-note">Labor and inspection are not included.</span>
+        </div>
+        <span class="cost-value">{{ summary.remediation_cost_total | currency }}</span>
+      </div>
+
+      {% if summary.fixtures_contaminated > 0 %}
+      <div class="cost-breakdown-wrapper">
+        <h3>Contamination by fixture type</h3>
+        <div class="table-scroll">
+          <table class="cost-breakdown-table">
+            <thead><tr><th>Fixture type</th><th>Above 5 ppb</th><th>Est. material cost</th></tr></thead>
+            <tbody>
+              {% for fixture_type, count in summary.fixtures_above_by_type.items() %}
+              <tr>
+                <td>{{ fixture_type }}</td>
+                <td>{{ count }}</td>
+                <td>{{ summary.remediation_cost_by_type.get(fixture_type, 0) | currency }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+    </section>
+
+    <section class="card-soft vendor-section">
+      <div class="panel-heading">
+        <span class="panel-icon">{{ icon('map-pin') }}</span>
+        <div>
+          <h2>Nearby vendors</h2>
+          <p>{% if result.district_cities %}Matched near {{ result.district_cities | join(', ') }}{% else %}Certified providers near the district{% endif %}</p>
+        </div>
+      </div>
+
+      {% if not result.vendors %}
+      <div class="empty-state">{{ icon('map-pin') }}<p>No certified vendors found nearby.</p></div>
+      {% else %}
+      <ul class="vendor-list">
+        {% for vendor in result.vendors %}
+        <li>
+          <div class="vendor-header">
+            <div>
+              <strong>{{ vendor.company_name }}</strong>
+              {% if vendor.dba_name %}<p class="vendor-meta">DBA: {{ vendor.dba_name }}</p>{% endif %}
+            </div>
+            {% if vendor.status %}<span class="status-pill">{{ vendor.status }}</span>{% endif %}
+          </div>
+          <p class="vendor-location">
+            {{ icon('map-pin') }}
+            <span>{{ vendor.city }}{% if vendor.state %}, {{ vendor.state }}{% endif %}{% if vendor.in_district_city %} · in district{% elif vendor.distance_miles is not none %} · ~{{ vendor.distance_miles }} mi away{% endif %}</span>
+          </p>
+          <div class="vendor-contact-list">
+            {% if vendor.email %}<a href="mailto:{{ vendor.email }}">{{ icon('mail') }}<span>{{ vendor.email }}</span></a>{% endif %}
+            {% if vendor.phone %}<a href="tel:{{ vendor.phone }}">{{ icon('phone') }}<span>{{ vendor.phone }}</span></a>{% endif %}
+            {% if vendor.web_address %}
+            <a href="{{ vendor.web_address if vendor.web_address.startswith('http') else 'https://' + vendor.web_address }}" target="_blank" rel="noreferrer">
+              {{ icon('globe') }}<span>{{ vendor.web_address }}</span>
+            </a>
+            {% endif %}
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </section>
+  {% endif %}
+</main>
+{% endblock %}

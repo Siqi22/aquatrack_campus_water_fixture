@@ -29,6 +29,7 @@ xcuserdata
 /campus water tracker*.csv
 *.csv
 !public/samples/*.csv
+!services/replacement-budget/datasets/all_lead_datasets.csv
 
 # Editor directories and files
 .vscode/*

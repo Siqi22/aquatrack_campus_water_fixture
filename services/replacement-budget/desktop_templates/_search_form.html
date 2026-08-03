@@ -1,0 +1,27 @@
+{% from "_icons.html" import icon %}
+{% macro district_search(initial_query='') -%}
+<div class="district-search" data-district-search>
+  <form action="{{ url_for('search') }}" method="get">
+    <label for="district-query" class="search-label">School district</label>
+    <div class="search-row">
+      <div class="search-control">
+        {{ icon('search', 'search-control-icon') }}
+        <input
+          id="district-query"
+          name="q"
+          type="search"
+          role="combobox"
+          aria-expanded="false"
+          aria-controls="district-suggestions"
+          aria-autocomplete="list"
+          autocomplete="off"
+          placeholder="Start typing a district name…"
+          value="{{ initial_query }}"
+        />
+      </div>
+      <button type="submit" class="btn-primary">Search</button>
+    </div>
+  </form>
+  <ul id="district-suggestions" class="suggestions" role="listbox" hidden></ul>
+</div>
+{%- endmacro %}

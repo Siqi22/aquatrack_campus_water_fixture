@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+
+{% block title %}Build Budget | Lead Remediation Budget{% endblock %}
+
+{% block content %}
+<main class="page budget-page budget-page-wide">
+  <header class="budget-page-header">
+    <div>
+      <p class="section-label">Lead remediation budget</p>
+      <h1 class="page-title">Set replacement parts and costs</h1>
+      <p class="page-subtitle">Each fixture starts with a same-type replacement and the system’s current estimated unit cost.</p>
+    </div>
+    <div class="district-context district-context-compact">
+      <span><small>Budget for</small><strong>{{ district_name }}</strong></span>
+    </div>
+  </header>
+
+  {% include "_budget_steps.html" %}
+
+  <form method="post" class="budget-form" data-replacement-form>
+    {% if error %}<div class="budget-error" role="alert">{{ icon('alert') }}<span>{{ error }}</span></div>{% endif %}
+
+    <div class="budget-workspace">
+      <div class="budget-workspace-main">
+        <section class="budget-panel">
+          <div class="budget-panel-header">
+            <div>
+              <h2>Replacement line items</h2>
+              <p>Change the part or edit a unit estimate when a quote is available.</p>
+            </div>
+            <span class="line-count">{{ lines | length }} fixtures</span>
+          </div>
+          <div class="budget-table-wrap replacement-table-wrap">
+            <table class="budget-table replacement-table">
+              <thead><tr><th>Fixture</th><th>Lead result</th><th>Replacement part</th><th class="numeric-cell">Estimated cost</th></tr></thead>
+              <tbody>
+                {% for line in lines %}
+                <tr>
+                  <td>
+                    <strong>{{ line.display_id }} · {{ line.school_name }}</strong>
+                    <small>{{ line.location }} · Existing: {{ line.fixture_type }}</small>
+                  </td>
+                  <td><span class="result-pill{% if line.lead_ppb > 15 %} result-high{% else %} result-action{% endif %}">{{ '%.0f' | format(line.lead_ppb) }} ppb</span></td>
+                  <td>
+                    <select name="part_{{ line.id }}" data-part-select aria-label="Replacement part for {{ line.id }}">
+                      {% for option in options %}<option value="{{ option.name }}" data-default-cost="{{ option.cost }}"{% if line.replacement_part == option.name %} selected{% endif %}>{{ option.name }}</option>{% endfor %}
+                    </select>
+                  </td>
+                  <td class="numeric-cell">
+                    <label class="currency-input"><span>$</span><input type="number" name="cost_{{ line.id }}" value="{{ '%.2f' | format(line.unit_cost) }}" min="0" step="0.01" data-unit-cost aria-label="Estimated cost for {{ line.id }}"></label>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="budget-panel vendor-budget-panel" id="vendor-quotes">
+          <div class="budget-panel-header">
+            <div>
+              <h2>Vendors nearby</h2>
+              <p>Reference contacts that the district may use when gathering replacement and labor quotes.</p>
+            </div>
+            <span class="placeholder-pill">Placeholder vendors</span>
+          </div>
+          <div class="vendor-budget-grid">
+            {% for vendor in vendors %}
+            <div class="vendor-budget-card">
+              <span class="vendor-budget-copy">
+                <span class="vendor-budget-title"><strong>{{ vendor.name }}</strong><span>{{ vendor.distance_miles }} mi</span></span>
+                <small>{{ vendor.city }} · {{ vendor.services }}</small>
+                <span class="vendor-contact-row">
+                  <span>{{ icon('phone') }} {{ vendor.phone }}</span>
+                  <span>{{ icon('mail') }} {{ vendor.email }}</span>
+                </span>
+              </span>
+            </div>
+            {% endfor %}
+          </div>
+          <p class="vendor-placeholder-note">Vendor names and contacts are mock data for workflow testing. Replace them with verified vendor records before outreach.</p>
+        </section>
+      </div>
+
+      <aside class="budget-summary-card" aria-label="Budget total">
+        <div class="budget-summary-heading">
+          <span class="summary-dollar">{{ icon('dollar') }}</span>
+          <div><small>Live estimate</small><strong>Budget summary</strong></div>
+        </div>
+        <dl class="budget-summary-list">
+          <div><dt>Selected fixtures</dt><dd>{{ lines | length }}</dd></div>
+          <div><dt>Material subtotal</dt><dd data-material-total>${{ '%.2f' | format(totals.material_cost) }}</dd></div>
+        </dl>
+        <label class="labor-field" for="labor-cost">Labor cost</label>
+        <label class="currency-input currency-input-large"><span>$</span><input id="labor-cost" type="number" name="labor_cost" value="{{ '%.2f' | format(totals.labor_cost) }}" min="0" step="0.01" data-labor-cost></label>
+        <p class="field-help">Enter a district estimate or update this after receiving a vendor quote.</p>
+        <div class="grand-total"><span>Total estimated budget</span><strong data-grand-total>${{ '%.2f' | format(totals.total_cost) }}</strong></div>
+      </aside>
+    </div>
+
+    <div class="budget-actions">
+      <a href="{{ url_for('budget_fixtures') }}" class="btn-secondary">{{ icon('chevron-left') }} Back</a>
+      <span></span>
+      <button type="submit" class="btn-primary budget-next">Review budget {{ icon('arrow-right') }}</button>
+    </div>
+  </form>
+</main>
+{% endblock %}

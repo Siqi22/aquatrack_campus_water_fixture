@@ -1,0 +1,40 @@
+{% from "_icons.html" import icon %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#168899" />
+    <meta name="description" content="AquaTrack lead fixture replacement budgeting tool." />
+    <link rel="stylesheet" href="{{ url_for('frontend_asset', filename='index.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('frontend_asset', filename='App.css') }}" />
+    <title>{% block title %}AquaTrack Replacement Budget{% endblock %}</title>
+  </head>
+  <body>
+    <div class="app-surface">
+      <header class="app-header">
+        <div class="app-header-inner">
+          <a href="{{ url_for('budget_schools') }}" class="brand-link" aria-label="AquaTrack Replacement Budget home">
+            <span class="brand-mark">{{ icon('droplets') }}</span>
+            <span class="brand-copy">
+              <span class="brand-name">AquaTrack</span>
+              <span class="brand-subtitle">Replacement Budget · {{ organization_name }}</span>
+            </span>
+          </a>
+          <span class="state-badge">Budget workspace</span>
+        </div>
+      </header>
+      <div class="app-main">{% block content %}{% endblock %}</div>
+    </div>
+    <nav class="app-bottom-nav" aria-label="AquaTrack navigation">
+      <div class="app-bottom-nav-inner">
+        <a class="app-nav-tab" href="{{ aquatrack_url }}/" aria-label="Home">{{ icon('home') }}<span>Home</span></a>
+        <a class="app-nav-tab" href="{{ aquatrack_url }}/campus" aria-label="Fixture Inventory">{{ icon('building') }}<span>Fixture Inventory</span></a>
+        <a class="app-nav-tab" href="{{ aquatrack_url }}/lead-testing/results" aria-label="Lead Testing">{{ icon('beaker') }}<span>Lead Testing</span></a>
+        <a class="app-nav-tab" href="{{ aquatrack_url }}/communication" aria-label="Communication">{{ icon('message') }}<span>Communication</span></a>
+        <a class="app-nav-tab is-active" href="{{ url_for('budget_schools') }}" aria-current="page" aria-label="Replacement Budget">{{ icon('calculator') }}<span>Replacement Budget</span></a>
+      </div>
+    </nav>
+    <script src="{{ url_for('frontend_asset', filename='app.js') }}" defer></script>
+  </body>
+</html>

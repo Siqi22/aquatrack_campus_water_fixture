@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Beaker, Building2, Droplets, Home, LogOut, MessageCircle } from 'lucide-react';
+import { Beaker, Building2, Calculator, Droplets, Home, LogOut, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ImportDialog } from '@/components/ImportDialog';
 import { toast } from 'sonner';
@@ -17,6 +17,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     { to: '/campus', icon: Building2, label: 'Fixture Inventory' },
     { to: '/lead-testing/results', icon: Beaker, label: 'Lead Testing' },
     { to: '/communication', icon: MessageCircle, label: 'Communication' },
+    { to: '/replacement-budget', icon: Calculator, label: 'Replacement Budget' },
   ];
   const [importOpen, setImportOpen] = useState(false);
 
