@@ -83,6 +83,15 @@ SOURCE_PREVIEW_MAX_ROWS = 50
 SOURCE_PREVIEW_MAX_COLS = 14
 SOURCE_PREVIEW_MAX_TABLES = 3
 SOURCE_PREVIEW_TEXT_CHARS = 1800
+AQUATRACK_URL = os.environ.get(
+    "AQUATRACK_URL",
+    "https://aquatrack-campus-water-fixture.vercel.app",
+).rstrip("/")
+
+
+@app.context_processor
+def inject_aquatrack_navigation():
+    return {"aquatrack_url": AQUATRACK_URL}
 
 
 # ---- AquaTrack authentication ----------------------------------------------
@@ -128,9 +137,9 @@ def health():
 def auth_launch():
     return """<!doctype html><html><head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Opening Water Quality Reporter</title></head>
+    <title>Opening AquaTrack</title></head>
     <body style="font-family:system-ui;display:grid;place-items:center;min-height:80vh;color:#172333">
-    <p id="status">Opening Water Quality Reporter…</p>
+    <p id="status">Opening AquaTrack Communication…</p>
     <script>
       const token = new URLSearchParams(location.hash.slice(1)).get('access_token');
       history.replaceState(null, '', location.pathname);
@@ -1244,7 +1253,7 @@ SOURCE_FILE_LABELS = {
     "parsed": "Current lab/results file",
     "coc_file": "Original COC / sampling form",
     "style_report_file": "Sample report style",
-    "header_template_file": "Header template",
+    "header_template_file": "School District Header",
     "school_testing_result_file": "School Water Testing Result",
     "reference_lab_file": "School Water Testing Result",
 }
@@ -1896,8 +1905,9 @@ def compose(upload_id):
     unknown = data["meta"]["unknown_fixtures"]
     original_files = data["meta"].get("original_files", [])
     preview_field_order = {
-        "school_testing_result_file": 0,
-        "style_report_file": 1,
+        "style_report_file": 0,
+        "header_template_file": 1,
+        "school_testing_result_file": 2,
     }
     preview_files = sorted(
         (

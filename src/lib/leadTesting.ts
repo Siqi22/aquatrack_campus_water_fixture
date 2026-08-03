@@ -43,7 +43,7 @@ export function normalizeLeadResult(value: string, unit: string, postRemediation
 
 export function formatPpb(value: number | null | undefined) {
   if (value == null || !Number.isFinite(value)) return '—';
-  return (Math.trunc(value * 1000) / 1000).toFixed(3);
+  return String(Math.round(value));
 }
 
 export function formatLeadMeasurement(

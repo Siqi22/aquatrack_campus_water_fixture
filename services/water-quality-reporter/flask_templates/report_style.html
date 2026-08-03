@@ -1,12 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Report style · Water Quality Reporter{% endblock %}
+{% block title %}Report style · AquaTrack{% endblock %}
 
 {% block content %}
-<a class="link-back" href="{{ url_for('reference_upload', upload_id=upload_id) }}">Back</a>
 <header class="page-header">
   <p class="section-label">Report style</p>
-  <h1 class="page-title">Add your report style</h1>
-  <p class="page-subtitle">Upload an example that reflects the structure and tone you want to use.</p>
+  <h1 class="page-title">Add report documents</h1>
+  <p class="page-subtitle">Provide one communication example and your organization header.</p>
 </header>
 
 <ol class="workflow-steps" aria-label="Report workflow">
@@ -18,33 +17,87 @@
 
 <div class="callout callout-info">
   <span class="callout__icon" aria-hidden="true">i</span>
-  <p><strong>{{ school_name }}</strong><br>
-  {{ fixture_count }} fixture{{ '' if fixture_count == 1 else 's' }} identified from {{ result_filename }}.</p>
+  <p><strong>{{ school_name }}</strong> · {{ fixture_count }} fixture{{ '' if fixture_count == 1 else 's' }} selected</p>
 </div>
 
 <form method="POST" action="{{ url_for('report_style', upload_id=upload_id) }}" enctype="multipart/form-data">
   <section class="card-section">
     <div class="panel-header">
-      <h2>Report style and header</h2>
-      <p>These files guide the communication content and the exported Word header.</p>
+      <h2>Required files</h2>
+      <p>Upload both documents before continuing to review.</p>
     </div>
-    <div class="panel-body stack">
-      <label class="file-field" for="style_report_file">
-        <strong>Sample of your report style <span class="required">Required</span></strong>
-        <span class="field-hint">PDF or Word document</span>
-        {% if existing_style %}<span class="saved-file">Current file: {{ existing_style.filename }}. Choose another file only to replace it.</span>{% endif %}
-        <input id="style_report_file" type="file" name="style_report_file" accept=".pdf,.doc,.docx" {% if not existing_style %}required{% endif %}>
-      </label>
+    <div class="panel-body document-upload-list">
+      <section class="document-upload" data-file-upload>
+        <div class="document-upload__heading">
+          <div>
+            <h3>Upload an example of communication document</h3>
+            <p>The example guides the structure, tone, and content style of the new report.</p>
+          </div>
+          <span class="required">Required</span>
+        </div>
+        <div class="file-summary" data-file-summary {% if not existing_style %}hidden{% endif %} aria-live="polite">
+          <span class="file-summary__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+          </span>
+          <span class="file-summary__copy">
+            <span data-file-state>{{ 'Uploaded file' if existing_style else 'Selected file' }}</span>
+            <strong data-file-name title="{{ existing_style.filename if existing_style else '' }}">{{ existing_style.filename if existing_style else '' }}</strong>
+          </span>
+        </div>
+        <input class="visually-hidden" id="style_report_file" type="file" name="style_report_file" accept=".pdf,.doc,.docx" {% if not existing_style %}required{% endif %}>
+        <label class="file-picker" for="style_report_file">
+          <span class="file-picker__action" data-file-action>{{ 'Replace file' if existing_style else 'Choose file' }}</span>
+          <span class="file-picker__meta">PDF or Word document</span>
+        </label>
+      </section>
 
-      <label class="file-field" for="header_template_file">
-        <strong>Header template <span class="required">Required</span></strong>
-        <span class="field-hint">Word document (.docx) with header content, or a PDF letterhead</span>
-        {% if existing_header %}<span class="saved-file">Current file: {{ existing_header.filename }}. Choose another file only to replace it.</span>{% endif %}
-        <input id="header_template_file" type="file" name="header_template_file" accept=".docx,.pdf" {% if not existing_header %}required{% endif %}>
-      </label>
+      <section class="document-upload" data-file-upload>
+        <div class="document-upload__heading">
+          <div>
+            <h3>Upload organization header</h3>
+            <p>The header appears at the top of the exported Word report.</p>
+          </div>
+          <span class="required">Required</span>
+        </div>
+        <div class="file-summary" data-file-summary {% if not existing_header %}hidden{% endif %} aria-live="polite">
+          <span class="file-summary__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+          </span>
+          <span class="file-summary__copy">
+            <span data-file-state>{{ 'Uploaded file' if existing_header else 'Selected file' }}</span>
+            <strong data-file-name title="{{ existing_header.filename if existing_header else '' }}">{{ existing_header.filename if existing_header else '' }}</strong>
+          </span>
+        </div>
+        <input class="visually-hidden" id="header_template_file" type="file" name="header_template_file" accept=".docx,.pdf" {% if not existing_header %}required{% endif %}>
+        <label class="file-picker" for="header_template_file">
+          <span class="file-picker__action" data-file-action>{{ 'Replace file' if existing_header else 'Choose file' }}</span>
+          <span class="file-picker__meta">Word (.docx) or PDF letterhead</span>
+        </label>
+      </section>
     </div>
   </section>
 
   <button class="btn-primary btn-block" type="submit">Continue to review <span aria-hidden="true">→</span></button>
 </form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.querySelectorAll('[data-file-upload]').forEach((upload) => {
+    const input = upload.querySelector('input[type="file"]');
+    const summary = upload.querySelector('[data-file-summary]');
+    const state = upload.querySelector('[data-file-state]');
+    const name = upload.querySelector('[data-file-name]');
+    const action = upload.querySelector('[data-file-action]');
+    input.addEventListener('change', () => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      summary.hidden = false;
+      state.textContent = 'Selected file';
+      name.textContent = file.name;
+      name.title = file.name;
+      action.textContent = 'Choose a different file';
+    });
+  });
+</script>
 {% endblock %}

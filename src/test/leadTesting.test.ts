@@ -10,10 +10,10 @@ describe('lead result workflow', () => {
   it('verifies an exactly 5 ppb post-remediation retest',()=>expect(normalizeLeadResult('5','ppb',true).requiredAction).toBe('Remediation verified'));
   it('requires more remediation when a retest remains high',()=>expect(normalizeLeadResult('5.1','ppb',true).requiredAction).toBe('Additional remediation required'));
   it('converts mg/L and ppm to ppb',()=>{expect(normalizeLeadResult('0.008','mg/L').ppb).toBe(8);expect(normalizeLeadResult('0.015','ppm').ppb).toBe(15)});
-  it('displays ppb with three decimals without rounding',()=>{expect(formatPpb(1.2349)).toBe('1.234');expect(formatPpb(normalizeLeadResult('0.0084567','mg/L').ppb)).toBe('8.456')});
+  it('displays normalized ppb as whole numbers',()=>{expect(formatPpb(1.49)).toBe('1');expect(formatPpb(1.5)).toBe('2');expect(formatPpb(normalizeLeadResult('0.008','mg/L').ppb)).toBe('8')});
   it('preserves non-detect notation without inventing a value',()=>{const r=normalizeLeadResult('ND','ppb');expect(r.original).toBe('ND');expect(r.ppb).toBeNull();expect(r.category).toBeNull()});
   it('categorizes a reliable less-than bound without inventing a value',()=>{const r=normalizeLeadResult('<0.5','ppb');expect(r.category).toBe('5 ppb or less');expect(r.ppb).toBeNull()});
-  it('displays less-than results in normalized ppb without losing the bound',()=>{expect(formatLeadMeasurement('<1','ppb',null)).toBe('<1.000 ppb');expect(formatLeadMeasurement('<0.001','mg/L',null)).toBe('<1.000 ppb')});
+  it('displays less-than results in normalized whole ppb',()=>{expect(formatLeadMeasurement('<1','ppb',null)).toBe('<1 ppb');expect(formatLeadMeasurement('<0.001','mg/L',null)).toBe('<1 ppb')});
   it('rejects invalid units and negative values',()=>{expect(()=>normalizeLeadResult('1','oz')).toThrow();expect(()=>normalizeLeadResult('-1','ppb')).toThrow()});
 });
 

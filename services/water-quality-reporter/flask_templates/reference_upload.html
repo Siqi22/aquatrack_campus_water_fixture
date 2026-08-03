@@ -1,8 +1,7 @@
 {% extends "base.html" %}
-{% block title %}Select fixtures · Water Quality Reporter{% endblock %}
+{% block title %}Select fixtures · AquaTrack{% endblock %}
 
 {% block content %}
-<a class="link-back" href="{{ url_for('edit_setup', upload_id=upload_id) if upload_id else url_for('index') }}">Back</a>
 <header class="page-header">
   <p class="section-label">Fixture selection</p>
   <h1 class="page-title">Select fixture(s)</h1>
@@ -61,7 +60,7 @@
                 {{ (fixture.category or 'Fixture')|replace('_', ' ')|title }}
                 ·
                 {% if fixture.current_result_ppb is not none %}
-                  {{ "%.3f"|format(fixture.current_result_ppb|float) }} ppb
+                  {{ fixture.current_result_ppb|float|round(0)|int }} ppb
                 {% else %}
                   No lead result
                 {% endif %}

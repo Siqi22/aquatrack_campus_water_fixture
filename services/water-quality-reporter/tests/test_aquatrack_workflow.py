@@ -56,7 +56,7 @@ class FakeSupabase:
             "brand": "Example",
             "model": "F100",
             "serial_number": "EX-001",
-            "current_result_ppb": 6.125,
+            "current_result_ppb": 6,
             "current_lead_testing_status": "action_required",
             "current_required_action": "Remediation required",
         }]
@@ -72,9 +72,9 @@ class FakeSupabase:
             "status": "action_required",
             "sample_id": "SAMPLE-001",
             "sample_draw_date": "2026-03-12",
-            "result_value": "6.125",
+            "result_value": "6",
             "result_original_unit": "ppb",
-            "result_ppb": 6.125,
+            "result_ppb": 6,
             "result_category": "Greater than 5 through 15 ppb",
             "required_action": "Remediation required",
         }]
@@ -160,6 +160,12 @@ class AquaTrackWorkflowTests(unittest.TestCase):
             start = client.get("/")
             self.assertEqual(start.status_code, 200)
             self.assertIn(b"Example Elementary", start.data)
+            self.assertIn(b"<strong>AquaTrack</strong>", start.data)
+            self.assertIn(b"Fixture Inventory", start.data)
+            self.assertIn(b"Lead Testing", start.data)
+            self.assertIn(b"Communication", start.data)
+            self.assertNotIn(b"Water Quality Reporter", start.data)
+            self.assertNotIn(b">Back<", start.data)
             self.assertNotIn(b"University of Washington", start.data)
             self.assertNotIn(b'value="uw"', start.data)
 
@@ -174,8 +180,9 @@ class AquaTrackWorkflowTests(unittest.TestCase):
             fixture_page = client.get(setup.headers["Location"])
             self.assertEqual(fixture_page.status_code, 200)
             self.assertIn(b"Learning Center", fixture_page.data)
-            self.assertIn(b"6.125 ppb", fixture_page.data)
+            self.assertIn(b"6 ppb", fixture_page.data)
             self.assertIn(b"checked", fixture_page.data)
+            self.assertNotIn(b">Back<", fixture_page.data)
 
             fixture_selection = client.post(
                 setup.headers["Location"],
@@ -184,6 +191,16 @@ class AquaTrackWorkflowTests(unittest.TestCase):
             )
             self.assertIn("/report-style/", fixture_selection.headers["Location"])
             upload_id = fixture_selection.headers["Location"].rstrip("/").split("/")[-1]
+
+            style_page = client.get(fixture_selection.headers["Location"])
+            self.assertEqual(style_page.status_code, 200)
+            self.assertNotIn(b">Back<", style_page.data)
+            self.assertIn(
+                b"Upload an example of communication document",
+                style_page.data,
+            )
+            self.assertIn(b"Upload organization header", style_page.data)
+            self.assertNotIn(b"Sample of your report style", style_page.data)
 
             style = client.post(
                 fixture_selection.headers["Location"],
@@ -202,16 +219,24 @@ class AquaTrackWorkflowTests(unittest.TestCase):
             )
             self.assertIn("/compose/", style.headers["Location"])
 
+            saved_style_page = client.get(fixture_selection.headers["Location"])
+            self.assertEqual(saved_style_page.status_code, 200)
+            self.assertIn(b"Uploaded file", saved_style_page.data)
+            self.assertIn(b"style.pdf", saved_style_page.data)
+            self.assertIn(b"header.docx", saved_style_page.data)
+
             review = client.get(style.headers["Location"])
             self.assertEqual(review.status_code, 200)
             self.assertIn(b"Review and Edit", review.data)
             self.assertIn(b"Sample report style", review.data)
+            self.assertIn(b"School District Header", review.data)
+            self.assertIn(b"header.docx", review.data)
             self.assertIn(b"source-page-image", review.data)
             self.assertNotIn(b"source-table-wrap", review.data)
             self.assertNotIn(b"page/3.png", review.data)
-            self.assertNotIn(b"Header template", review.data)
             self.assertNotIn(b"AquaTrack lead data", review.data)
             self.assertNotIn(b"University of Washington", review.data)
+            self.assertNotIn(b">Back<", review.data)
 
             style_preview = client.get(
                 f"/original/{upload_id}/0/page/1.png"

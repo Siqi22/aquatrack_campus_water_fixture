@@ -1,9 +1,8 @@
 {% extends "base.html" %}
 {% set page_shell_class = "page-shell--wide" %}
-{% block title %}Review report · Water Quality Reporter{% endblock %}
+{% block title %}Review report · AquaTrack{% endblock %}
 
 {% block content %}
-<a class="link-back" data-save-draft href="{{ url_for('report_style', upload_id=upload_id) }}">Back</a>
 <header class="page-header">
   <h1 class="page-title">Review and Edit</h1>
 </header>
@@ -45,7 +44,7 @@
 <section class="card-section source-preview-panel">
   <div class="panel-header">
     <h2>Sample report style</h2>
-    <p>Review the example communication used to guide this draft.</p>
+    <p>Review the example communication and School District Header used in this report.</p>
   </div>
   <div class="qc-body">
     <div class="source-tabs" role="tablist" aria-label="Uploaded file previews">

@@ -28,7 +28,7 @@ export default function Communication() {
   }, [session?.access_token]);
 
   return <div className="page-shell max-w-xl">
-    <PageHeader title="Communication" subtitle="Opening Water Quality Reporter" />
+    <PageHeader title="Communication" subtitle="Opening AquaTrack Communication" />
     <div className="card-section">
       <div className="panel-body py-10 text-center">
         {error ? <p className="text-sm text-destructive">{error}</p> : <>
@@ -37,7 +37,7 @@ export default function Communication() {
           <p className="mt-1 text-xs text-muted-foreground">Your school and fixture access will carry over from AquaTrack.</p>
         </>}
         <Button className="mt-5" variant="outline" onClick={openReporter}>
-          <ArrowUpRight className="mr-2 h-4 w-4" />Open Water Quality Reporter
+          <ArrowUpRight className="mr-2 h-4 w-4" />Open AquaTrack Communication
         </Button>
       </div>
     </div>
