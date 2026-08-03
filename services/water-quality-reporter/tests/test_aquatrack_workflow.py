@@ -200,6 +200,9 @@ class AquaTrackWorkflowTests(unittest.TestCase):
                 style_page.data,
             )
             self.assertIn(b"Upload organization header", style_page.data)
+            self.assertIn(b"Word document (.docx)", style_page.data)
+            self.assertNotIn(b"PDF letterhead", style_page.data)
+            self.assertNotIn(b'accept=".docx,.pdf"', style_page.data)
             self.assertNotIn(b"Sample of your report style", style_page.data)
 
             style = client.post(

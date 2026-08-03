@@ -68,10 +68,10 @@
             <strong data-file-name title="{{ existing_header.filename if existing_header else '' }}">{{ existing_header.filename if existing_header else '' }}</strong>
           </span>
         </div>
-        <input class="visually-hidden" id="header_template_file" type="file" name="header_template_file" accept=".docx,.pdf" {% if not existing_header %}required{% endif %}>
+        <input class="visually-hidden" id="header_template_file" type="file" name="header_template_file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" {% if not existing_header %}required{% endif %}>
         <label class="file-picker" for="header_template_file">
           <span class="file-picker__action" data-file-action>{{ 'Replace file' if existing_header else 'Choose file' }}</span>
-          <span class="file-picker__meta">Word (.docx) or PDF letterhead</span>
+          <span class="file-picker__meta">Word document (.docx)</span>
         </label>
       </section>
     </div>
