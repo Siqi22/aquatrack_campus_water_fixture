@@ -17,7 +17,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     { to: '/campus', icon: Building2, label: 'Fixture Inventory' },
     { to: '/lead-testing/results', icon: Beaker, label: 'Lead Testing' },
     { to: '/communication', icon: MessageCircle, label: 'Communication' },
-    { to: '/replacement-budget', icon: Calculator, label: 'Replacement Budget' },
+    { to: '/replacement-budget', icon: Calculator, label: 'Budget' },
   ];
   const [importOpen, setImportOpen] = useState(false);
 
