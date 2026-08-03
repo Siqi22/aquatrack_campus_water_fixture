@@ -16,6 +16,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { LeadResultsExportDialog } from '@/components/LeadResultsExportDialog';
 
+const ALL_SCHOOLS_VALUE = 'all-schools';
+
 function getPageScrollContainer(): HTMLElement | null {
   return document.querySelector('main.scroll-gutter-stable');
 }
@@ -40,7 +42,7 @@ export default function CampusNavigator() {
   const requestedFilter = searchParams.get('leadFilter');
   const leadFilter: LeadFixtureFilter = isLeadFixtureFilter(requestedFilter) ? requestedFilter : 'all';
 
-  const defaultCampusId = visibleCampuses[0]?.id || '';
+  const defaultCampusId = isSchoolDistrict ? ALL_SCHOOLS_VALUE : visibleCampuses[0]?.id || '';
   const [selectedCampus, setSelectedCampus] = useState(defaultCampusId);
   const [expandedBuilding, setExpandedBuilding] = useState<string | null>(null);
   const [selectedFloor, setSelectedFloor] = useState<{ buildingId: string; floor: string } | null>(null);
@@ -49,11 +51,13 @@ export default function CampusNavigator() {
   const [exportOpen, setExportOpen] = useState(false);
   const restoreScrollTopRef = useRef<number | null>(null);
 
-  const campusBuildings = selectedCampus ? getBuildingsByCampus(selectedCampus) : [];
-  const filteredCampusFixtures = selectedCampus
-    ? getFixturesByCampus(selectedCampus).filter((fixture) => matchesLeadFixtureFilter(fixture, leadFilter))
-    : [];
-  const campusFixtureCount = filteredCampusFixtures.length;
+  const showingAllSchools = isSchoolDistrict && selectedCampus === ALL_SCHOOLS_VALUE;
+  const scopedCampuses = showingAllSchools
+    ? visibleCampuses
+    : visibleCampuses.filter((campus) => campus.id === selectedCampus);
+  const campusBuildings = scopedCampuses.flatMap((campus) => getBuildingsByCampus(campus.id));
+  const campusFixtures = scopedCampuses.flatMap((campus) => getFixturesByCampus(campus.id));
+  const campusFixtureCount = campusFixtures.length;
   const displayedBuildings = campusBuildings.filter(
     (building) =>
       leadFilter === 'all' ||
@@ -71,21 +75,26 @@ export default function CampusNavigator() {
   useEffect(() => {
     if (!defaultCampusId || hydrated) return;
     const saved = loadCampusNavState(defaultCampusId);
-    const campusValid = visibleCampuses.some((c) => c.id === saved.selectedCampus);
+    const campusValid =
+      (isSchoolDistrict && saved.selectedCampus === ALL_SCHOOLS_VALUE) ||
+      visibleCampuses.some((c) => c.id === saved.selectedCampus);
     setSelectedCampus(campusValid ? saved.selectedCampus : defaultCampusId);
     setExpandedBuilding(saved.expandedBuilding);
     setSelectedFloor(saved.selectedFloor);
     setListScrollTop(saved.listScrollTop);
     if (!saved.selectedFloor) restoreScrollTopRef.current = saved.listScrollTop;
     setHydrated(true);
-  }, [defaultCampusId, visibleCampuses, hydrated]);
+  }, [defaultCampusId, visibleCampuses, hydrated, isSchoolDistrict]);
 
   useEffect(() => {
-    if (visibleCampuses.some((campus) => campus.id === selectedCampus)) return;
-    setSelectedCampus(visibleCampuses[0]?.id || '');
+    if (
+      (isSchoolDistrict && selectedCampus === ALL_SCHOOLS_VALUE) ||
+      visibleCampuses.some((campus) => campus.id === selectedCampus)
+    ) return;
+    setSelectedCampus(defaultCampusId);
     setExpandedBuilding(null);
     setSelectedFloor(null);
-  }, [selectedCampus, visibleCampuses]);
+  }, [defaultCampusId, isSchoolDistrict, selectedCampus, visibleCampuses]);
 
   useEffect(() => {
     if (!hydrated || !selectedCampus) return;
@@ -135,7 +144,7 @@ export default function CampusNavigator() {
           buildingId={selectedFloor.buildingId}
           floor={selectedFloor.floor}
           buildingName={campusBuildings.find((b) => b.id === selectedFloor.buildingId)?.name || ''}
-          campusId={selectedCampus}
+          campusId={campusBuildings.find((b) => b.id === selectedFloor.buildingId)?.campusId || selectedCampus}
           leadFilter={leadFilter}
         />
       </div>
@@ -145,9 +154,15 @@ export default function CampusNavigator() {
   return (
     <div className="page-shell">
       <PageHeader
-        title={locationLabel}
+        title={
+          showingAllSchools
+            ? `${totalSchools} ${totalSchools === 1 ? 'school' : 'schools'}`
+            : isSchoolDistrict
+              ? currentCampus?.school || 'School'
+              : locationLabel
+        }
         subtitle={
-          currentCampus
+          scopedCampuses.length > 0
             ? `${campusBuildings.length} buildings · ${campusFixtureCount} fixtures`
             : `Select a ${locationLabel.toLowerCase()} to browse`
         }
@@ -160,11 +175,7 @@ export default function CampusNavigator() {
       />
       <LeadResultsExportDialog open={exportOpen} onOpenChange={setExportOpen} campuses={visibleCampuses} />
 
-      <section className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2" aria-label="Fixture inventory summary">
-        <div className="card-soft p-4">
-          <p className="text-2xl font-bold tabular-nums text-foreground">{totalSchools}</p>
-          <p className="mt-1 text-xs font-medium text-muted-foreground">Total schools</p>
-        </div>
+      <section className="mb-4" aria-label="Fixture inventory summary">
         <div className="card-soft p-4">
           <p className="text-2xl font-bold tabular-nums text-foreground">{fixtureDataCoverage}%</p>
           <p className="mt-1 text-xs font-medium text-muted-foreground">Schools with fixture data</p>
@@ -188,6 +199,7 @@ export default function CampusNavigator() {
           >
             <SelectTrigger><SelectValue placeholder="Select a school" /></SelectTrigger>
             <SelectContent>
+              <SelectItem value={ALL_SCHOOLS_VALUE}>All schools</SelectItem>
               {visibleCampuses.map((campus) => (
                 <SelectItem key={campus.id} value={campus.id}>
                   {isSchoolDistrict ? campus.school : campus.name}
@@ -252,6 +264,11 @@ export default function CampusNavigator() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-foreground">{b.name}</p>
+                    {showingAllSchools && (
+                      <p className="text-xs text-muted-foreground">
+                        {visibleCampuses.find((campus) => campus.id === b.campusId)?.school}
+                      </p>
+                    )}
                     <p className="text-xs text-muted-foreground">
                       {floors.length} floors · {fixtureCount} fixtures
                     </p>
