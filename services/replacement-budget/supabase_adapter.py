@@ -42,6 +42,10 @@ class SupabaseAdapter:
     def __init__(self):
         self.url = os.environ.get("SUPABASE_URL", "").rstrip("/")
         self.key = os.environ.get("SUPABASE_PUBLISHABLE_KEY", "")
+        self.district_name = (
+            os.environ.get("SCHOOL_DISTRICT_NAME", "North Valley School District").strip()
+            or "North Valley School District"
+        )
 
     @property
     def configured(self) -> bool:
@@ -84,6 +88,7 @@ class SupabaseAdapter:
             {
                 "select": "id,name,school,school_district,address",
                 "organization_mode": "eq.school_district",
+                "school_district": f"eq.{self.district_name}",
                 "order": "school.asc",
             },
         )
@@ -96,6 +101,8 @@ class SupabaseAdapter:
                 "district_name": row.get("school_district") or "School District",
             }
             for row in rows
+            if str(row.get("school_district") or "").strip().casefold()
+            == self.district_name.casefold()
         ]
 
     def _sample_dates(self, fixture_ids: Iterable[str]) -> dict[str, str]:
@@ -174,12 +181,10 @@ class SupabaseAdapter:
                 }
             )
 
-        district_names = [school["district_name"] for school in schools if school["district_name"]]
-        district_name = district_names[0] if district_names else "School District"
         school_by_id = {school["id"]: school for school in schools}
         fixture_by_id = {fixture["id"]: fixture for fixture in fixtures}
         return {
-            "district_name": district_name,
+            "district_name": self.district_name,
             "schools": schools,
             "school_by_id": school_by_id,
             "fixtures": fixtures,

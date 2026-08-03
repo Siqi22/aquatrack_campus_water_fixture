@@ -16,6 +16,7 @@ rules control which schools, fixtures, and testing results are available.
 ```text
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+SCHOOL_DISTRICT_NAME=North Valley School District
 FLASK_SECRET_KEY=a-long-random-value
 AQUATRACK_URL=https://your-aquatrack-domain.example
 COMMUNICATION_URL=https://your-communication-tool.example

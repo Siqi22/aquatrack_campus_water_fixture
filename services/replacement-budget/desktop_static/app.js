@@ -106,6 +106,20 @@
       if (count) count.textContent = String(inputs.filter((input) => input.checked).length)
     }
     inputs.forEach((input) => input.addEventListener('change', updateSchools))
+    const selectAll = schoolForm.querySelector('[data-select-schools]')
+    const clearAll = schoolForm.querySelector('[data-clear-schools]')
+    if (selectAll) {
+      selectAll.addEventListener('click', () => {
+        inputs.forEach((input) => { input.checked = true })
+        updateSchools()
+      })
+    }
+    if (clearAll) {
+      clearAll.addEventListener('click', () => {
+        inputs.forEach((input) => { input.checked = false })
+        updateSchools()
+      })
+    }
     updateSchools()
   }
 

@@ -49,6 +49,8 @@ class BudgetWorkflowTests(unittest.TestCase):
         self.assertIn(b"School A", response.data)
         self.assertIn(b"School B", response.data)
         self.assertIn(b"School C", response.data)
+        self.assertIn(b"Select all", response.data)
+        self.assertIn(b"Clear", response.data)
 
     def test_aquatrack_navigation_and_auth_launch_are_available(self):
         response = self.client.get("/auth/launch")

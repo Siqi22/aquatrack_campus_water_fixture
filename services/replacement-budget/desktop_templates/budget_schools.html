@@ -28,6 +28,12 @@
           <h2>Select remediation schools</h2>
           <p>Schools and lead-testing results are loaded from your AquaTrack district.</p>
         </div>
+        {% if schools %}
+        <div class="table-actions">
+          <button type="button" class="btn-secondary btn-small" data-select-schools>Select all</button>
+          <button type="button" class="btn-quiet" data-clear-schools>Clear</button>
+        </div>
+        {% endif %}
       </div>
       <div class="school-selection-grid">
         {% for school in schools %}

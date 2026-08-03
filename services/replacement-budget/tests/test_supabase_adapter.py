@@ -15,13 +15,26 @@ class SupabaseBudgetCatalogTests(unittest.TestCase):
 
         def rows(table, _params):
             if table == "campuses":
-                return [{
-                    "id": "school-1",
-                    "name": "Campus 1",
-                    "school": "Maple Grove Middle School",
-                    "school_district": "North Valley School District",
-                    "address": "100 School Way",
-                }]
+                self.assertEqual(
+                    _params["school_district"],
+                    "eq.North Valley School District",
+                )
+                return [
+                    {
+                        "id": "school-1",
+                        "name": "Campus 1",
+                        "school": "Maple Grove Middle School",
+                        "school_district": "North Valley School District",
+                        "address": "100 School Way",
+                    },
+                    {
+                        "id": "school-outside-district",
+                        "name": "Outside Campus",
+                        "school": "Cedarhome Elementary School",
+                        "school_district": "Stanwood-Camano School District",
+                        "address": "200 Other Way",
+                    },
+                ]
             if table == "buildings":
                 return [{"id": "building-1", "campus_id": "school-1", "name": "Learning Commons"}]
             if table == "fixtures":
@@ -43,6 +56,7 @@ class SupabaseBudgetCatalogTests(unittest.TestCase):
             catalog = adapter.catalog()
 
         self.assertEqual(catalog["district_name"], "North Valley School District")
+        self.assertEqual(len(catalog["schools"]), 1)
         self.assertEqual(catalog["schools"][0]["name"], "Maple Grove Middle School")
         fixture = catalog["fixtures"][0]
         self.assertEqual(fixture["display_id"], "NV-210")
