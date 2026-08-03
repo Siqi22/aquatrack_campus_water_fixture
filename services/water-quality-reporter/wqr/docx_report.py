@@ -34,6 +34,8 @@ def _display_unit(unit: str) -> str:
     UW reports use 'ppm' for non-lead metals (1 mg/L = 1 ppm in water).
     The internal Measurement.unit stays 'mg/L'; this only changes labels.
     """
+    if unit.lower() == "ppb":
+        return "ppb"
     return "ppm" if unit == "mg/L" else unit
 
 

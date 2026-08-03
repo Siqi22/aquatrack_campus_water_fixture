@@ -138,6 +138,8 @@ def _build_rows(samples: list[Sample], registry: FixtureRegistry,
 def _display_unit(unit: str) -> str:
     """Map canonical storage units to UW report display labels.
     Mirrors wqr.docx_report._display_unit."""
+    if unit.lower() == "ppb":
+        return "ppb"
     return "ppm" if unit == "mg/L" else unit
 
 

@@ -14,6 +14,7 @@ describe('lead result workflow', () => {
   it('preserves non-detect notation without inventing a value',()=>{const r=normalizeLeadResult('ND','ppb');expect(r.original).toBe('ND');expect(r.ppb).toBeNull();expect(r.category).toBeNull()});
   it('categorizes a reliable less-than bound without inventing a value',()=>{const r=normalizeLeadResult('<0.5','ppb');expect(r.category).toBe('5 ppb or less');expect(r.ppb).toBeNull()});
   it('displays less-than results in normalized whole ppb',()=>{expect(formatLeadMeasurement('<1','ppb',null)).toBe('<1 ppb');expect(formatLeadMeasurement('<0.001','mg/L',null)).toBe('<1 ppb')});
+  it('always displays the ppb unit in lowercase',()=>expect(formatLeadMeasurement('ND','PPB',null)).toBe('ND ppb'));
   it('rejects invalid units and negative values',()=>{expect(()=>normalizeLeadResult('1','oz')).toThrow();expect(()=>normalizeLeadResult('-1','ppb')).toThrow()});
 });
 

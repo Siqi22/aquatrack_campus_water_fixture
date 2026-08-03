@@ -54,6 +54,7 @@ export function formatLeadMeasurement(
   if (ppb != null && Number.isFinite(ppb)) return `${formatPpb(ppb)} ppb`;
   const original = value?.trim();
   const originalUnit = unit?.trim() || 'ppb';
+  const displayUnit = originalUnit.toLowerCase() === 'ppb' ? 'ppb' : originalUnit;
   if (!original) return '—';
   const bound = original.match(/^<\s*(\d+(?:\.\d+)?)$/);
   if (bound) {
@@ -66,7 +67,7 @@ export function formatLeadMeasurement(
           : null;
     if (multiplier != null) return `<${formatPpb(Number(bound[1]) * multiplier)} ppb`;
   }
-  return `${original} ${originalUnit}`;
+  return `${original} ${displayUnit}`;
 }
 
 export function leadResultColor(value: number | null | undefined) {
