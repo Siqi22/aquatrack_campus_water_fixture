@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   BarChart3,
+  Building2,
   ClipboardCheck,
   FlaskConical,
   RotateCcw,
@@ -59,6 +60,11 @@ export default function Dashboard() {
     remediation: schoolCount((status) => ['action_required', 'remediation_in_progress'].includes(status)),
   };
 
+  const schoolsWithFixtureData = new Set(fixtures.map((fixture) => fixture.campusId)).size;
+  const fixtureDataCoverage = campuses.length > 0
+    ? Math.round((schoolsWithFixtureData / campuses.length) * 100)
+    : 0;
+
   const lastUpdated = fixtures
     .map((fixture) => fixture.leadTestingLastUpdatedAt)
     .filter((value): value is string => Boolean(value))
@@ -82,6 +88,24 @@ export default function Dashboard() {
         <p className="mt-8 text-center text-sm text-muted-foreground">Loading workspace…</p>
       ) : (
         <div className="space-y-4">
+          <section className="card-soft p-4 sm:p-5" aria-label="Fixture inventory status">
+            <SectionHeading
+              icon={Building2}
+              title="Fixture Inventory Status"
+              subtitle="Schools with recorded fixture locations"
+            />
+            <Link
+              to="/campus"
+              className="mt-4 block rounded-xl border bg-card p-4 transition-colors hover:bg-secondary/30"
+            >
+              <p className="text-2xl font-bold tabular-nums text-foreground">{fixtureDataCoverage}%</p>
+              <p className="mt-1 text-xs font-medium text-muted-foreground">Schools with fixture data</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {schoolsWithFixtureData} of {campuses.length} schools
+              </p>
+            </Link>
+          </section>
+
           <section className="card-soft p-4 sm:p-5">
             <SectionHeading icon={Wrench} title="Action Status" subtitle="Schools that require action" />
             <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">

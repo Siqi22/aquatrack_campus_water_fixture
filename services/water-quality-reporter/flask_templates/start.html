@@ -26,7 +26,11 @@
       <div id="school-fields" class="stack">
         <div class="field-group">
           <label for="campus_id">School</label>
-          <select name="campus_id" id="campus_id" required>
+          <div class="school-search-field">
+            <label class="visually-hidden" for="school-search">Search schools</label>
+            <input type="search" id="school-search" placeholder="Search schools" autocomplete="off" data-school-search aria-controls="campus_id">
+          </div>
+          <select name="campus_id" id="campus_id" required data-school-select>
             <option value="" {% if not campus_id %}selected{% endif %} disabled>Select a school</option>
             {% for school in schools %}
               <option value="{{ school.id }}" {% if campus_id == school.id %}selected{% endif %}>
@@ -34,6 +38,7 @@
               </option>
             {% endfor %}
           </select>
+          <p class="field-hint" data-school-search-status aria-live="polite"></p>
           {% if not schools %}
             <p class="field-hint">No schools are available for this AquaTrack account.</p>
           {% endif %}
@@ -45,4 +50,36 @@
 
   <button class="btn-primary btn-block" type="submit">Continue to fixtures <span aria-hidden="true">→</span></button>
 </form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+  const search = document.querySelector('[data-school-search]');
+  const select = document.querySelector('[data-school-select]');
+  const status = document.querySelector('[data-school-search-status]');
+  if (!search || !select) return;
+
+  const schools = Array.from(select.options)
+    .filter((option) => option.value)
+    .map((option) => ({ value: option.value, label: option.textContent.trim() }));
+
+  const render = () => {
+    const query = search.value.trim().toLocaleLowerCase();
+    const currentValue = select.value;
+    const matches = schools.filter((school) => school.label.toLocaleLowerCase().includes(query));
+    const placeholder = new Option(matches.length ? 'Select a school' : 'No schools found', '', true, false);
+    placeholder.disabled = true;
+    select.replaceChildren(placeholder);
+    matches.forEach((school) => {
+      const option = new Option(school.label, school.value, false, school.value === currentValue);
+      select.add(option);
+    });
+    if (!matches.some((school) => school.value === currentValue)) select.value = '';
+    if (status) status.textContent = query ? `${matches.length} school(s) found` : '';
+  };
+
+  search.addEventListener('input', render);
+})();
+</script>
 {% endblock %}

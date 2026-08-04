@@ -164,6 +164,8 @@ class AquaTrackWorkflowTests(unittest.TestCase):
             self.assertIn(b"Fixture Inventory", start.data)
             self.assertIn(b"Lead Testing", start.data)
             self.assertIn(b"Communication", start.data)
+            self.assertIn(b'data-school-search', start.data)
+            self.assertIn(b'placeholder="Search schools"', start.data)
             self.assertNotIn(b"Water Quality Reporter", start.data)
             self.assertNotIn(b">Back<", start.data)
             self.assertNotIn(b"University of Washington", start.data)

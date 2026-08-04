@@ -243,6 +243,41 @@ button, label[for], input[type="file"], input[type="radio"] { cursor: pointer; }
 .field-hint { margin: 0.25rem 0 0; color: hsl(var(--muted-foreground)); font-size: 0.6875rem; }
 .required { color: hsl(var(--status-urgent)); }
 
+.school-search-field {
+  position: relative;
+  margin-bottom: 0.15rem;
+}
+
+.school-search-field::before {
+  content: "";
+  position: absolute;
+  left: 0.8rem;
+  top: 50%;
+  width: 0.78rem;
+  height: 0.78rem;
+  border: 1.7px solid hsl(var(--muted-foreground));
+  border-radius: 999px;
+  transform: translateY(-60%);
+  pointer-events: none;
+}
+
+.school-search-field::after {
+  content: "";
+  position: absolute;
+  left: 1.48rem;
+  top: 58%;
+  width: 0.38rem;
+  height: 1.7px;
+  background: hsl(var(--muted-foreground));
+  transform: rotate(45deg);
+  transform-origin: left center;
+  pointer-events: none;
+}
+
+.school-search-field input[type="search"] {
+  padding-left: 2.25rem;
+}
+
 input[type="text"], input[type="date"], input[type="email"], input[type="search"], textarea, select {
   width: 100%;
   min-width: 0;

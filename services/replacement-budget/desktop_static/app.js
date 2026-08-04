@@ -91,26 +91,29 @@
       if (!container.contains(event.target)) close()
     })
   })
-})()
+})();
 
 (() => {
   const schoolForm = document.querySelector('[data-school-form]')
   if (schoolForm) {
     const inputs = Array.from(schoolForm.querySelectorAll('input[name="school_id"]'))
-    const count = schoolForm.querySelector('[data-school-count]')
+    const counts = Array.from(schoolForm.querySelectorAll('[data-school-count]'))
+    const summary = schoolForm.querySelector('[data-school-summary]')
+    const selectAll = schoolForm.querySelector('[data-select-schools]')
     const updateSchools = () => {
-      inputs.forEach((input) => {
-        const card = input.closest('.school-select-card')
-        if (card) card.classList.toggle('is-selected', input.checked)
-      })
-      if (count) count.textContent = String(inputs.filter((input) => input.checked).length)
+      const selectedCount = inputs.filter((input) => input.checked).length
+      counts.forEach((count) => { count.textContent = String(selectedCount) })
+      if (summary) summary.textContent = `${selectedCount} school(s) selected`
+      if (selectAll) {
+        selectAll.checked = inputs.length > 0 && selectedCount === inputs.length
+        selectAll.indeterminate = selectedCount > 0 && selectedCount < inputs.length
+      }
     }
     inputs.forEach((input) => input.addEventListener('change', updateSchools))
-    const selectAll = schoolForm.querySelector('[data-select-schools]')
     const clearAll = schoolForm.querySelector('[data-clear-schools]')
     if (selectAll) {
-      selectAll.addEventListener('click', () => {
-        inputs.forEach((input) => { input.checked = true })
+      selectAll.addEventListener('change', () => {
+        inputs.forEach((input) => { input.checked = selectAll.checked })
         updateSchools()
       })
     }
@@ -175,14 +178,21 @@
         const selected = select.options[select.selectedIndex]
         const row = select.closest('tr')
         const costInput = row?.querySelector('[data-unit-cost]')
-        if (costInput && selected?.dataset.defaultCost) {
-          costInput.value = Number.parseFloat(selected.dataset.defaultCost).toFixed(2)
+        if (costInput && selected?.hasAttribute('data-default-cost')) {
+          const nextCost = Number.parseFloat(selected.dataset.defaultCost)
+          if (Number.isFinite(nextCost)) costInput.value = nextCost.toFixed(2)
         }
         updateTotals()
       })
     })
-    costInputs.forEach((input) => input.addEventListener('input', updateTotals))
-    if (laborInput) laborInput.addEventListener('input', updateTotals)
+    costInputs.forEach((input) => {
+      input.addEventListener('input', updateTotals)
+      input.addEventListener('change', updateTotals)
+    })
+    if (laborInput) {
+      laborInput.addEventListener('input', updateTotals)
+      laborInput.addEventListener('change', updateTotals)
+    }
     updateTotals()
   }
-})()
+})();

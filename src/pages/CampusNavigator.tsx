@@ -65,12 +65,6 @@ export default function CampusNavigator() {
   );
   const currentCampus = campuses.find((c) => c.id === selectedCampus);
   const totalSchools = visibleCampuses.length;
-  const schoolsWithFixtureData = visibleCampuses.filter(
-    (campus) => getFixturesByCampus(campus.id).length > 0,
-  ).length;
-  const fixtureDataCoverage = totalSchools > 0
-    ? Math.round((schoolsWithFixtureData / totalSchools) * 100)
-    : 0;
 
   useEffect(() => {
     if (!defaultCampusId || hydrated) return;
@@ -174,14 +168,6 @@ export default function CampusNavigator() {
         }
       />
       <LeadResultsExportDialog open={exportOpen} onOpenChange={setExportOpen} campuses={visibleCampuses} />
-
-      <section className="mb-4" aria-label="Fixture inventory summary">
-        <div className="card-soft p-4">
-          <p className="text-2xl font-bold tabular-nums text-foreground">{fixtureDataCoverage}%</p>
-          <p className="mt-1 text-xs font-medium text-muted-foreground">Schools with fixture data</p>
-          <p className="mt-1 text-[11px] text-muted-foreground">{schoolsWithFixtureData} of {totalSchools} schools</p>
-        </div>
-      </section>
 
       <div className="mb-4 grid max-w-3xl gap-3 sm:grid-cols-2">
         {visibleCampuses.length > 1 && (

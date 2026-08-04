@@ -51,6 +51,9 @@ class BudgetWorkflowTests(unittest.TestCase):
         self.assertIn(b"School C", response.data)
         self.assertIn(b"Select all", response.data)
         self.assertIn(b"Clear", response.data)
+        self.assertIn(b"school-dropdown", response.data)
+        self.assertNotIn(b"101 Cedar Avenue", response.data)
+        self.assertNotIn(b"The district is already matched", response.data)
 
     def test_aquatrack_navigation_and_auth_launch_are_available(self):
         response = self.client.get("/auth/launch")
@@ -83,10 +86,14 @@ class BudgetWorkflowTests(unittest.TestCase):
         response = self.client.get("/budget/replacements")
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Vendors nearby", response.data)
+        self.assertNotIn(b"Placeholder vendors", response.data)
         self.assertIn(b"ClearFlow School Plumbing", response.data)
         self.assertNotIn(b"preferred_vendor_id", response.data)
         self.assertIn(b'value="Water Fountain"', response.data)
         self.assertIn(b'value="1500.00"', response.data)
+        self.assertIn(b'data-default-cost="600"', response.data)
+        self.assertIn(b'data-labor-cost', response.data)
+        self.assertIn(b"Review budget", response.data)
 
     def test_review_and_excel_export_include_custom_costs_and_labor(self):
         selected = self._build_budget()

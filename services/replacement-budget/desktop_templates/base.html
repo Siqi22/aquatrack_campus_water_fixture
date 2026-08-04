@@ -35,6 +35,6 @@
         <a class="app-nav-tab is-active" href="{{ url_for('budget_schools') }}" aria-current="page" aria-label="Replacement Budget">{{ icon('calculator') }}<span>Budget</span></a>
       </div>
     </nav>
-    <script src="{{ url_for('frontend_asset', filename='app.js') }}" defer></script>
+    <script src="{{ url_for('frontend_asset', filename='app.js', v=build_id) }}" defer></script>
   </body>
 </html>

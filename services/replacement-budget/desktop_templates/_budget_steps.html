@@ -23,9 +23,9 @@
   </li>
   <li class="budget-step{% if current_step == 4 %} is-active{% endif %}">
     {% if completed >= 3 and current_step != 4 %}
-      <a class="budget-step-link" href="{{ url_for('budget_review') }}"><span class="budget-step-number">4</span><span><strong>Review & export</strong><small>Excel budget</small></span></a>
+      <a class="budget-step-link" href="{{ url_for('budget_review') }}"><span class="budget-step-number">4</span><span><strong>Review & export</strong><small>Review budget</small></span></a>
     {% else %}
-      <span class="budget-step-link"{% if current_step == 4 %} aria-current="step"{% endif %}><span class="budget-step-number">4</span><span><strong>Review & export</strong><small>Excel budget</small></span></span>
+      <span class="budget-step-link"{% if current_step == 4 %} aria-current="step"{% endif %}><span class="budget-step-number">4</span><span><strong>Review & export</strong><small>Review budget</small></span></span>
     {% endif %}
   </li>
 </ol>

@@ -9,7 +9,6 @@
     <div>
       <p class="section-label">Lead remediation budget</p>
       <h1 class="page-title">Choose schools to include</h1>
-      <p class="page-subtitle">The district is already matched. Select the schools that need a replacement budget.</p>
     </div>
     <div class="district-context">
       <span class="district-context-icon">{{ icon('school') }}</span>
@@ -26,32 +25,40 @@
       <div class="budget-panel-header">
         <div>
           <h2>Select remediation schools</h2>
-          <p>Schools and lead-testing results are loaded from your AquaTrack district.</p>
         </div>
-        {% if schools %}
-        <div class="table-actions">
-          <button type="button" class="btn-secondary btn-small" data-select-schools>Select all</button>
-          <button type="button" class="btn-quiet" data-clear-schools>Clear</button>
-        </div>
-        {% endif %}
       </div>
-      <div class="school-selection-grid">
-        {% for school in schools %}
-        <label class="school-select-card{% if school.id in state.selected_schools %} is-selected{% endif %}">
-          <input type="checkbox" name="school_id" value="{{ school.id }}"{% if school.id in state.selected_schools %} checked{% endif %}>
-          <span class="school-card-check">{{ icon('check') }}</span>
-          <span class="school-card-icon">{{ icon('school') }}</span>
-          <span class="school-card-copy">
-            <strong>{{ school.name }}</strong>
-            <small>{{ school.type }}</small>
-            <span>{{ school.address }}</span>
-          </span>
-        </label>
-        {% endfor %}
-        {% if not schools %}
-        <p class="empty-budget-state">No schools are available for this account.</p>
-        {% endif %}
+      {% if schools %}
+      <div class="school-dropdown-wrap">
+        <details class="school-dropdown" data-school-dropdown>
+          <summary>
+            <span>
+              <small>Schools</small>
+              <strong data-school-summary>{{ state.selected_schools | length }} school(s) selected</strong>
+            </span>
+            <span class="school-dropdown-chevron" aria-hidden="true">⌄</span>
+          </summary>
+          <div class="school-dropdown-menu">
+            <div class="school-dropdown-actions">
+              <label class="select-all-control">
+                <input type="checkbox" data-select-schools>
+                <span>Select all</span>
+              </label>
+              <button type="button" class="btn-quiet" data-clear-schools>Clear</button>
+            </div>
+            <div class="school-option-list">
+              {% for school in schools %}
+              <label class="school-option-row">
+                <input type="checkbox" name="school_id" value="{{ school.id }}"{% if school.id in state.selected_schools %} checked{% endif %}>
+                <span>{{ school.name }}</span>
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+        </details>
       </div>
+      {% else %}
+      <p class="empty-budget-state">No schools are available for this account.</p>
+      {% endif %}
     </section>
 
     <div class="budget-actions budget-actions-end">

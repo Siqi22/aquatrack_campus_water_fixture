@@ -44,7 +44,7 @@ from supabase_adapter import SupabaseAdapter
 
 
 ROOT = Path(__file__).resolve().parent
-BUILD_ID = "2026-08-03-aquatrack-budget-v1"
+BUILD_ID = "2026-08-03-aquatrack-budget-v2"
 
 app = Flask(
     __name__,
@@ -95,6 +95,7 @@ def inject_aquatrack_navigation():
         "aquatrack_url": AQUATRACK_URL,
         "communication_url": COMMUNICATION_URL,
         "organization_name": (catalog or {}).get("district_name", "School District"),
+        "build_id": BUILD_ID,
     }
 
 
