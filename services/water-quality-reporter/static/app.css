@@ -284,7 +284,7 @@ button, label[for], input[type="file"], input[type="radio"] { cursor: pointer; }
 
 .school-dropdown-trigger {
   width: 100%;
-  min-height: 3.35rem;
+  min-height: 3.75rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -295,7 +295,13 @@ button, label[for], input[type="file"], input[type="radio"] { cursor: pointer; }
   color: hsl(var(--foreground));
   background: hsl(var(--card));
   box-shadow: none;
+  cursor: pointer;
+  list-style: none;
   text-align: left;
+}
+
+.school-dropdown-trigger::-webkit-details-marker {
+  display: none;
 }
 
 .school-dropdown-trigger > span:first-child {
@@ -326,30 +332,23 @@ button, label[for], input[type="file"], input[type="radio"] { cursor: pointer; }
   transition: transform 140ms ease;
 }
 
-.school-multiselect.is-open .school-dropdown-trigger {
+.school-multiselect[open] .school-dropdown-trigger {
   border-color: hsl(var(--primary) / 0.55);
   box-shadow: 0 0 0 3px hsl(var(--primary) / 0.12);
 }
 
-.school-multiselect.is-open .school-dropdown-chevron {
+.school-multiselect[open] .school-dropdown-chevron {
   transform: rotate(180deg);
 }
 
 .school-dropdown-menu {
-  position: absolute;
-  z-index: 30;
-  top: calc(100% + 0.4rem);
-  left: 0;
-  right: 0;
-  padding: 0.55rem;
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 0.65rem;
   border: 1px solid hsl(var(--border));
   border-radius: 0.85rem;
   background: hsl(var(--card));
-  box-shadow: 0 16px 38px hsl(var(--foreground) / 0.14);
-}
-
-.school-dropdown-menu[hidden] {
-  display: none;
+  box-shadow: 0 8px 22px hsl(var(--foreground) / 0.1);
 }
 
 .school-dropdown-menu .school-search-field {

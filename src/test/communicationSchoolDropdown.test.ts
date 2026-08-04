@@ -17,11 +17,11 @@ const dropdownScript = template.slice(
 describe('Communication school dropdown', () => {
   it('opens, filters recommendations immediately, and supports multiple selections', () => {
     document.body.innerHTML = `
-      <div class="school-multiselect" data-school-dropdown>
-        <button type="button" aria-expanded="false" data-school-toggle>
+      <details class="school-multiselect" data-school-dropdown>
+        <summary data-school-toggle>
           <strong data-school-summary>Select schools</strong>
-        </button>
-        <div data-school-menu hidden>
+        </summary>
+        <div data-school-menu>
           <input type="search" data-school-search>
           <span data-school-count>0 selected</span>
           <input type="checkbox" data-school-select-all>
@@ -33,20 +33,21 @@ describe('Communication school dropdown', () => {
           </label>
           <p data-school-search-empty hidden>No schools found.</p>
         </div>
-      </div>
+      </details>
     `;
 
     window.eval(dropdownScript);
 
-    const toggle = document.querySelector<HTMLElement>('[data-school-toggle]')!;
+    const dropdown = document.querySelector<HTMLDetailsElement>('[data-school-dropdown]')!;
     const menu = document.querySelector<HTMLElement>('[data-school-menu]')!;
     const search = document.querySelector<HTMLInputElement>('[data-school-search]')!;
     const options = Array.from(document.querySelectorAll<HTMLElement>('.school-picker-option'));
     const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('input[name="campus_ids"]'));
 
-    toggle.click();
+    dropdown.open = true;
+    dropdown.dispatchEvent(new Event('toggle'));
+    expect(dropdown.open).toBe(true);
     expect(menu.hidden).toBe(false);
-    expect(toggle.getAttribute('aria-expanded')).toBe('true');
 
     search.value = 'midd';
     search.dispatchEvent(new Event('input', { bubbles: true }));

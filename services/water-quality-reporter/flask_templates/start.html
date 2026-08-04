@@ -26,15 +26,15 @@
       <div id="school-fields" class="stack">
         <div class="field-group">
           <label for="school-dropdown-toggle">Schools</label>
-          <div class="school-multiselect" data-school-dropdown>
-            <button class="school-dropdown-trigger" id="school-dropdown-toggle" type="button" aria-expanded="false" aria-controls="school-dropdown-menu" data-school-toggle>
+          <details class="school-multiselect" data-school-dropdown>
+            <summary class="school-dropdown-trigger" id="school-dropdown-toggle" data-school-toggle>
               <span>
                 <small>Selected schools</small>
                 <strong data-school-summary>{% if campus_ids %}{{ campus_ids | length }} selected{% else %}Select schools{% endif %}</strong>
               </span>
               <span class="school-dropdown-chevron" aria-hidden="true">⌄</span>
-            </button>
-            <div class="school-dropdown-menu" id="school-dropdown-menu" data-school-menu hidden>
+            </summary>
+            <div class="school-dropdown-menu" id="school-dropdown-menu" data-school-menu>
               <div class="school-search-field">
                 <label class="visually-hidden" for="school-search">Search by school name</label>
                 <input type="search" id="school-search" placeholder="Search by school name" autocomplete="off" data-school-search aria-controls="school-picker-list">
@@ -53,7 +53,7 @@
                 <p class="school-picker-empty" data-school-search-empty hidden>No schools found.</p>
               </div>
             </div>
-          </div>
+          </details>
           {% if not schools %}
             <p class="field-hint">No schools are available for this AquaTrack account.</p>
           {% endif %}
@@ -96,19 +96,6 @@
     }
   };
 
-  const openDropdown = () => {
-    menu.hidden = false;
-    toggle.setAttribute('aria-expanded', 'true');
-    dropdown.classList.add('is-open');
-    window.requestAnimationFrame(() => search.focus());
-  };
-
-  const closeDropdown = () => {
-    menu.hidden = true;
-    toggle.setAttribute('aria-expanded', 'false');
-    dropdown.classList.remove('is-open');
-  };
-
   const filterSchools = () => {
     const query = search.value.trim().toLocaleLowerCase();
     let visible = 0;
@@ -121,18 +108,20 @@
   };
 
   search.addEventListener('input', filterSchools);
-  toggle.addEventListener('click', () => menu.hidden ? openDropdown() : closeDropdown());
+  dropdown.addEventListener('toggle', () => {
+    if (dropdown.open) window.requestAnimationFrame(() => search.focus());
+  });
   inputs.forEach((input) => input.addEventListener('change', updateSelection));
   if (selectAll) selectAll.addEventListener('change', () => {
     inputs.forEach((input) => { input.checked = selectAll.checked; });
     updateSelection();
   });
   document.addEventListener('click', (event) => {
-    if (!dropdown.contains(event.target)) closeDropdown();
+    if (!dropdown.contains(event.target)) dropdown.removeAttribute('open');
   });
   dropdown.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
-      closeDropdown();
+      dropdown.removeAttribute('open');
       toggle.focus();
     }
   });
