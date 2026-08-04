@@ -8,6 +8,10 @@ const budgetScript = readFileSync(
   path.resolve(process.cwd(), 'services/replacement-budget/desktop_static/app.js'),
   'utf8',
 );
+const budgetStyles = readFileSync(
+  path.resolve(process.cwd(), 'services/replacement-budget/frontend/src/App.css'),
+  'utf8',
+);
 
 function runBudgetScript() {
   window.eval(budgetScript);
@@ -98,6 +102,7 @@ describe('replacement budget interactions', () => {
     expect(rows[0].hidden).toBe(true);
     expect(rows[1].hidden).toBe(false);
     expect(document.querySelector('[data-school-search-empty]')).not.toBeVisible();
+    expect(budgetStyles).toMatch(/\.school-option-row\[hidden\]\s*{\s*display:\s*none;/);
   });
 
   it('toggles all eligible fixtures and updates the button label', () => {

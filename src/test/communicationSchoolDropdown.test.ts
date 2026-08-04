@@ -5,6 +5,10 @@ const template = readFileSync(
   'services/water-quality-reporter/flask_templates/start.html',
   'utf8',
 );
+const communicationStyles = readFileSync(
+  'services/water-quality-reporter/static/app.css',
+  'utf8',
+);
 const dropdownScript = template.slice(
   template.lastIndexOf('<script>') + '<script>'.length,
   template.lastIndexOf('</script>'),
@@ -57,5 +61,7 @@ describe('Communication school dropdown', () => {
     expect(document.querySelector('[data-school-count]')?.textContent).toBe('2 selected');
     expect(document.querySelector('[data-school-summary]')?.textContent).toContain('Example Elementary');
     expect(document.querySelector('[data-school-summary]')?.textContent).toContain('Example Middle');
+    expect(communicationStyles).toContain(':not(.school-dropdown-trigger)');
+    expect(communicationStyles).toMatch(/\.school-dropdown-trigger\s*{[\s\S]*?background:\s*hsl\(var\(--card\)\);/);
   });
 });

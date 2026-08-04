@@ -1387,6 +1387,10 @@ a.budget-step-link:hover {
   font-weight: 500;
 }
 
+.school-option-row[hidden] {
+  display: none;
+}
+
 .school-option-row:last-child {
   border-bottom: 0;
 }
