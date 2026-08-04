@@ -3,8 +3,10 @@ import { SVGProps } from 'react';
 export function DrinkingFountainIcon({ className, strokeWidth = 2, ...props }: SVGProps<SVGSVGElement>) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M6 21h12M8 21V9h8v12M8 9h8M10 5h4M12 5v4M16 11h2a2 2 0 0 1 2 2v1M10 14h4" />
-      <path d="M20 14c0 1-1 2-1 2s-1-1-1-2a1 1 0 0 1 2 0Z" />
+      <path d="M5 21V10a7 7 0 0 1 14 0v2h3" />
+      <path d="M8 21V10a4 4 0 0 1 8 0v5h3" />
+      <path d="M3 21h8" />
+      <path d="M19 17.5s1.5 1.7 1.5 2.5a1.5 1.5 0 0 1-3 0c0-.8 1.5-2.5 1.5-2.5Z" />
     </svg>
   );
 }
