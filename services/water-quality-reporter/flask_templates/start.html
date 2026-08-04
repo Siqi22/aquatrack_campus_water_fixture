@@ -25,22 +25,34 @@
     <div class="panel-body stack">
       <div id="school-fields" class="stack">
         <div class="field-group">
-          <label for="school-search">Schools</label>
-          <div class="school-search-field">
-            <input type="search" id="school-search" placeholder="Search by school name" autocomplete="off" data-school-search aria-controls="school-picker-list">
-          </div>
-          <div class="school-picker-toolbar">
-            <span data-school-count>{{ campus_ids | length }} selected</span>
-            <label class="select-all-control"><input type="checkbox" data-school-select-all><span>Select all</span></label>
-          </div>
-          <div class="school-picker-list" id="school-picker-list">
-            {% for school in schools %}
-              <label class="school-picker-option" data-school-name="{{ (school.school or school.name) | lower }}">
-                <input type="checkbox" name="campus_ids" value="{{ school.id }}"{% if school.id in campus_ids %} checked{% endif %}>
-                <span>{{ school.school or school.name }}</span>
-              </label>
-            {% endfor %}
-            <p class="school-picker-empty" data-school-search-empty hidden>No schools found.</p>
+          <label for="school-dropdown-toggle">Schools</label>
+          <div class="school-multiselect" data-school-dropdown>
+            <button class="school-dropdown-trigger" id="school-dropdown-toggle" type="button" aria-expanded="false" aria-controls="school-dropdown-menu" data-school-toggle>
+              <span>
+                <small>Selected schools</small>
+                <strong data-school-summary>{% if campus_ids %}{{ campus_ids | length }} selected{% else %}Select schools{% endif %}</strong>
+              </span>
+              <span class="school-dropdown-chevron" aria-hidden="true">⌄</span>
+            </button>
+            <div class="school-dropdown-menu" id="school-dropdown-menu" data-school-menu hidden>
+              <div class="school-search-field">
+                <label class="visually-hidden" for="school-search">Search by school name</label>
+                <input type="search" id="school-search" placeholder="Search by school name" autocomplete="off" data-school-search aria-controls="school-picker-list">
+              </div>
+              <div class="school-picker-toolbar">
+                <span data-school-count>{{ campus_ids | length }} selected</span>
+                <label class="select-all-control"><input type="checkbox" data-school-select-all><span>Select all</span></label>
+              </div>
+              <div class="school-picker-list" id="school-picker-list">
+                {% for school in schools %}
+                  <label class="school-picker-option" data-school-name="{{ (school.school or school.name) | lower }}">
+                    <input type="checkbox" name="campus_ids" value="{{ school.id }}"{% if school.id in campus_ids %} checked{% endif %}>
+                    <span>{{ school.school or school.name }}</span>
+                  </label>
+                {% endfor %}
+                <p class="school-picker-empty" data-school-search-empty hidden>No schools found.</p>
+              </div>
+            </div>
           </div>
           {% if not schools %}
             <p class="field-hint">No schools are available for this AquaTrack account.</p>
@@ -59,20 +71,42 @@
 <script>
 (() => {
   const search = document.querySelector('[data-school-search]');
+  const dropdown = document.querySelector('[data-school-dropdown]');
+  const toggle = document.querySelector('[data-school-toggle]');
+  const menu = document.querySelector('[data-school-menu]');
   const options = Array.from(document.querySelectorAll('.school-picker-option'));
   const inputs = Array.from(document.querySelectorAll('input[name="campus_ids"]'));
   const selectAll = document.querySelector('[data-school-select-all]');
   const count = document.querySelector('[data-school-count]');
+  const summary = document.querySelector('[data-school-summary]');
   const empty = document.querySelector('[data-school-search-empty]');
-  if (!search) return;
+  if (!search || !dropdown || !toggle || !menu) return;
 
   const updateSelection = () => {
-    const selected = inputs.filter((input) => input.checked).length;
-    if (count) count.textContent = `${selected} selected`;
-    if (selectAll) {
-      selectAll.checked = inputs.length > 0 && selected === inputs.length;
-      selectAll.indeterminate = selected > 0 && selected < inputs.length;
+    const selectedInputs = inputs.filter((input) => input.checked);
+    const selectedNames = selectedInputs.map((input) => input.closest('.school-picker-option')?.querySelector('span')?.textContent?.trim()).filter(Boolean);
+    if (count) count.textContent = `${selectedInputs.length} selected`;
+    if (summary) {
+      summary.textContent = selectedNames.length ? selectedNames.join(' · ') : 'Select schools';
+      summary.title = selectedNames.join(', ');
     }
+    if (selectAll) {
+      selectAll.checked = inputs.length > 0 && selectedInputs.length === inputs.length;
+      selectAll.indeterminate = selectedInputs.length > 0 && selectedInputs.length < inputs.length;
+    }
+  };
+
+  const openDropdown = () => {
+    menu.hidden = false;
+    toggle.setAttribute('aria-expanded', 'true');
+    dropdown.classList.add('is-open');
+    window.requestAnimationFrame(() => search.focus());
+  };
+
+  const closeDropdown = () => {
+    menu.hidden = true;
+    toggle.setAttribute('aria-expanded', 'false');
+    dropdown.classList.remove('is-open');
   };
 
   const filterSchools = () => {
@@ -87,10 +121,20 @@
   };
 
   search.addEventListener('input', filterSchools);
+  toggle.addEventListener('click', () => menu.hidden ? openDropdown() : closeDropdown());
   inputs.forEach((input) => input.addEventListener('change', updateSelection));
   if (selectAll) selectAll.addEventListener('change', () => {
     inputs.forEach((input) => { input.checked = selectAll.checked; });
     updateSelection();
+  });
+  document.addEventListener('click', (event) => {
+    if (!dropdown.contains(event.target)) closeDropdown();
+  });
+  dropdown.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      closeDropdown();
+      toggle.focus();
+    }
   });
   updateSelection();
 })();

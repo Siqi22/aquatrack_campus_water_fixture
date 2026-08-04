@@ -278,6 +278,84 @@ button, label[for], input[type="file"], input[type="radio"] { cursor: pointer; }
   padding-left: 2.25rem;
 }
 
+.school-multiselect {
+  position: relative;
+}
+
+.school-dropdown-trigger {
+  width: 100%;
+  min-height: 3.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.75rem;
+  color: hsl(var(--foreground));
+  background: hsl(var(--card));
+  box-shadow: none;
+  text-align: left;
+}
+
+.school-dropdown-trigger > span:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 0.08rem;
+}
+
+.school-dropdown-trigger small {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.65rem;
+  font-weight: 600;
+}
+
+.school-dropdown-trigger strong {
+  overflow: hidden;
+  color: hsl(var(--foreground));
+  font-size: 0.82rem;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.school-dropdown-chevron {
+  flex: 0 0 auto;
+  color: hsl(var(--muted-foreground));
+  font-size: 1rem;
+  transition: transform 140ms ease;
+}
+
+.school-multiselect.is-open .school-dropdown-trigger {
+  border-color: hsl(var(--primary) / 0.55);
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.12);
+}
+
+.school-multiselect.is-open .school-dropdown-chevron {
+  transform: rotate(180deg);
+}
+
+.school-dropdown-menu {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  right: 0;
+  padding: 0.55rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.85rem;
+  background: hsl(var(--card));
+  box-shadow: 0 16px 38px hsl(var(--foreground) / 0.14);
+}
+
+.school-dropdown-menu[hidden] {
+  display: none;
+}
+
+.school-dropdown-menu .school-search-field {
+  margin-bottom: 0.45rem;
+}
+
 .school-picker-toolbar {
   min-height: 2.5rem;
   display: flex;
@@ -315,6 +393,7 @@ button, label[for], input[type="file"], input[type="radio"] { cursor: pointer; }
 }
 
 .school-picker-option:last-of-type { border-bottom: 0; }
+.school-picker-option[hidden] { display: none; }
 .school-picker-option:hover,
 .school-picker-option:has(input:checked) { background: hsl(var(--primary) / 0.055); }
 .school-picker-option input { width: 1rem; height: 1rem; margin: 0; accent-color: hsl(var(--primary)); }
