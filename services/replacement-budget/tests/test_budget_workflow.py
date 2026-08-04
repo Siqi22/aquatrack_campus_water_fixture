@@ -82,6 +82,7 @@ class BudgetWorkflowTests(unittest.TestCase):
         self.assertIn(b"data-toggle-eligible", response.data)
         self.assertNotIn(b"Select all eligible", response.data)
         self.assertNotIn(b">Clear<", response.data)
+        self.assertNotIn(b"> Back<", response.data)
         html = response.data.decode("utf-8")
         self.assertLess(html.index("A-101"), html.index("C-301"))
         self.assertLess(html.index("C-301"), html.index("A-106"))
@@ -107,6 +108,7 @@ class BudgetWorkflowTests(unittest.TestCase):
         self.assertIn(b'data-default-cost="600"', response.data)
         self.assertIn(b'data-labor-cost', response.data)
         self.assertIn(b"Review budget", response.data)
+        self.assertNotIn(b"> Back<", response.data)
 
     def test_review_and_excel_export_include_custom_costs_and_labor(self):
         selected = self._build_budget()

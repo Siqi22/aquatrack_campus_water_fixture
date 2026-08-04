@@ -69,8 +69,7 @@
       </div>
     </section>
 
-    <div class="budget-actions">
-      <a href="{{ url_for('budget_schools') }}" class="btn-secondary">{{ icon('chevron-left') }} Back</a>
+    <div class="budget-actions budget-actions-end">
       <span class="selection-note"><strong data-fixture-count>{{ state.selected_fixtures | length }}</strong> fixture(s) selected</span>
       <button type="submit" class="btn-primary budget-next">Build replacement budget {{ icon('arrow-right') }}</button>
     </div>

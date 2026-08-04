@@ -1425,6 +1425,11 @@ a.budget-step-link:hover {
   grid-template-columns: 1fr auto;
 }
 
+.budget-actions-forward {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .budget-actions-review {
   display: flex;
 }
