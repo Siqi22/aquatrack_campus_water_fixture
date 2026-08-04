@@ -17,12 +17,10 @@ const dropdownScript = template.slice(
 describe('Communication school dropdown', () => {
   it('opens, filters recommendations immediately, and supports multiple selections', () => {
     document.body.innerHTML = `
-      <details class="school-multiselect" data-school-dropdown>
-        <summary data-school-toggle>
-          <strong data-school-summary>Select schools</strong>
-        </summary>
-        <div data-school-menu>
-          <input type="search" data-school-search>
+      <div class="school-multiselect" data-school-dropdown>
+        <input type="search" data-school-search aria-expanded="false">
+        <strong data-school-summary>None</strong>
+        <div data-school-menu hidden>
           <span data-school-count>0 selected</span>
           <input type="checkbox" data-school-select-all>
           <label class="school-picker-option" data-school-name="example elementary">
@@ -33,21 +31,19 @@ describe('Communication school dropdown', () => {
           </label>
           <p data-school-search-empty hidden>No schools found.</p>
         </div>
-      </details>
+      </div>
     `;
 
     window.eval(dropdownScript);
 
-    const dropdown = document.querySelector<HTMLDetailsElement>('[data-school-dropdown]')!;
     const menu = document.querySelector<HTMLElement>('[data-school-menu]')!;
     const search = document.querySelector<HTMLInputElement>('[data-school-search]')!;
     const options = Array.from(document.querySelectorAll<HTMLElement>('.school-picker-option'));
     const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('input[name="campus_ids"]'));
 
-    dropdown.open = true;
-    dropdown.dispatchEvent(new Event('toggle'));
-    expect(dropdown.open).toBe(true);
+    search.focus();
     expect(menu.hidden).toBe(false);
+    expect(search.getAttribute('aria-expanded')).toBe('true');
 
     search.value = 'midd';
     search.dispatchEvent(new Event('input', { bubbles: true }));
@@ -62,7 +58,7 @@ describe('Communication school dropdown', () => {
     expect(document.querySelector('[data-school-count]')?.textContent).toBe('2 selected');
     expect(document.querySelector('[data-school-summary]')?.textContent).toContain('Example Elementary');
     expect(document.querySelector('[data-school-summary]')?.textContent).toContain('Example Middle');
-    expect(communicationStyles).toContain(':not(.school-dropdown-trigger)');
-    expect(communicationStyles).toMatch(/\.school-dropdown-trigger\s*{[\s\S]*?background:\s*hsl\(var\(--card\)\);/);
+    expect(communicationStyles).toMatch(/\.school-dropdown-menu\[hidden\]\s*{\s*display:\s*none;/);
+    expect(communicationStyles).toContain('.school-combobox-search input[type="search"]');
   });
 });

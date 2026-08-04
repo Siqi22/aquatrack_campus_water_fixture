@@ -25,20 +25,14 @@
     <div class="panel-body stack">
       <div id="school-fields" class="stack">
         <div class="field-group">
-          <label for="school-dropdown-toggle">Schools</label>
-          <details class="school-multiselect" data-school-dropdown>
-            <summary class="school-dropdown-trigger" id="school-dropdown-toggle" data-school-toggle>
-              <span>
-                <small>Selected schools</small>
-                <strong data-school-summary>{% if campus_ids %}{{ campus_ids | length }} selected{% else %}Select schools{% endif %}</strong>
-              </span>
-              <span class="school-dropdown-chevron" aria-hidden="true">⌄</span>
-            </summary>
-            <div class="school-dropdown-menu" id="school-dropdown-menu" data-school-menu>
-              <div class="school-search-field">
-                <label class="visually-hidden" for="school-search">Search by school name</label>
-                <input type="search" id="school-search" placeholder="Search by school name" autocomplete="off" data-school-search aria-controls="school-picker-list">
-              </div>
+          <label for="school-search">Schools</label>
+          <div class="school-multiselect" data-school-dropdown>
+            <div class="school-search-field school-combobox-search">
+              <input type="search" id="school-search" placeholder="Search and select schools" autocomplete="off" data-school-search aria-controls="school-picker-list" aria-expanded="false">
+              <span class="school-combobox-chevron" aria-hidden="true">⌄</span>
+            </div>
+            <p class="school-selection-summary"><span>Selected:</span> <strong data-school-summary>{% if campus_ids %}{{ campus_ids | length }} selected{% else %}None{% endif %}</strong></p>
+            <div class="school-dropdown-menu" id="school-dropdown-menu" data-school-menu hidden>
               <div class="school-picker-toolbar">
                 <span data-school-count>{{ campus_ids | length }} selected</span>
                 <label class="select-all-control"><input type="checkbox" data-school-select-all><span>Select all</span></label>
@@ -53,7 +47,7 @@
                 <p class="school-picker-empty" data-school-search-empty hidden>No schools found.</p>
               </div>
             </div>
-          </details>
+          </div>
           {% if not schools %}
             <p class="field-hint">No schools are available for this AquaTrack account.</p>
           {% endif %}
@@ -72,7 +66,6 @@
 (() => {
   const search = document.querySelector('[data-school-search]');
   const dropdown = document.querySelector('[data-school-dropdown]');
-  const toggle = document.querySelector('[data-school-toggle]');
   const menu = document.querySelector('[data-school-menu]');
   const options = Array.from(document.querySelectorAll('.school-picker-option'));
   const inputs = Array.from(document.querySelectorAll('input[name="campus_ids"]'));
@@ -80,20 +73,32 @@
   const count = document.querySelector('[data-school-count]');
   const summary = document.querySelector('[data-school-summary]');
   const empty = document.querySelector('[data-school-search-empty]');
-  if (!search || !dropdown || !toggle || !menu) return;
+  if (!search || !dropdown || !menu) return;
 
   const updateSelection = () => {
     const selectedInputs = inputs.filter((input) => input.checked);
     const selectedNames = selectedInputs.map((input) => input.closest('.school-picker-option')?.querySelector('span')?.textContent?.trim()).filter(Boolean);
     if (count) count.textContent = `${selectedInputs.length} selected`;
     if (summary) {
-      summary.textContent = selectedNames.length ? selectedNames.join(' · ') : 'Select schools';
+      summary.textContent = selectedNames.length ? selectedNames.join(' · ') : 'None';
       summary.title = selectedNames.join(', ');
     }
     if (selectAll) {
       selectAll.checked = inputs.length > 0 && selectedInputs.length === inputs.length;
       selectAll.indeterminate = selectedInputs.length > 0 && selectedInputs.length < inputs.length;
     }
+  };
+
+  const openDropdown = () => {
+    menu.hidden = false;
+    search.setAttribute('aria-expanded', 'true');
+    dropdown.classList.add('is-open');
+  };
+
+  const closeDropdown = () => {
+    menu.hidden = true;
+    search.setAttribute('aria-expanded', 'false');
+    dropdown.classList.remove('is-open');
   };
 
   const filterSchools = () => {
@@ -107,9 +112,13 @@
     if (empty) empty.hidden = visible > 0;
   };
 
-  search.addEventListener('input', filterSchools);
-  dropdown.addEventListener('toggle', () => {
-    if (dropdown.open) window.requestAnimationFrame(() => search.focus());
+  search.addEventListener('focus', () => {
+    openDropdown();
+    filterSchools();
+  });
+  search.addEventListener('input', () => {
+    openDropdown();
+    filterSchools();
   });
   inputs.forEach((input) => input.addEventListener('change', updateSelection));
   if (selectAll) selectAll.addEventListener('change', () => {
@@ -117,12 +126,12 @@
     updateSelection();
   });
   document.addEventListener('click', (event) => {
-    if (!dropdown.contains(event.target)) dropdown.removeAttribute('open');
+    if (!dropdown.contains(event.target)) closeDropdown();
   });
   dropdown.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
-      dropdown.removeAttribute('open');
-      toggle.focus();
+      closeDropdown();
+      search.focus();
     }
   });
   updateSelection();

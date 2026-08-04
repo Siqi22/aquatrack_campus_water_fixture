@@ -152,7 +152,10 @@ function ReviewCard({row,fixtures,onChange,onCreate}:{row:ReviewRow;fixtures:Fix
         <p className="text-sm font-semibold">{row.school||'—'} · Row {row.rowNumber}</p>
         <p className="text-xs text-muted-foreground">{row.fixtureDescription||row.fixtureType||'—'} · {result?formatLeadMeasurement(row.resultValue,row.resultUnit,result.ppb):'Invalid result'}</p>
       </div>
-      <MatchBadge row={row}/>
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <MatchBadge row={row}/>
+        <Button type="button" size="sm" variant="outline" disabled={row.imported} className={row.excluded?'border-muted-foreground bg-secondary':'border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive'} onClick={()=>{onChange({excluded:!row.excluded,confirmed:false});if(row.excluded)openFixtureFinder()}}>{row.excluded?'Include instead':'Exclude'}</Button>
+      </div>
     </div>
     <div className="panel-body space-y-3">
       <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
@@ -165,13 +168,8 @@ function ReviewCard({row,fixtures,onChange,onCreate}:{row:ReviewRow;fixtures:Fix
       {!showFixtureFinder&&!row.imported&&!row.excluded&&<Button type="button" variant="outline" size="sm" onClick={openFixtureFinder}><Search className="mr-1 h-4 w-4"/>Find another fixture</Button>}
 
       {showFixtureFinder&&<section className="space-y-3 rounded-xl border border-border bg-secondary/20 p-3">
-        <div>
-          <p className="text-sm font-semibold">Include this result</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">Search existing fixtures first. Link a match, or create a new entry if no match exists.</p>
-        </div>
-
         <div className="space-y-1.5">
-          <label className="text-xs font-medium" htmlFor={`fixture-search-${row.id}`}>1. Search existing fixtures</label>
+          <label className="text-xs font-medium" htmlFor={`fixture-search-${row.id}`}>Search existing fixtures</label>
           <div className="relative">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground"/>
             <Input id={`fixture-search-${row.id}`} className="pl-9" value={search} onChange={event=>{setSearch(event.target.value);if(event.target.value.trim())setSearchAttempted(true);setPendingFixtureId(undefined)}} placeholder="Building, floor, room, or fixture type"/>
@@ -194,9 +192,9 @@ function ReviewCard({row,fixtures,onChange,onCreate}:{row:ReviewRow;fixtures:Fix
         </div>}
 
         {searchAttempted&&!pendingFixture&&<div className="rounded-xl border border-dashed bg-background p-3">
-          <p className="text-sm font-semibold">2. No match?</p>
+          <p className="text-sm font-semibold">Create new fixture</p>
           <p className="mt-0.5 text-xs text-muted-foreground">Create a new fixture entry from the school, building, and location in this report.</p>
-          <Button type="button" className="mt-3" variant="outline" size="sm" disabled={creating} onClick={createEntry}><Plus className="mr-1.5 h-4 w-4"/>{creating?'Creating new entry…':'Create new entry'}</Button>
+          <Button type="button" className="mt-2" variant="ghost" size="sm" disabled={creating} onClick={createEntry}><Plus className="mr-1.5 h-4 w-4"/>{creating?'Creating…':'Create new'}</Button>
         </div>}
       </section>}
 
@@ -211,7 +209,6 @@ function ReviewCard({row,fixtures,onChange,onCreate}:{row:ReviewRow;fixtures:Fix
       <div className="flex flex-wrap items-center gap-2">
         {!showFixtureFinder&&row.selectedFixtureId&&!row.confirmed&&!row.excluded&&!row.imported&&<Button type="button" size="sm" variant="outline" onClick={()=>onChange({confirmed:true})}>Confirm match</Button>}
         {row.confirmed&&!row.excluded&&!row.imported&&<Button type="button" size="sm" disabled>Included</Button>}
-        <Button type="button" size="sm" variant="outline" disabled={row.imported} className={row.excluded?'border-muted-foreground bg-secondary':''} onClick={()=>{onChange({excluded:!row.excluded,confirmed:false});if(row.excluded)openFixtureFinder()}}>{row.excluded?'Include instead':'Exclude'}</Button>
       </div>
     </div>
   </div>;

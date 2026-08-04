@@ -45,7 +45,7 @@ class BudgetWorkflowTests(unittest.TestCase):
     def test_first_step_is_district_specific_and_has_placeholder_schools(self):
         response = self.client.get("/")
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b"North Valley School District", response.data)
+        self.assertNotIn(b"North Valley School District", response.data)
         self.assertIn(b"School A", response.data)
         self.assertIn(b"School B", response.data)
         self.assertIn(b"School C", response.data)
@@ -56,6 +56,7 @@ class BudgetWorkflowTests(unittest.TestCase):
         self.assertIn(b"No schools selected", response.data)
         self.assertNotIn(b"101 Cedar Avenue", response.data)
         self.assertNotIn(b"The district is already matched", response.data)
+        self.assertNotIn(b"Remediation scope", response.data)
 
     def test_aquatrack_navigation_and_auth_launch_are_available(self):
         response = self.client.get("/auth/launch")
@@ -83,6 +84,8 @@ class BudgetWorkflowTests(unittest.TestCase):
         self.assertNotIn(b"Select all eligible", response.data)
         self.assertNotIn(b">Clear<", response.data)
         self.assertNotIn(b"> Back<", response.data)
+        self.assertNotIn(b"Results are sorted from highest to lowest", response.data)
+        self.assertNotIn(b"Results above 5 ppb", response.data)
         html = response.data.decode("utf-8")
         self.assertLess(html.index("A-101"), html.index("C-301"))
         self.assertLess(html.index("C-301"), html.index("A-106"))
@@ -109,11 +112,17 @@ class BudgetWorkflowTests(unittest.TestCase):
         self.assertIn(b'data-labor-cost', response.data)
         self.assertIn(b"Review budget", response.data)
         self.assertNotIn(b"> Back<", response.data)
+        self.assertNotIn(b"Each fixture starts with a same-type replacement", response.data)
+        self.assertNotIn(b"Parts, labor &amp; vendors", response.data)
 
     def test_review_and_excel_export_include_custom_costs_and_labor(self):
         selected = self._build_budget()
         response = self.client.get("/budget/review")
         self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Review budget and export", response.data)
+        self.assertNotIn(b"Review the replacement budget", response.data)
+        self.assertNotIn(b"Confirm the scope and estimates", response.data)
+        self.assertNotIn(b"Ready to export", response.data)
         self.assertNotIn(b"Back to costs", response.data)
         self.assertNotIn(b"Export district budget", response.data)
         self.assertIn(b"Generate Excel workbook", response.data)

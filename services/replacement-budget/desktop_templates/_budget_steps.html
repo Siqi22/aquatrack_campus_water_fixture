@@ -2,30 +2,30 @@
   {% set completed = state.completed_step | default(0) %}
   <li class="budget-step{% if current_step == 1 %} is-active{% elif completed >= 1 %} is-complete{% endif %}">
     {% if current_step == 1 %}
-      <span class="budget-step-link" aria-current="step"><span class="budget-step-number">1</span><span><strong>Select schools</strong><small>Remediation scope</small></span></span>
+      <span class="budget-step-link" aria-current="step"><span class="budget-step-number">1</span><span><strong>Select schools</strong></span></span>
     {% else %}
-      <a class="budget-step-link" href="{{ url_for('budget_schools') }}"><span class="budget-step-number">1</span><span><strong>Select schools</strong><small>Remediation scope</small></span></a>
+      <a class="budget-step-link" href="{{ url_for('budget_schools') }}"><span class="budget-step-number">1</span><span><strong>Select schools</strong></span></a>
     {% endif %}
   </li>
   <li class="budget-step{% if current_step == 2 %} is-active{% elif completed >= 2 %} is-complete{% endif %}">
     {% if completed >= 1 and current_step != 2 %}
-      <a class="budget-step-link" href="{{ url_for('budget_fixtures') }}"><span class="budget-step-number">2</span><span><strong>Select fixtures</strong><small>Results above 5 ppb</small></span></a>
+      <a class="budget-step-link" href="{{ url_for('budget_fixtures') }}"><span class="budget-step-number">2</span><span><strong>Select fixtures</strong></span></a>
     {% else %}
-      <span class="budget-step-link"{% if current_step == 2 %} aria-current="step"{% endif %}><span class="budget-step-number">2</span><span><strong>Select fixtures</strong><small>Results above 5 ppb</small></span></span>
+      <span class="budget-step-link"{% if current_step == 2 %} aria-current="step"{% endif %}><span class="budget-step-number">2</span><span><strong>Select fixtures</strong></span></span>
     {% endif %}
   </li>
   <li class="budget-step{% if current_step == 3 %} is-active{% elif completed >= 3 %} is-complete{% endif %}">
     {% if completed >= 2 and current_step != 3 %}
-      <a class="budget-step-link" href="{{ url_for('budget_replacements') }}"><span class="budget-step-number">3</span><span><strong>Build budget</strong><small>Parts, labor & vendors</small></span></a>
+      <a class="budget-step-link" href="{{ url_for('budget_replacements') }}"><span class="budget-step-number">3</span><span><strong>Build budget</strong></span></a>
     {% else %}
-      <span class="budget-step-link"{% if current_step == 3 %} aria-current="step"{% endif %}><span class="budget-step-number">3</span><span><strong>Build budget</strong><small>Parts, labor & vendors</small></span></span>
+      <span class="budget-step-link"{% if current_step == 3 %} aria-current="step"{% endif %}><span class="budget-step-number">3</span><span><strong>Build budget</strong></span></span>
     {% endif %}
   </li>
   <li class="budget-step{% if current_step == 4 %} is-active{% endif %}">
     {% if completed >= 3 and current_step != 4 %}
-      <a class="budget-step-link" href="{{ url_for('budget_review') }}"><span class="budget-step-number">4</span><span><strong>Review & export</strong><small>Review budget</small></span></a>
+      <a class="budget-step-link" href="{{ url_for('budget_review') }}"><span class="budget-step-number">4</span><span><strong>Review & export</strong></span></a>
     {% else %}
-      <span class="budget-step-link"{% if current_step == 4 %} aria-current="step"{% endif %}><span class="budget-step-number">4</span><span><strong>Review & export</strong><small>Review budget</small></span></span>
+      <span class="budget-step-link"{% if current_step == 4 %} aria-current="step"{% endif %}><span class="budget-step-number">4</span><span><strong>Review & export</strong></span></span>
     {% endif %}
   </li>
 </ol>
