@@ -52,6 +52,7 @@ class BudgetWorkflowTests(unittest.TestCase):
         self.assertIn(b"Select all", response.data)
         self.assertIn(b"Clear", response.data)
         self.assertIn(b"school-dropdown", response.data)
+        self.assertIn(b'placeholder="Search by school name"', response.data)
         self.assertIn(b"No schools selected", response.data)
         self.assertNotIn(b"101 Cedar Avenue", response.data)
         self.assertNotIn(b"The district is already matched", response.data)

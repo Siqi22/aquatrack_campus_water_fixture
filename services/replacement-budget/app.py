@@ -44,7 +44,7 @@ from supabase_adapter import SupabaseAdapter
 
 
 ROOT = Path(__file__).resolve().parent
-BUILD_ID = "2026-08-03-aquatrack-budget-v3"
+BUILD_ID = "2026-08-04-aquatrack-budget-v4"
 
 app = Flask(
     __name__,

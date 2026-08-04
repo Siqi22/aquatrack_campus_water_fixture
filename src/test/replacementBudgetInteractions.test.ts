@@ -78,4 +78,25 @@ describe('replacement budget interactions', () => {
     labor.dispatchEvent(new Event('input', { bubbles: true }));
     expect(document.querySelector('[data-grand-total]')).toHaveTextContent('$725.50');
   });
+
+  it('filters remediation schools by school name', () => {
+    document.body.innerHTML = `
+      <form data-school-form>
+        <input type="search" data-school-search>
+        <label class="school-option-row"><input type="checkbox" name="school_id" value="a" data-school-name="Cedar Valley Elementary"></label>
+        <label class="school-option-row"><input type="checkbox" name="school_id" value="b" data-school-name="Port Susan Middle"></label>
+        <p data-school-search-empty hidden>No schools found.</p>
+      </form>
+    `;
+    runBudgetScript();
+
+    const search = document.querySelector<HTMLInputElement>('[data-school-search]')!;
+    const rows = Array.from(document.querySelectorAll<HTMLElement>('.school-option-row'));
+    search.value = 'port susan';
+    search.dispatchEvent(new Event('input', { bubbles: true }));
+
+    expect(rows[0].hidden).toBe(true);
+    expect(rows[1].hidden).toBe(false);
+    expect(document.querySelector('[data-school-search-empty]')).not.toBeVisible();
+  });
 });

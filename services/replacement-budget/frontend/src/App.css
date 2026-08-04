@@ -1326,6 +1326,33 @@ a.budget-step-link:hover {
   background: hsl(var(--muted) / 0.65);
 }
 
+.school-dropdown-search {
+  padding: 0.7rem 0.75rem;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.school-dropdown-search input {
+  width: 100%;
+  min-height: 2.45rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.65rem;
+  color: hsl(var(--foreground));
+  background: hsl(var(--card));
+  font: inherit;
+  font-size: 0.78rem;
+}
+
+.school-dropdown-search input:focus {
+  border-color: hsl(var(--primary) / 0.55);
+  outline: none;
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.1);
+}
+
+.school-dropdown-search input::placeholder {
+  color: hsl(var(--muted-foreground));
+}
+
 .select-all-control,
 .school-option-row {
   display: flex;
@@ -1368,6 +1395,14 @@ a.budget-step-link:hover {
 .school-option-row:hover,
 .school-option-row:has(input:checked) {
   background: hsl(var(--primary) / 0.055);
+}
+
+.school-search-empty {
+  margin: 0;
+  padding: 1rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.76rem;
+  text-align: center;
 }
 
 .budget-actions {

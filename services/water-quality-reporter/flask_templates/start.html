@@ -27,8 +27,8 @@
         <div class="field-group">
           <label for="campus_id">School</label>
           <div class="school-search-field">
-            <label class="visually-hidden" for="school-search">Search schools</label>
-            <input type="search" id="school-search" placeholder="Search schools" autocomplete="off" data-school-search aria-controls="campus_id">
+            <label class="visually-hidden" for="school-search">Search by school name</label>
+            <input type="search" id="school-search" placeholder="Search by school name" autocomplete="off" data-school-search aria-controls="campus_id">
           </div>
           <select name="campus_id" id="campus_id" required data-school-select>
             <option value="" {% if not campus_id %}selected{% endif %} disabled>Select a school</option>

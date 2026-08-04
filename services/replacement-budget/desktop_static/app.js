@@ -101,6 +101,9 @@
     const summary = schoolForm.querySelector('[data-school-summary]')
     const selectedNames = schoolForm.querySelector('[data-school-selection-names]')
     const selectAll = schoolForm.querySelector('[data-select-schools]')
+    const search = schoolForm.querySelector('[data-school-search]')
+    const optionRows = Array.from(schoolForm.querySelectorAll('.school-option-row'))
+    const searchEmpty = schoolForm.querySelector('[data-school-search-empty]')
     const updateSchools = () => {
       const selectedInputs = inputs.filter((input) => input.checked)
       const selectedCount = selectedInputs.length
@@ -128,6 +131,19 @@
       clearAll.addEventListener('click', () => {
         inputs.forEach((input) => { input.checked = false })
         updateSchools()
+      })
+    }
+    if (search) {
+      search.addEventListener('input', () => {
+        const query = search.value.trim().toLocaleLowerCase()
+        let visibleCount = 0
+        optionRows.forEach((row) => {
+          const name = row.querySelector('input[name="school_id"]')?.dataset.schoolName || ''
+          const matches = name.toLocaleLowerCase().includes(query)
+          row.hidden = !matches
+          if (matches) visibleCount += 1
+        })
+        if (searchEmpty) searchEmpty.hidden = visibleCount > 0
       })
     }
     updateSchools()

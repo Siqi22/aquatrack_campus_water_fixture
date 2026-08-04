@@ -38,6 +38,10 @@
             <span class="school-dropdown-chevron" aria-hidden="true">⌄</span>
           </summary>
           <div class="school-dropdown-menu">
+            <div class="school-dropdown-search">
+              <label class="sr-only" for="remediation-school-search">Search by school name</label>
+              <input id="remediation-school-search" type="search" placeholder="Search by school name" autocomplete="off" data-school-search>
+            </div>
             <div class="school-dropdown-actions">
               <label class="select-all-control">
                 <input type="checkbox" data-select-schools>
@@ -52,6 +56,7 @@
                 <span>{{ school.name }}</span>
               </label>
               {% endfor %}
+              <p class="school-search-empty" data-school-search-empty hidden>No schools found.</p>
             </div>
           </div>
         </details>
