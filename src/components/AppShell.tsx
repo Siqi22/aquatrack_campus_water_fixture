@@ -1,10 +1,11 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Beaker, Building2, Calculator, Droplets, Home, LogOut, MessageCircle } from 'lucide-react';
+import { Beaker, Calculator, Droplets, Home, LogOut, PenLine } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ImportDialog } from '@/components/ImportDialog';
 import { toast } from 'sonner';
 import { useOrganization } from '@/contexts/OrganizationContext';
+import { DrinkingFountainIcon } from '@/components/icons/DrinkingFountainIcon';
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
@@ -14,9 +15,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { organizationName } = useOrganization();
   const tabs = [
     { to: '/', icon: Home, label: 'Home' },
-    { to: '/campus', icon: Building2, label: 'Fixture Inventory' },
+    { to: '/campus', icon: DrinkingFountainIcon, label: 'Fixture Inventory' },
     { to: '/lead-testing/results', icon: Beaker, label: 'Lead Testing' },
-    { to: '/communication', icon: MessageCircle, label: 'Communication' },
+    { to: '/communication', icon: PenLine, label: 'Communication' },
     { to: '/replacement-budget', icon: Calculator, label: 'Budget' },
   ];
   const [importOpen, setImportOpen] = useState(false);
@@ -63,7 +64,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </main>
 
       <nav className="nav-bar">
-        <div className="mx-auto flex w-full max-w-3xl items-stretch justify-around px-2 md:px-6">
+        <div className="mx-auto grid w-full max-w-3xl grid-cols-5 items-stretch px-1 md:px-4">
           {tabs.map(({ to, icon: Icon, label }) => {
             const active = pathname === to || (to === '/lead-testing/results' && pathname.startsWith('/lead-testing/'));
             return (

@@ -11,9 +11,6 @@
       <h1 class="page-title">Review the replacement budget</h1>
       <p class="page-subtitle">Confirm the scope and estimates, then export an Excel workbook for district planning.</p>
     </div>
-    <div class="district-context district-context-compact">
-      <span><small>Ready to export</small><strong>{{ district_name }}</strong></span>
-    </div>
   </header>
 
   {% include "_budget_steps.html" %}
@@ -63,11 +60,8 @@
     </div>
   </section>
 
-  <div class="export-panel">
-    <div><span class="export-panel-icon">{{ icon('spreadsheet') }}</span><span><strong>Export district budget</strong><small>Includes a budget summary and fixture-level replacement detail.</small></span></div>
+  <div class="export-action">
     <form method="post" action="{{ url_for('export_budget') }}"><button type="submit" class="btn-primary export-budget-button">{{ icon('download') }} Generate Excel workbook</button></form>
   </div>
-
-  <div class="budget-actions budget-actions-review"><a href="{{ url_for('budget_replacements') }}" class="btn-secondary">{{ icon('chevron-left') }} Back to costs</a></div>
 </main>
 {% endblock %}

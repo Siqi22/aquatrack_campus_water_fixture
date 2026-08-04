@@ -99,4 +99,29 @@ describe('replacement budget interactions', () => {
     expect(rows[1].hidden).toBe(false);
     expect(document.querySelector('[data-school-search-empty]')).not.toBeVisible();
   });
+
+  it('toggles all eligible fixtures and updates the button label', () => {
+    document.body.innerHTML = `
+      <form data-fixture-form>
+        <button type="button" data-toggle-eligible>Deselect all</button>
+        <input type="checkbox" name="fixture_id" data-eligible="true" checked>
+        <input type="checkbox" name="fixture_id" data-eligible="true" checked>
+        <input type="checkbox" name="fixture_id" data-eligible="false" disabled>
+        <strong data-fixture-count></strong>
+      </form>
+    `;
+    runBudgetScript();
+
+    const toggle = document.querySelector<HTMLButtonElement>('[data-toggle-eligible]')!;
+    const eligible = Array.from(document.querySelectorAll<HTMLInputElement>('input[data-eligible="true"]'));
+    expect(toggle).toHaveTextContent('Deselect all');
+
+    toggle.click();
+    expect(eligible.every((input) => !input.checked)).toBe(true);
+    expect(toggle).toHaveTextContent('Select all');
+
+    toggle.click();
+    expect(eligible.every((input) => input.checked)).toBe(true);
+    expect(toggle).toHaveTextContent('Deselect all');
+  });
 });

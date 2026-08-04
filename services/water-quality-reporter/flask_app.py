@@ -332,12 +332,19 @@ def _reported_building_name(sample) -> str:
     source_fields = getattr(sample, "source_fields", {}) or {}
     for key in (
         "building_name", "Building Name", "building",
-        "facility_name", "school_name", "site_name",
+        "facility_name",
     ):
         value = source_fields.get(key)
         if value is not None and str(value).strip():
             return str(value).strip()
-    return (getattr(sample, "building_name", "") or "").strip()
+    sample_building = (getattr(sample, "building_name", "") or "").strip()
+    if sample_building:
+        return sample_building
+    for key in ("school_name", "site_name"):
+        value = source_fields.get(key)
+        if value is not None and str(value).strip():
+            return str(value).strip()
+    return ""
 
 
 def detected_buildings_from_samples(samples) -> list[dict]:
@@ -1400,20 +1407,30 @@ def _load_reference_setup(setup_id: str) -> dict | None:
 
 
 def _report_setup_from_values(values) -> dict:
-    campus_id = (values.get("campus_id") or "").strip()
-    selected_school = supabase.school(campus_id) if campus_id and supabase.configured else None
-    school_name = (
-        (selected_school or {}).get("school")
-        or (selected_school or {}).get("name")
-        or ""
-    )
-    organization = (selected_school or {}).get("school_district") or ""
+    requested_ids = values.getlist("campus_ids") if hasattr(values, "getlist") else []
+    legacy_id = (values.get("campus_id") or "").strip()
+    if not requested_ids and legacy_id:
+        requested_ids = [legacy_id]
+    requested_ids = list(dict.fromkeys(item.strip() for item in requested_ids if item.strip()))
+    selected_schools = [
+        school
+        for campus_id in requested_ids
+        if (school := supabase.school(campus_id)) is not None
+    ] if supabase.configured else []
+    campus_ids = [school["id"] for school in selected_schools]
+    school_names = [
+        school.get("school") or school.get("name") or "School"
+        for school in selected_schools
+    ]
+    organization = selected_schools[0].get("school_district") if selected_schools else ""
 
     return {
         "report_style": "wa_school",
         "organization": organization,
-        "school_name": school_name,
-        "campus_id": campus_id if selected_school else "",
+        "school_name": ", ".join(school_names),
+        "school_names": school_names,
+        "campus_id": campus_ids[0] if campus_ids else "",
+        "campus_ids": campus_ids,
     }
 
 
@@ -1421,8 +1438,23 @@ def _school_options() -> list[dict]:
     return supabase.schools() if supabase.configured else []
 
 
-def _samples_from_inventory(campus_id: str, fixture_ids: list[str]) -> tuple[list, list[dict]]:
-    allowed_fixtures = supabase.fixtures(campus_id)
+def _fixtures_for_campuses(campus_ids: list[str]) -> list[dict]:
+    school_by_id = {school["id"]: school for school in _school_options()}
+    fixtures = []
+    seen = set()
+    for campus_id in campus_ids:
+        school = school_by_id.get(campus_id) or {}
+        school_name = school.get("school") or school.get("name") or "School"
+        for fixture in supabase.fixtures(campus_id):
+            if fixture["id"] in seen:
+                continue
+            seen.add(fixture["id"])
+            fixtures.append({**fixture, "school_name": school_name})
+    return fixtures
+
+
+def _samples_from_inventory(campus_ids: list[str], fixture_ids: list[str]) -> tuple[list, list[dict]]:
+    allowed_fixtures = _fixtures_for_campuses(campus_ids)
     selected_ids = set(fixture_ids)
     selected = [row for row in allowed_fixtures if row["id"] in selected_ids]
     if len(selected) != len(selected_ids):
@@ -1480,6 +1512,7 @@ def _samples_from_inventory(campus_id: str, fixture_ids: list[str]) -> tuple[lis
                 "lead_testing_status": (
                     fixture.get("current_lead_testing_status") or "not_started"
                 ),
+                "school_name": fixture.get("school_name") or "",
             },
         ))
     return samples, selected
@@ -1493,6 +1526,7 @@ def index():
         "start.html",
         upload_id="",
         campus_id="",
+        campus_ids=[],
         school_name="",
         schools=_school_options(),
         aquatrack_url=os.environ.get("AQUATRACK_URL", "/"),
@@ -1515,7 +1549,7 @@ def edit_setup(upload_id):
     if request.method == "POST":
         setup = _report_setup_from_values(request.form)
         if not setup["school_name"]:
-            flash("Please select a school.", "error")
+            flash("Please select at least one school.", "error")
             return render_template(
                 "start.html",
                 upload_id=upload_id,
@@ -1542,6 +1576,7 @@ def edit_setup(upload_id):
         "start.html",
         upload_id=upload_id,
         campus_id=meta.get("campus_id", ""),
+        campus_ids=meta.get("campus_ids") or ([meta.get("campus_id")] if meta.get("campus_id") else []),
         school_name=meta.get("school_name", ""),
         report_style=meta.get("report_style", "wa_school"),
         can_review=_session_can_review(meta),
@@ -1556,7 +1591,7 @@ def upload_options():
     if request.method == "GET":
         return redirect(url_for("index"))
     if not setup["school_name"]:
-        flash("Please select a school.", "error")
+        flash("Please select at least one school.", "error")
         return redirect(url_for("index"))
 
     upload_id = uuid.uuid4().hex[:12]
@@ -1589,11 +1624,12 @@ def reference_upload(upload_id=None):
         "organization": meta.get("organization", ""),
         "school_name": meta.get("school_name", ""),
         "campus_id": meta.get("campus_id", ""),
+        "campus_ids": meta.get("campus_ids") or ([meta.get("campus_id")] if meta.get("campus_id") else []),
     }
     if not setup["school_name"]:
-        flash("Please select a school first.", "error")
+        flash("Please select at least one school first.", "error")
         return redirect(url_for("index"))
-    fixtures = supabase.fixtures(setup["campus_id"])
+    fixtures = _fixtures_for_campuses(setup["campus_ids"])
     selected_ids = set(meta.get("fixture_ids") or [row["id"] for row in fixtures])
     template_context = {
         **setup,
@@ -1612,7 +1648,7 @@ def reference_upload(upload_id=None):
 
     try:
         samples, selected_fixtures = _samples_from_inventory(
-            setup["campus_id"],
+            setup["campus_ids"],
             fixture_ids,
         )
     except Exception as e:
@@ -2360,9 +2396,12 @@ def _handle_compose_post(upload_id: str, samples):
             report_bytes,
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         )
+        campus_ids = meta.get("campus_ids") or (
+            [meta.get("campus_id")] if meta.get("campus_id") else []
+        )
         supabase.insert("communication_generated_reports", {
             "created_by": g.current_user["id"],
-            "campus_id": meta.get("campus_id") or None,
+            "campus_id": campus_ids[0] if len(campus_ids) == 1 else None,
             "fixture_ids": meta.get("fixture_ids") or [],
             "school_name": report_building,
             "file_name": filename,

@@ -152,24 +152,21 @@
   const fixtureForm = document.querySelector('[data-fixture-form]')
   if (fixtureForm) {
     const inputs = Array.from(fixtureForm.querySelectorAll('input[name="fixture_id"]'))
+    const eligibleInputs = inputs.filter((input) => input.dataset.eligible === 'true')
     const count = fixtureForm.querySelector('[data-fixture-count]')
+    const toggleEligible = fixtureForm.querySelector('[data-toggle-eligible]')
     const updateFixtures = () => {
       if (count) count.textContent = String(inputs.filter((input) => input.checked).length)
+      if (toggleEligible) {
+        const allEligibleSelected = eligibleInputs.length > 0 && eligibleInputs.every((input) => input.checked)
+        toggleEligible.textContent = allEligibleSelected ? 'Deselect all' : 'Select all'
+      }
     }
     inputs.forEach((input) => input.addEventListener('change', updateFixtures))
-    const selectEligible = fixtureForm.querySelector('[data-select-eligible]')
-    const clear = fixtureForm.querySelector('[data-clear-fixtures]')
-    if (selectEligible) {
-      selectEligible.addEventListener('click', () => {
-        inputs.forEach((input) => {
-          if (input.dataset.eligible === 'true') input.checked = true
-        })
-        updateFixtures()
-      })
-    }
-    if (clear) {
-      clear.addEventListener('click', () => {
-        inputs.forEach((input) => { input.checked = false })
+    if (toggleEligible) {
+      toggleEligible.addEventListener('click', () => {
+        const shouldSelect = !eligibleInputs.every((input) => input.checked)
+        eligibleInputs.forEach((input) => { input.checked = shouldSelect })
         updateFixtures()
       })
     }

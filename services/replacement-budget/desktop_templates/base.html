@@ -21,7 +21,6 @@
               <span class="brand-subtitle">Replacement Budget · {{ organization_name }}</span>
             </span>
           </a>
-          <span class="state-badge">Budget workspace</span>
         </div>
       </header>
       <div class="app-main">{% block content %}{% endblock %}</div>
@@ -29,9 +28,9 @@
     <nav class="app-bottom-nav" aria-label="AquaTrack navigation">
       <div class="app-bottom-nav-inner">
         <a class="app-nav-tab" href="{{ aquatrack_url }}/" aria-label="Home">{{ icon('home') }}<span>Home</span></a>
-        <a class="app-nav-tab" href="{{ aquatrack_url }}/campus" aria-label="Fixture Inventory">{{ icon('building') }}<span>Fixture Inventory</span></a>
+        <a class="app-nav-tab" href="{{ aquatrack_url }}/campus" aria-label="Fixture Inventory">{{ icon('fixture') }}<span>Fixture Inventory</span></a>
         <a class="app-nav-tab" href="{{ aquatrack_url }}/lead-testing/results" aria-label="Lead Testing">{{ icon('beaker') }}<span>Lead Testing</span></a>
-        <a class="app-nav-tab" href="{{ aquatrack_url }}/communication" aria-label="Communication">{{ icon('message') }}<span>Communication</span></a>
+        <a class="app-nav-tab" href="{{ aquatrack_url }}/communication" aria-label="Communication">{{ icon('pen') }}<span>Communication</span></a>
         <a class="app-nav-tab is-active" href="{{ url_for('budget_schools') }}" aria-current="page" aria-label="Replacement Budget">{{ icon('calculator') }}<span>Budget</span></a>
       </div>
     </nav>

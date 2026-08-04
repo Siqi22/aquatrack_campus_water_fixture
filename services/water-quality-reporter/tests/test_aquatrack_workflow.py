@@ -31,21 +31,30 @@ class FakeSupabase:
         return {"id": "test-user"}
 
     def schools(self):
-        return [{
-            "id": "campus-1",
-            "name": "Example Elementary",
-            "school": "Example Elementary",
-            "school_district": "Example District",
-            "address": "1 Example Way",
-        }]
+        return [
+            {
+                "id": "campus-1",
+                "name": "Example Elementary",
+                "school": "Example Elementary",
+                "school_district": "Example District",
+                "address": "1 Example Way",
+            },
+            {
+                "id": "campus-2",
+                "name": "Example Middle",
+                "school": "Example Middle",
+                "school_district": "Example District",
+                "address": "2 Example Way",
+            },
+        ]
 
     def school(self, campus_id):
-        return self.schools()[0] if campus_id == "campus-1" else None
+        return next((school for school in self.schools() if school["id"] == campus_id), None)
 
     def fixtures(self, campus_id=None):
-        if campus_id not in (None, "campus-1"):
+        if campus_id not in (None, "campus-1", "campus-2"):
             return []
-        return [{
+        fixtures = [{
             "id": "fixture-1",
             "campus_id": "campus-1",
             "building_id": "building-1",
@@ -59,7 +68,22 @@ class FakeSupabase:
             "current_result_ppb": 6,
             "current_lead_testing_status": "action_required",
             "current_required_action": "Remediation required",
+        }, {
+            "id": "fixture-2",
+            "campus_id": "campus-2",
+            "building_id": "building-2",
+            "building_name": "Commons Building",
+            "floor": "1",
+            "nearest_room": "Main Hall",
+            "category": "bottle_filler",
+            "brand": "Example",
+            "model": "B200",
+            "serial_number": "EX-002",
+            "current_result_ppb": 3,
+            "current_lead_testing_status": "complete",
+            "current_required_action": "Complete",
         }]
+        return [fixture for fixture in fixtures if campus_id is None or fixture["campus_id"] == campus_id]
 
     def testing_rounds(self, fixture_ids):
         if "fixture-1" not in fixture_ids:
@@ -165,6 +189,8 @@ class AquaTrackWorkflowTests(unittest.TestCase):
             self.assertIn(b"Lead Testing", start.data)
             self.assertIn(b"Communication", start.data)
             self.assertIn(b'data-school-search', start.data)
+            self.assertIn(b'name="campus_ids"', start.data)
+            self.assertIn(b"Example Middle", start.data)
             self.assertIn(b'placeholder="Search by school name"', start.data)
             self.assertNotIn(b"Water Quality Reporter", start.data)
             self.assertNotIn(b">Back<", start.data)
@@ -173,7 +199,7 @@ class AquaTrackWorkflowTests(unittest.TestCase):
 
             setup = client.post(
                 "/upload-options",
-                data={"campus_id": "campus-1"},
+                data={"campus_ids": ["campus-1", "campus-2"]},
                 follow_redirects=False,
             )
             self.assertEqual(setup.status_code, 302)
@@ -182,6 +208,8 @@ class AquaTrackWorkflowTests(unittest.TestCase):
             fixture_page = client.get(setup.headers["Location"])
             self.assertEqual(fixture_page.status_code, 200)
             self.assertIn(b"Learning Center", fixture_page.data)
+            self.assertIn(b"Commons Building", fixture_page.data)
+            self.assertIn(b"Example Elementary, Example Middle", fixture_page.data)
             self.assertIn(b"6 ppb", fixture_page.data)
             self.assertIn(b"checked", fixture_page.data)
             self.assertNotIn(b">Back<", fixture_page.data)

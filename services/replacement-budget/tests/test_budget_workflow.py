@@ -78,6 +78,10 @@ class BudgetWorkflowTests(unittest.TestCase):
         self._select_schools()
         response = self.client.get("/budget/fixtures")
         self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Deselect all", response.data)
+        self.assertIn(b"data-toggle-eligible", response.data)
+        self.assertNotIn(b"Select all eligible", response.data)
+        self.assertNotIn(b">Clear<", response.data)
         html = response.data.decode("utf-8")
         self.assertLess(html.index("A-101"), html.index("C-301"))
         self.assertLess(html.index("C-301"), html.index("A-106"))
@@ -108,6 +112,9 @@ class BudgetWorkflowTests(unittest.TestCase):
         selected = self._build_budget()
         response = self.client.get("/budget/review")
         self.assertEqual(response.status_code, 200)
+        self.assertNotIn(b"Back to costs", response.data)
+        self.assertNotIn(b"Export district budget", response.data)
+        self.assertIn(b"Generate Excel workbook", response.data)
         expected_material = len(selected) * 1750
         expected_total = expected_material + 2500
         self.assertIn(f"${expected_material:.2f}".encode(), response.data)

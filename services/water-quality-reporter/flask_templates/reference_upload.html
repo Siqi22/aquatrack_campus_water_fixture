@@ -18,14 +18,14 @@
 <div class="callout callout-info">
   <span class="callout__icon" aria-hidden="true">i</span>
   <p><strong>{{ school_name }}</strong>{% if organization %} · {{ organization }}{% endif %}<br>
-  <a href="{{ url_for('edit_setup', upload_id=upload_id) if upload_id else url_for('index') }}">Select a different school</a></p>
+  <a href="{{ url_for('edit_setup', upload_id=upload_id) if upload_id else url_for('index') }}">Select different schools</a></p>
 </div>
 
 <form method="POST" action="{{ url_for('reference_upload', upload_id=upload_id) }}">
   <input type="hidden" name="report_style" value="{{ report_style }}">
   <input type="hidden" name="organization" value="{{ organization }}">
   <input type="hidden" name="school_name" value="{{ school_name }}">
-  <input type="hidden" name="campus_id" value="{{ campus_id }}">
+  {% for selected_campus_id in campus_ids %}<input type="hidden" name="campus_ids" value="{{ selected_campus_id }}">{% endfor %}
 
   <section class="card-section">
     <div class="panel-header panel-header--split">
@@ -47,7 +47,7 @@
       <div class="fixture-list" id="fixture-list">
         {% for fixture in fixtures %}
           {% set location = (fixture.building_name or 'Building') ~ ' · Floor ' ~ (fixture.floor or '—') ~ ' · ' ~ (fixture.nearest_room or 'Location not recorded') %}
-          <label class="fixture-option" data-search="{{ (location ~ ' ' ~ (fixture.category or '') ~ ' ' ~ (fixture.serial_number or '') ~ ' ' ~ fixture.id)|lower }}">
+          <label class="fixture-option" data-search="{{ ((fixture.school_name or '') ~ ' ' ~ location ~ ' ' ~ (fixture.category or '') ~ ' ' ~ (fixture.serial_number or '') ~ ' ' ~ fixture.id)|lower }}">
             <input
               type="checkbox"
               name="fixture_ids"
@@ -55,7 +55,7 @@
               {% if fixture.id in selected_fixture_ids %}checked{% endif %}
             >
             <span class="fixture-option__body">
-              <strong>{{ location }}</strong>
+              <strong>{{ fixture.school_name }} · {{ location }}</strong>
               <span>
                 {{ (fixture.category or 'Fixture')|replace('_', ' ')|title }}
                 ·

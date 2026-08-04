@@ -11,9 +11,6 @@
       <h1 class="page-title">Choose fixtures to replace</h1>
       <p class="page-subtitle">Results are sorted from highest to lowest. Only fixtures above {{ threshold }} ppb are eligible.</p>
     </div>
-    <div class="district-context district-context-compact">
-      <span><small>{{ district_name }}</small><strong>{{ selected_school_names | join(' · ') }}</strong></span>
-    </div>
   </header>
 
   {% include "_budget_steps.html" %}
@@ -28,8 +25,7 @@
           <p>Fixtures above {{ threshold }} ppb are selected by default. Safe results remain visible for context.</p>
         </div>
         <div class="table-actions">
-          <button type="button" class="btn-secondary btn-small" data-select-eligible>Select all eligible</button>
-          <button type="button" class="btn-quiet" data-clear-fixtures>Clear</button>
+          <button type="button" class="selection-toggle-button" data-toggle-eligible>Deselect all</button>
         </div>
       </div>
       <div class="budget-table-wrap">

@@ -5,7 +5,7 @@
 <header class="page-header">
   <p class="section-label">New report</p>
   <h1 class="page-title">Create a water quality report</h1>
-  <p class="page-subtitle">Choose a school from your AquaTrack fixture inventory.</p>
+  <p class="page-subtitle">Choose one or more schools from your AquaTrack fixture inventory.</p>
 </header>
 
 <ol class="workflow-steps" aria-label="Report workflow">
@@ -20,25 +20,28 @@
   <section class="card-section">
     <div class="panel-header">
       <h2>Report setup</h2>
-      <p>Select the school this communication is for.</p>
+      <p>Select the schools this communication is for.</p>
     </div>
     <div class="panel-body stack">
       <div id="school-fields" class="stack">
         <div class="field-group">
-          <label for="campus_id">School</label>
+          <label for="school-search">Schools</label>
           <div class="school-search-field">
-            <label class="visually-hidden" for="school-search">Search by school name</label>
-            <input type="search" id="school-search" placeholder="Search by school name" autocomplete="off" data-school-search aria-controls="campus_id">
+            <input type="search" id="school-search" placeholder="Search by school name" autocomplete="off" data-school-search aria-controls="school-picker-list">
           </div>
-          <select name="campus_id" id="campus_id" required data-school-select>
-            <option value="" {% if not campus_id %}selected{% endif %} disabled>Select a school</option>
+          <div class="school-picker-toolbar">
+            <span data-school-count>{{ campus_ids | length }} selected</span>
+            <label class="select-all-control"><input type="checkbox" data-school-select-all><span>Select all</span></label>
+          </div>
+          <div class="school-picker-list" id="school-picker-list">
             {% for school in schools %}
-              <option value="{{ school.id }}" {% if campus_id == school.id %}selected{% endif %}>
-                {{ school.school or school.name }}
-              </option>
+              <label class="school-picker-option" data-school-name="{{ (school.school or school.name) | lower }}">
+                <input type="checkbox" name="campus_ids" value="{{ school.id }}"{% if school.id in campus_ids %} checked{% endif %}>
+                <span>{{ school.school or school.name }}</span>
+              </label>
             {% endfor %}
-          </select>
-          <p class="field-hint" data-school-search-status aria-live="polite"></p>
+            <p class="school-picker-empty" data-school-search-empty hidden>No schools found.</p>
+          </div>
           {% if not schools %}
             <p class="field-hint">No schools are available for this AquaTrack account.</p>
           {% endif %}
@@ -56,30 +59,40 @@
 <script>
 (() => {
   const search = document.querySelector('[data-school-search]');
-  const select = document.querySelector('[data-school-select]');
-  const status = document.querySelector('[data-school-search-status]');
-  if (!search || !select) return;
+  const options = Array.from(document.querySelectorAll('.school-picker-option'));
+  const inputs = Array.from(document.querySelectorAll('input[name="campus_ids"]'));
+  const selectAll = document.querySelector('[data-school-select-all]');
+  const count = document.querySelector('[data-school-count]');
+  const empty = document.querySelector('[data-school-search-empty]');
+  if (!search) return;
 
-  const schools = Array.from(select.options)
-    .filter((option) => option.value)
-    .map((option) => ({ value: option.value, label: option.textContent.trim() }));
-
-  const render = () => {
-    const query = search.value.trim().toLocaleLowerCase();
-    const currentValue = select.value;
-    const matches = schools.filter((school) => school.label.toLocaleLowerCase().includes(query));
-    const placeholder = new Option(matches.length ? 'Select a school' : 'No schools found', '', true, false);
-    placeholder.disabled = true;
-    select.replaceChildren(placeholder);
-    matches.forEach((school) => {
-      const option = new Option(school.label, school.value, false, school.value === currentValue);
-      select.add(option);
-    });
-    if (!matches.some((school) => school.value === currentValue)) select.value = '';
-    if (status) status.textContent = query ? `${matches.length} school(s) found` : '';
+  const updateSelection = () => {
+    const selected = inputs.filter((input) => input.checked).length;
+    if (count) count.textContent = `${selected} selected`;
+    if (selectAll) {
+      selectAll.checked = inputs.length > 0 && selected === inputs.length;
+      selectAll.indeterminate = selected > 0 && selected < inputs.length;
+    }
   };
 
-  search.addEventListener('input', render);
+  const filterSchools = () => {
+    const query = search.value.trim().toLocaleLowerCase();
+    let visible = 0;
+    options.forEach((option) => {
+      const matches = option.dataset.schoolName.includes(query);
+      option.hidden = !matches;
+      if (matches) visible += 1;
+    });
+    if (empty) empty.hidden = visible > 0;
+  };
+
+  search.addEventListener('input', filterSchools);
+  inputs.forEach((input) => input.addEventListener('change', updateSelection));
+  if (selectAll) selectAll.addEventListener('change', () => {
+    inputs.forEach((input) => { input.checked = selectAll.checked; });
+    updateSelection();
+  });
+  updateSelection();
 })();
 </script>
 {% endblock %}

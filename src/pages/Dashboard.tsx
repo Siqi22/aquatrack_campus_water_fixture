@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   BarChart3,
-  Building2,
   ClipboardCheck,
   FlaskConical,
   RotateCcw,
@@ -13,6 +12,7 @@ import {
 import { useFixtureStore } from '@/store/fixtureStore';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { useLeadTesting } from '@/hooks/useLeadTesting';
+import { DrinkingFountainIcon } from '@/components/icons/DrinkingFountainIcon';
 
 export default function Dashboard() {
   const { organizationName } = useOrganization();
@@ -88,37 +88,29 @@ export default function Dashboard() {
         <p className="mt-8 text-center text-sm text-muted-foreground">Loading workspace…</p>
       ) : (
         <div className="space-y-4">
-          <section className="card-soft p-4 sm:p-5" aria-label="Fixture inventory status">
-            <SectionHeading
-              icon={Building2}
-              title="Fixture Inventory Status"
-              subtitle="Schools with recorded fixture locations"
-            />
-            <Link
-              to="/campus"
-              className="mt-4 block rounded-xl border bg-card p-4 transition-colors hover:bg-secondary/30"
-            >
-              <p className="text-2xl font-bold tabular-nums text-foreground">{fixtureDataCoverage}%</p>
-              <p className="mt-1 text-xs font-medium text-muted-foreground">Schools with fixture data</p>
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                {schoolsWithFixtureData} of {campuses.length} schools
-              </p>
+          <div className="grid gap-4 xl:grid-cols-[minmax(15rem,0.7fr)_minmax(0,1.8fr)]">
+            <Link to="/campus" className="card-soft block p-4 transition-colors hover:bg-secondary/20" aria-label="Fixture inventory status">
+              <SectionHeading icon={DrinkingFountainIcon} title="Fixture Inventory" subtitle="Schools with fixture locations" />
+              <div className="mt-3 flex items-end justify-between gap-3">
+                <p className="text-3xl font-bold tabular-nums text-foreground">{fixtureDataCoverage}%</p>
+                <p className="pb-1 text-right text-[11px] text-muted-foreground">{schoolsWithFixtureData} of {campuses.length} schools</p>
+              </div>
             </Link>
-          </section>
 
-          <section className="card-soft p-4 sm:p-5">
-            <SectionHeading icon={Wrench} title="Action Status" subtitle="Schools that require action" />
-            <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <ActionCard icon={FlaskConical} value={leadStatus.sampling} label="Awaiting initial sampling" to="/campus?leadFilter=sample" active={leadStatus.sampling > 0} />
-              <ActionCard icon={ClipboardCheck} value={leadStatus.results} label="Awaiting laboratory results" to="/campus?leadFilter=awaiting" />
-              <ActionCard icon={RotateCcw} value={leadStatus.retesting} label="Awaiting retesting" to="/campus?leadFilter=retest" />
-              <ActionCard icon={ShieldCheck} value={leadStatus.remediation} label="In active remediation" to="/campus?leadFilter=remediation" />
-            </div>
-          </section>
+            <section className="card-soft p-4">
+              <SectionHeading icon={Wrench} title="Action Status" subtitle="Schools that require action" />
+              <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
+                <ActionCard icon={FlaskConical} value={leadStatus.sampling} label="Awaiting initial sampling" to="/campus?leadFilter=sample" active={leadStatus.sampling > 0} />
+                <ActionCard icon={ClipboardCheck} value={leadStatus.results} label="Awaiting laboratory results" to="/campus?leadFilter=awaiting" />
+                <ActionCard icon={RotateCcw} value={leadStatus.retesting} label="Awaiting retesting" to="/campus?leadFilter=retest" />
+                <ActionCard icon={ShieldCheck} value={leadStatus.remediation} label="In active remediation" to="/campus?leadFilter=remediation" />
+              </div>
+            </section>
+          </div>
 
-          <section className="card-soft p-4 sm:p-5">
+          <section className="card-soft p-4">
             <SectionHeading icon={BarChart3} title="Completed Test Results" subtitle="Schools with completed laboratory results" />
-            <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="mt-3 grid grid-cols-2 gap-2">
               <ResultCard value={leadStatus.above5} label="Schools with results 5–15 ppb" tone="warning" to="/campus?leadFilter=above5" />
               <ResultCard value={leadStatus.above15} label="Schools with results above 15 ppb" tone="urgent" to="/campus?leadFilter=immediate" />
             </div>
