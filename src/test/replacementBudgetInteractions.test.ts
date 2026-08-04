@@ -22,10 +22,11 @@ describe('replacement budget interactions', () => {
     document.body.innerHTML = `
       <form data-school-form>
         <strong data-school-summary></strong>
+        <span data-school-selection-names></span>
         <input type="checkbox" data-select-schools>
         <button type="button" data-clear-schools>Clear</button>
-        <input type="checkbox" name="school_id" value="school-a">
-        <input type="checkbox" name="school_id" value="school-b">
+        <input type="checkbox" name="school_id" value="school-a" data-school-name="Cedar Valley Elementary">
+        <input type="checkbox" name="school_id" value="school-b" data-school-name="Port Susan Middle">
         <strong data-school-count></strong>
       </form>
     `;
@@ -38,11 +39,13 @@ describe('replacement budget interactions', () => {
 
     expect(schools.every((school) => school.checked)).toBe(true);
     expect(document.querySelector('[data-school-count]')).toHaveTextContent('2');
-    expect(document.querySelector('[data-school-summary]')).toHaveTextContent('2 school(s) selected');
+    expect(document.querySelector('[data-school-summary]')).toHaveTextContent('Cedar Valley Elementary · Port Susan Middle');
+    expect(document.querySelector('[data-school-selection-names]')).toHaveTextContent('Cedar Valley Elementary, Port Susan Middle');
 
     document.querySelector<HTMLButtonElement>('[data-clear-schools]')!.click();
     expect(schools.every((school) => !school.checked)).toBe(true);
     expect(selectAll.checked).toBe(false);
+    expect(document.querySelector('[data-school-summary]')).toHaveTextContent('Select schools');
   });
 
   it('updates the part price and total immediately when part or labor changes', () => {

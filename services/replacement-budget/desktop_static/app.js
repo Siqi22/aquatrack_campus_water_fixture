@@ -99,11 +99,18 @@
     const inputs = Array.from(schoolForm.querySelectorAll('input[name="school_id"]'))
     const counts = Array.from(schoolForm.querySelectorAll('[data-school-count]'))
     const summary = schoolForm.querySelector('[data-school-summary]')
+    const selectedNames = schoolForm.querySelector('[data-school-selection-names]')
     const selectAll = schoolForm.querySelector('[data-select-schools]')
     const updateSchools = () => {
-      const selectedCount = inputs.filter((input) => input.checked).length
+      const selectedInputs = inputs.filter((input) => input.checked)
+      const selectedCount = selectedInputs.length
+      const names = selectedInputs.map((input) => input.dataset.schoolName || input.value)
       counts.forEach((count) => { count.textContent = String(selectedCount) })
-      if (summary) summary.textContent = `${selectedCount} school(s) selected`
+      if (summary) {
+        summary.textContent = names.length ? names.join(' · ') : 'Select schools'
+        summary.title = names.join(', ')
+      }
+      if (selectedNames) selectedNames.textContent = names.length ? names.join(', ') : 'No schools selected'
       if (selectAll) {
         selectAll.checked = inputs.length > 0 && selectedCount === inputs.length
         selectAll.indeterminate = selectedCount > 0 && selectedCount < inputs.length

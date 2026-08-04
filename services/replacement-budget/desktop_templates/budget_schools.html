@@ -32,8 +32,8 @@
         <details class="school-dropdown" data-school-dropdown>
           <summary>
             <span>
-              <small>Schools</small>
-              <strong data-school-summary>{{ state.selected_schools | length }} school(s) selected</strong>
+              <small>Selected schools</small>
+              <strong data-school-summary>{% if selected_school_names %}{{ selected_school_names | join(' · ') }}{% else %}Select schools{% endif %}</strong>
             </span>
             <span class="school-dropdown-chevron" aria-hidden="true">⌄</span>
           </summary>
@@ -48,7 +48,7 @@
             <div class="school-option-list">
               {% for school in schools %}
               <label class="school-option-row">
-                <input type="checkbox" name="school_id" value="{{ school.id }}"{% if school.id in state.selected_schools %} checked{% endif %}>
+                <input type="checkbox" name="school_id" value="{{ school.id }}" data-school-name="{{ school.name }}"{% if school.id in state.selected_schools %} checked{% endif %}>
                 <span>{{ school.name }}</span>
               </label>
               {% endfor %}
@@ -62,7 +62,10 @@
     </section>
 
     <div class="budget-actions budget-actions-end">
-      <span class="selection-note"><strong data-school-count>{{ state.selected_schools | length }}</strong> school(s) selected</span>
+      <span class="selection-note">
+        <strong data-school-count>{{ state.selected_schools | length }}</strong> selected ·
+        <span data-school-selection-names>{% if selected_school_names %}{{ selected_school_names | join(', ') }}{% else %}No schools selected{% endif %}</span>
+      </span>
       <button type="submit" class="btn-primary budget-next">Continue to fixtures {{ icon('arrow-right') }}</button>
     </div>
   </form>

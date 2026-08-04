@@ -1239,7 +1239,7 @@ a.budget-step-link:hover {
 }
 
 .school-dropdown-wrap {
-  width: min(34rem, 100%);
+  width: 100%;
   padding: 1.15rem;
 }
 
@@ -1305,11 +1305,9 @@ a.budget-step-link:hover {
 }
 
 .school-dropdown-menu {
-  position: absolute;
-  top: calc(100% + 0.4rem);
-  left: 0;
-  z-index: 20;
+  position: relative;
   width: 100%;
+  margin-top: 0.4rem;
   overflow: hidden;
   border: 1px solid hsl(var(--border));
   border-radius: 0.75rem;
@@ -1404,6 +1402,11 @@ a.budget-step-link:hover {
   color: hsl(var(--muted-foreground));
   font-size: 0.72rem;
   text-align: center;
+}
+
+.selection-note [data-school-selection-names] {
+  color: hsl(var(--foreground));
+  font-weight: 500;
 }
 
 .selection-note strong {

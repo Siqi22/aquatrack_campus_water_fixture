@@ -44,7 +44,7 @@ from supabase_adapter import SupabaseAdapter
 
 
 ROOT = Path(__file__).resolve().parent
-BUILD_ID = "2026-08-03-aquatrack-budget-v2"
+BUILD_ID = "2026-08-03-aquatrack-budget-v3"
 
 app = Flask(
     __name__,
@@ -279,10 +279,16 @@ def budget_schools():
             _save_budget_state(state)
             return redirect(url_for("budget_fixtures"))
 
+    selected_school_names = [
+        school["name"]
+        for school in catalog["schools"]
+        if school["id"] in state.get("selected_schools", [])
+    ]
     return render_template(
         "budget_schools.html",
         district_name=catalog["district_name"],
         schools=catalog["schools"],
+        selected_school_names=selected_school_names,
         state=state,
         error=error,
         current_step=1,
