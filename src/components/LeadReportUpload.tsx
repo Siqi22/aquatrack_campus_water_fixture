@@ -138,6 +138,7 @@ function ReviewCard({row,fixtures,onChange,onCreate}:{row:ReviewRow;fixtures:Fix
     setCreating(true);
     void onCreate()
       .then(()=>{
+        setEditing(false);
         setFindingAnother(false);
         setSearch('');
         setSearchAttempted(false);
@@ -202,7 +203,7 @@ function ReviewCard({row,fixtures,onChange,onCreate}:{row:ReviewRow;fixtures:Fix
         <CollapsibleTrigger asChild><Button variant="ghost" size="sm"><ChevronDown className="mr-1 h-4 w-4"/>Create new</Button></CollapsibleTrigger>
         <CollapsibleContent className="grid grid-cols-2 gap-2 pt-2">
           {(['school','building','floor','room','fixtureDescription','fixtureType','sampleId','sampleDate','resultValue','resultUnit'] as const).map(field=><div key={field}><label className="text-[10px] text-muted-foreground">{label(field)}</label><Input type={field==='sampleDate'?'date':'text'} value={row[field]} onChange={event=>onChange({[field]:event.target.value,confirmed:false} as Partial<ReviewRow>)}/></div>)}
-          <Button className="col-span-2" variant="outline" onClick={()=>{onChange({},true);setEditing(false);setFindingAnother(false);setSearchAttempted(false);setPendingFixtureId(undefined)}}>Check Match Again</Button>
+          <Button className="col-span-2" variant="outline" disabled={creating} onClick={createEntry}>{creating?'Creating…':'Confirm creation'}</Button>
         </CollapsibleContent>
       </Collapsible>
 
