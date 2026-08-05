@@ -15,5 +15,6 @@ describe('Lead report matching review hierarchy', () => {
     expect(source).not.toContain('Search existing fixtures first');
     expect(source).not.toContain('1. Search existing fixtures');
     expect(source).not.toContain('Create new entry');
+    expect(source).not.toContain('Edit report details');
   });
 });

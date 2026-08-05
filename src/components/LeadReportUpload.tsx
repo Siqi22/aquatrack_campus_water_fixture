@@ -58,7 +58,7 @@ export function LeadReportUpload({onImported,reviewUnresolved=false}:{onImported
   }catch(error){if(temporaryStoragePath)await supabase.storage.from('lead-testing-reports').remove([temporaryStoragePath]);toast.error(reportProcessingError(error),{duration:10000})}finally{setBusy(false)}}
   async function changeRow(row:ReviewRow,patch:Partial<ReviewRow>,rematch=false){let next={...row,...patch};if(rematch){const match=matchLeadReportRow(next,fixtures,campuses);next={...next,match,selectedFixtureId:match.fixtureId,confirmed:false}}setRows(current=>current.map(item=>item.id===row.id?next:item));const updated=await db.from('lead_testing_report_rows').update({...rowToDb(next,row.reportUploadId),confirmed_fixture_id:next.selectedFixtureId||null,user_confirmed:next.confirmed,match_status:next.excluded?'excluded':next.confirmed?'manually_matched':next.match.status}).eq('id',row.id);if(updated.error)toast.error(errorMessage(updated.error))}
   async function createFixtureForRow(row:ReviewRow){
-    const schoolName=row.school.trim();if(!schoolName)throw new Error('Enter the school name in “Edit report details” before creating this fixture.');
+    const schoolName=row.school.trim();if(!schoolName)throw new Error('Enter the school name before creating this fixture.');
     const same=(left:string|undefined,right:string)=>normalizeFingerprint(left??'')===normalizeFingerprint(right);
     let campus=campuses.find(item=>same(item.school||item.name,schoolName));
     if(!campus){campus=await addCampus({name:schoolName,school:schoolName,schoolDistrict:row.schoolDistrict.trim()||campuses.find(item=>item.schoolDistrict)?.schoolDistrict||'',address:''})??undefined}
@@ -199,7 +199,7 @@ function ReviewCard({row,fixtures,onChange,onCreate}:{row:ReviewRow;fixtures:Fix
       </section>}
 
       <Collapsible open={editing} onOpenChange={setEditing}>
-        <CollapsibleTrigger asChild><Button variant="ghost" size="sm"><ChevronDown className="mr-1 h-4 w-4"/>Edit report details</Button></CollapsibleTrigger>
+        <CollapsibleTrigger asChild><Button variant="ghost" size="sm"><ChevronDown className="mr-1 h-4 w-4"/>Create new</Button></CollapsibleTrigger>
         <CollapsibleContent className="grid grid-cols-2 gap-2 pt-2">
           {(['school','building','floor','room','fixtureDescription','fixtureType','sampleId','sampleDate','resultValue','resultUnit'] as const).map(field=><div key={field}><label className="text-[10px] text-muted-foreground">{label(field)}</label><Input type={field==='sampleDate'?'date':'text'} value={row[field]} onChange={event=>onChange({[field]:event.target.value,confirmed:false} as Partial<ReviewRow>)}/></div>)}
           <Button className="col-span-2" variant="outline" onClick={()=>{onChange({},true);setEditing(false);setFindingAnother(false);setSearchAttempted(false);setPendingFixtureId(undefined)}}>Check Match Again</Button>
