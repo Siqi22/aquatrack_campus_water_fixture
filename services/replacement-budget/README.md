@@ -16,7 +16,6 @@ rules control which schools, fixtures, and testing results are available.
 ```text
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_PUBLISHABLE_KEY=your-publishable-key
-SCHOOL_DISTRICT_NAME=North Valley School District
 FLASK_SECRET_KEY=a-long-random-value
 AQUATRACK_URL=https://your-aquatrack-domain.example
 COMMUNICATION_URL=https://your-communication-tool.example
@@ -31,3 +30,7 @@ python app.py
 
 Without Supabase environment variables, the original placeholder district data
 is used for local development and regression tests.
+
+In production, the school picker uses the signed-in user's Supabase/RLS scope.
+Every school-district campus with at least one fixture record is available;
+schools without fixture inventory are omitted.

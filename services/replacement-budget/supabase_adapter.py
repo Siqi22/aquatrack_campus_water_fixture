@@ -42,10 +42,6 @@ class SupabaseAdapter:
     def __init__(self):
         self.url = os.environ.get("SUPABASE_URL", "").rstrip("/")
         self.key = os.environ.get("SUPABASE_PUBLISHABLE_KEY", "")
-        self.district_name = (
-            os.environ.get("SCHOOL_DISTRICT_NAME", "North Valley School District").strip()
-            or "North Valley School District"
-        )
 
     @property
     def configured(self) -> bool:
@@ -88,7 +84,6 @@ class SupabaseAdapter:
             {
                 "select": "id,name,school,school_district,address",
                 "organization_mode": "eq.school_district",
-                "school_district": f"eq.{self.district_name}",
                 "order": "school.asc",
             },
         )
@@ -101,8 +96,6 @@ class SupabaseAdapter:
                 "district_name": row.get("school_district") or "School District",
             }
             for row in rows
-            if str(row.get("school_district") or "").strip().casefold()
-            == self.district_name.casefold()
         ]
 
     def _sample_dates(self, fixture_ids: Iterable[str]) -> dict[str, str]:
@@ -136,14 +129,6 @@ class SupabaseAdapter:
                 "fixture_by_id": {},
             }
 
-        buildings = self.select(
-            "buildings",
-            {
-                "select": "id,campus_id,name",
-                "campus_id": f"in.({','.join(school_ids)})",
-            },
-        )
-        building_names = {row["id"]: row.get("name") or "Building" for row in buildings}
         rows = self.select(
             "fixtures",
             {
@@ -152,13 +137,38 @@ class SupabaseAdapter:
                     "serial_number,current_result_ppb"
                 ),
                 "campus_id": f"in.({','.join(school_ids)})",
-                "current_result_ppb": "not.is.null",
                 "order": "campus_id.asc,building_id.asc,floor.asc,nearest_room.asc",
             },
         )
-        sample_dates = self._sample_dates(row["id"] for row in rows)
+        fixture_school_ids = {row.get("campus_id") for row in rows}
+        schools = [school for school in schools if school["id"] in fixture_school_ids]
+        school_ids = [school["id"] for school in schools]
+        if not school_ids:
+            return {
+                "district_name": "School District",
+                "schools": [],
+                "school_by_id": {},
+                "fixtures": [],
+                "fixture_by_id": {},
+            }
+
+        buildings = self.select(
+            "buildings",
+            {
+                "select": "id,campus_id,name",
+                "campus_id": f"in.({','.join(school_ids)})",
+            },
+        )
+        building_names = {row["id"]: row.get("name") or "Building" for row in buildings}
+        rows_with_results = [
+            row
+            for row in rows
+            if row.get("campus_id") in fixture_school_ids
+            and row.get("current_result_ppb") is not None
+        ]
+        sample_dates = self._sample_dates(row["id"] for row in rows_with_results)
         fixtures = []
-        for row in rows:
+        for row in rows_with_results:
             building = building_names.get(row.get("building_id"), "Building")
             floor = str(row.get("floor") or "").strip()
             room = str(row.get("nearest_room") or "").strip()
@@ -183,8 +193,17 @@ class SupabaseAdapter:
 
         school_by_id = {school["id"]: school for school in schools}
         fixture_by_id = {fixture["id"]: fixture for fixture in fixtures}
+        district_names = sorted(
+            {
+                school["district_name"].strip()
+                for school in schools
+                if school.get("district_name")
+                and school["district_name"].strip()
+                and school["district_name"] != "School District"
+            }
+        )
         return {
-            "district_name": self.district_name,
+            "district_name": district_names[0] if len(district_names) == 1 else "Multiple School Districts",
             "schools": schools,
             "school_by_id": school_by_id,
             "fixtures": fixtures,
