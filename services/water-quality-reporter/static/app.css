@@ -68,7 +68,7 @@ button, label[for], input[type="file"], input[type="radio"] { cursor: pointer; }
 
 .app-header__inner {
   width: 100%;
-  max-width: 32rem;
+  max-width: 44rem;
   min-height: 4rem;
   margin: 0 auto;
   padding: 0.65rem 1rem;
@@ -109,7 +109,7 @@ button, label[for], input[type="file"], input[type="radio"] { cursor: pointer; }
 
 .page-shell {
   width: 100%;
-  max-width: 32rem;
+  max-width: 44rem;
   margin: 0 auto;
   padding: 1.25rem 1rem 7rem;
 }
@@ -139,52 +139,66 @@ button, label[for], input[type="file"], input[type="radio"] { cursor: pointer; }
 
 .workflow-steps {
   counter-reset: workflow-step;
+  position: relative;
   display: grid;
-  grid-template-columns: repeat(4, max-content);
-  justify-content: space-between;
-  gap: 1rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
   width: 100%;
-  max-width: 44rem;
-  margin: 0 0 1.25rem;
+  margin: 0 0 1.5rem;
   padding: 0;
-  overflow-x: auto;
-  scrollbar-width: thin;
+  border: 1px solid hsl(var(--border));
+  border-radius: 1rem;
+  background: hsl(var(--card));
+  box-shadow: 0 1px 3px hsl(var(--foreground) / 0.04);
   list-style: none;
 }
 .workflow-step {
   counter-increment: workflow-step;
-  min-width: max-content;
+  min-width: 0;
+  border-right: 1px solid hsl(var(--border));
   color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
-  font-weight: 500;
-  white-space: nowrap;
 }
+.workflow-step:last-child { border-right: 0; }
 .workflow-step__link {
+  min-height: 3.75rem;
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.7rem;
+  padding: 0.8rem 1rem;
   color: inherit;
   text-decoration: none;
 }
+.workflow-step:first-child .workflow-step__link { border-radius: 1rem 0 0 1rem; }
+.workflow-step:last-child .workflow-step__link { border-radius: 0 1rem 1rem 0; }
+.workflow-step__link > span {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .workflow-step__link::before {
   content: counter(workflow-step);
-  width: 1.5rem;
-  height: 1.5rem;
-  flex: 0 0 1.5rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex: 0 0 1.75rem;
   display: grid;
   place-items: center;
   border: 1px solid hsl(var(--border));
   border-radius: 999px;
+  color: hsl(var(--muted-foreground));
   background: hsl(var(--card));
-  font-size: 0.625rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
 }
-.workflow-step > a.workflow-step__link:hover { color: hsl(var(--primary)); }
+.workflow-step > a.workflow-step__link:hover { color: hsl(var(--foreground)); background: hsl(var(--muted) / 0.55); }
 .workflow-step > a.workflow-step__link:focus-visible {
-  border-radius: 0.4rem;
+  border-radius: 0.75rem;
   outline: 2px solid hsl(var(--primary));
-  outline-offset: 0.25rem;
+  outline-offset: -3px;
 }
-.workflow-step.is-active { color: hsl(var(--foreground)); font-weight: 600; }
+.workflow-step.is-active { box-shadow: inset 0 -3px 0 hsl(var(--primary)); color: hsl(var(--foreground)); background: hsl(var(--primary) / 0.035); }
 .workflow-step.is-active .workflow-step__link::before { border-color: hsl(var(--primary)); background: hsl(var(--primary)); color: white; }
 .workflow-step.is-complete .workflow-step__link::before { border-color: hsl(var(--primary) / 0.25); background: hsl(var(--primary) / 0.1); color: hsl(var(--primary)); }
 
@@ -780,7 +794,7 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 
 @media (max-width: 760px) {
   .grid-2, .grid-4, .row, .row3 { grid-template-columns: 1fr; }
-  .workflow-steps { padding-bottom: 0.25rem; }
+  .workflow-steps { grid-template-columns: repeat(4, minmax(8.5rem, 1fr)); overflow-x: auto; scrollbar-width: thin; }
   .brand__copy span { display: none; }
   .btn-icon-text span { display: none; }
   .btn-icon-text { width: 2.5rem; padding: 0; }

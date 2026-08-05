@@ -58,6 +58,10 @@ class BudgetWorkflowTests(unittest.TestCase):
         self.assertNotIn(b"101 Cedar Avenue", response.data)
         self.assertNotIn(b"The district is already matched", response.data)
         self.assertNotIn(b"Remediation scope", response.data)
+        self.assertIn(b"Select school(s)", response.data)
+        self.assertIn(b"Select fixture(s)", response.data)
+        self.assertNotIn(b"<strong>Select schools</strong>", response.data)
+        self.assertNotIn(b"<strong>Select fixtures</strong>", response.data)
 
     def test_aquatrack_navigation_and_auth_launch_are_available(self):
         response = self.client.get("/auth/launch")

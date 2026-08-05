@@ -202,6 +202,13 @@ class AquaTrackWorkflowTests(unittest.TestCase):
             self.assertNotIn(b"University of Washington", start.data)
             self.assertNotIn(b'value="uw"', start.data)
 
+            workflow_styles = client.get("/static/app.css")
+            self.assertEqual(workflow_styles.status_code, 200)
+            self.assertIn(b"grid-template-columns: repeat(4, minmax(0, 1fr))", workflow_styles.data)
+            self.assertIn(b"border-radius: 1rem", workflow_styles.data)
+            self.assertIn(b"border-right: 1px solid", workflow_styles.data)
+            workflow_styles.close()
+
             setup = client.post(
                 "/upload-options",
                 data={"campus_ids": ["campus-1", "campus-2"]},
