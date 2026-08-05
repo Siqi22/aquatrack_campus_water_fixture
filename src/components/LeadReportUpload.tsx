@@ -155,7 +155,7 @@ function ReviewCard({row,fixtures,onChange,onCreate}:{row:ReviewRow;fixtures:Fix
       </div>
       <div className="flex flex-wrap items-center justify-end gap-2">
         <MatchBadge row={row}/>
-        <Button type="button" size="sm" variant="outline" disabled={row.imported} className={row.excluded?'border-muted-foreground bg-secondary':'border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive'} onClick={()=>{onChange({excluded:!row.excluded,confirmed:false});if(row.excluded)openFixtureFinder()}}>{row.excluded?'Include instead':'Exclude'}</Button>
+        {!row.imported&&(row.excluded||unresolved)&&<Button type="button" size="sm" variant="outline" className={row.excluded?'border-muted-foreground bg-secondary':'border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive'} onClick={()=>{onChange({excluded:!row.excluded,confirmed:false});if(row.excluded)openFixtureFinder()}}>{row.excluded?'Include instead':'Exclude'}</Button>}
       </div>
     </div>
     <div className="panel-body space-y-3">
