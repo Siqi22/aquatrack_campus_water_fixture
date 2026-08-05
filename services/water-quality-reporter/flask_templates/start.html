@@ -28,18 +28,19 @@
           <label for="school-search">Schools</label>
           <div class="school-multiselect" data-school-dropdown>
             <div class="school-search-field school-combobox-search">
-              <input type="search" id="school-search" placeholder="Search and select schools" autocomplete="off" data-school-search aria-controls="school-picker-list" aria-expanded="false">
+              <input type="search" id="school-search" placeholder="Search and select schools" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="school-picker-list" aria-expanded="false" data-school-search>
               <span class="school-combobox-chevron" aria-hidden="true">⌄</span>
             </div>
             <p class="school-selection-summary"><span>Selected:</span> <strong data-school-summary>{% if campus_ids %}{{ campus_ids | length }} selected{% else %}None{% endif %}</strong></p>
             <div class="school-dropdown-menu" id="school-dropdown-menu" data-school-menu hidden>
               <div class="school-picker-toolbar">
                 <span data-school-count>{{ campus_ids | length }} selected</span>
+                <span data-school-result-count aria-live="polite">{{ schools | length }} schools</span>
                 <label class="select-all-control"><input type="checkbox" data-school-select-all><span>Select all</span></label>
               </div>
-              <div class="school-picker-list" id="school-picker-list">
+              <div class="school-picker-list" id="school-picker-list" role="listbox" aria-label="School recommendations" aria-multiselectable="true">
                 {% for school in schools %}
-                  <label class="school-picker-option" data-school-name="{{ (school.school or school.name) | lower }}">
+                  <label class="school-picker-option" role="option" aria-selected="{{ 'true' if school.id in campus_ids else 'false' }}" data-school-name="{{ (school.school or school.name) | lower }}">
                     <input type="checkbox" name="campus_ids" value="{{ school.id }}"{% if school.id in campus_ids %} checked{% endif %}>
                     <span>{{ school.school or school.name }}</span>
                   </label>
@@ -71,6 +72,7 @@
   const inputs = Array.from(document.querySelectorAll('input[name="campus_ids"]'));
   const selectAll = document.querySelector('[data-school-select-all]');
   const count = document.querySelector('[data-school-count]');
+  const resultCount = document.querySelector('[data-school-result-count]');
   const summary = document.querySelector('[data-school-summary]');
   const empty = document.querySelector('[data-school-search-empty]');
   if (!search || !dropdown || !menu) return;
@@ -87,6 +89,10 @@
       selectAll.checked = inputs.length > 0 && selectedInputs.length === inputs.length;
       selectAll.indeterminate = selectedInputs.length > 0 && selectedInputs.length < inputs.length;
     }
+    options.forEach((option) => {
+      const input = option.querySelector('input[name="campus_ids"]');
+      option.setAttribute('aria-selected', input?.checked ? 'true' : 'false');
+    });
   };
 
   const openDropdown = () => {
@@ -101,15 +107,23 @@
     dropdown.classList.remove('is-open');
   };
 
+  const normalizeSearch = (value) => value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase()
+    .trim();
+
   const filterSchools = () => {
-    const query = search.value.trim().toLocaleLowerCase();
+    const terms = normalizeSearch(search.value).split(/\s+/).filter(Boolean);
     let visible = 0;
     options.forEach((option) => {
-      const matches = option.dataset.schoolName.includes(query);
+      const schoolName = normalizeSearch(option.dataset.schoolName || option.textContent || '');
+      const matches = terms.every((term) => schoolName.includes(term));
       option.hidden = !matches;
       if (matches) visible += 1;
     });
     if (empty) empty.hidden = visible > 0;
+    if (resultCount) resultCount.textContent = `${visible} school${visible === 1 ? '' : 's'} found`;
   };
 
   search.addEventListener('focus', () => {
@@ -119,6 +133,19 @@
   search.addEventListener('input', () => {
     openDropdown();
     filterSchools();
+  });
+  search.addEventListener('click', () => {
+    openDropdown();
+    filterSchools();
+  });
+  search.addEventListener('keydown', (event) => {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      openDropdown();
+      filterSchools();
+      const firstVisibleInput = options.find((option) => !option.hidden)?.querySelector('input');
+      firstVisibleInput?.focus();
+    }
   });
   inputs.forEach((input) => input.addEventListener('change', updateSelection));
   if (selectAll) selectAll.addEventListener('change', () => {

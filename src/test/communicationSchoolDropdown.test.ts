@@ -22,6 +22,7 @@ describe('Communication school dropdown', () => {
         <strong data-school-summary>None</strong>
         <div data-school-menu hidden>
           <span data-school-count>0 selected</span>
+          <span data-school-result-count>2 schools</span>
           <input type="checkbox" data-school-select-all>
           <label class="school-picker-option" data-school-name="example elementary">
             <input type="checkbox" name="campus_ids" value="1"><span>Example Elementary</span>
@@ -49,6 +50,12 @@ describe('Communication school dropdown', () => {
     search.dispatchEvent(new Event('input', { bubbles: true }));
     expect(options[0].hidden).toBe(true);
     expect(options[1].hidden).toBe(false);
+    expect(document.querySelector('[data-school-result-count]')?.textContent).toBe('1 school found');
+
+    search.value = 'example elem';
+    search.dispatchEvent(new Event('input', { bubbles: true }));
+    expect(options[0].hidden).toBe(false);
+    expect(options[1].hidden).toBe(true);
 
     inputs[1].click();
     search.value = 'elem';

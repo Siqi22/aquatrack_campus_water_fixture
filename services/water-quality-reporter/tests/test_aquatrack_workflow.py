@@ -191,6 +191,8 @@ class AquaTrackWorkflowTests(unittest.TestCase):
             self.assertIn(b'data-school-search', start.data)
             self.assertIn(b'data-school-dropdown', start.data)
             self.assertIn(b'aria-expanded="false"', start.data)
+            self.assertIn(b'role="combobox"', start.data)
+            self.assertIn(b'data-school-result-count', start.data)
             self.assertIn(b'data-school-menu hidden', start.data)
             self.assertIn(b'name="campus_ids"', start.data)
             self.assertIn(b"Example Middle", start.data)

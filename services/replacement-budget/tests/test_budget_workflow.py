@@ -1,9 +1,10 @@
 import io
 import unittest
+from unittest.mock import patch
 
 from openpyxl import load_workbook
 
-from app import app
+from app import app, supabase
 
 
 class BudgetWorkflowTests(unittest.TestCase):
@@ -74,6 +75,27 @@ class BudgetWorkflowTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"School A \xc2\xb7 School C", response.data)
         self.assertIn(b"2</strong> selected", response.data)
+
+    def test_new_aquatrack_launch_starts_with_no_selected_schools(self):
+        self._select_schools()
+        with self.client.session_transaction() as current_session:
+            self.assertEqual(
+                current_session["budget_state"]["selected_schools"],
+                ["school-a", "school-c"],
+            )
+
+        with patch.object(supabase, "verify_user", return_value={"id": "user-1"}):
+            response = self.client.post(
+                "/auth/session",
+                json={"access_token": "valid-token"},
+            )
+        self.assertEqual(response.status_code, 200)
+
+        with self.client.session_transaction() as current_session:
+            self.assertNotIn("budget_state", current_session)
+        response = self.client.get("/budget/schools")
+        self.assertIn(b"No schools selected", response.data)
+        self.assertNotIn(b'name="school_id" value="school-a" checked', response.data)
 
     def test_fixtures_default_to_all_results_above_five_ppb(self):
         self._select_schools()

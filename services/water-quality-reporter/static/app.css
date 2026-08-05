@@ -354,6 +354,11 @@ button, label[for], input[type="file"], input[type="radio"] { cursor: pointer; }
   font-weight: 600;
 }
 
+.school-picker-toolbar [data-school-result-count] {
+  color: hsl(var(--foreground));
+  font-weight: 500;
+}
+
 .school-picker-list {
   max-height: 18rem;
   overflow-y: auto;

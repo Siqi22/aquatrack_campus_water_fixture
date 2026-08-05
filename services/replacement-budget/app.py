@@ -44,7 +44,7 @@ from supabase_adapter import SupabaseAdapter
 
 
 ROOT = Path(__file__).resolve().parent
-BUILD_ID = "2026-08-04-aquatrack-budget-v7"
+BUILD_ID = "2026-08-05-aquatrack-budget-v8"
 
 app = Flask(
     __name__,
@@ -156,6 +156,9 @@ def auth_session():
     user = supabase.verify_user(token)
     if not user:
         return {"error": "Invalid or expired AquaTrack session"}, 401
+    # Opening the tool from AquaTrack starts a fresh budget. Navigation within
+    # the budget service continues to preserve the in-progress selection.
+    session.pop("budget_state", None)
     response = make_response({"ok": True})
     response.set_cookie(
         "replacement_budget_access_token",
