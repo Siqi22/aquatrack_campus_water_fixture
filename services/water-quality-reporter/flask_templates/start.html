@@ -32,7 +32,7 @@
               <span class="school-combobox-chevron" aria-hidden="true">⌄</span>
             </div>
             <p class="school-selection-summary"><span>Selected:</span> <strong data-school-summary>{% if campus_ids %}{{ campus_ids | length }} selected{% else %}None{% endif %}</strong></p>
-            <div class="school-dropdown-menu" id="school-dropdown-menu" data-school-menu hidden>
+            <div class="school-dropdown-menu" id="school-dropdown-menu" data-school-menu>
               <div class="school-picker-toolbar">
                 <span data-school-count>{{ campus_ids | length }} selected</span>
                 <span data-school-result-count aria-live="polite">{{ schools | length }} schools</span>
@@ -96,13 +96,11 @@
   };
 
   const openDropdown = () => {
-    menu.hidden = false;
     search.setAttribute('aria-expanded', 'true');
     dropdown.classList.add('is-open');
   };
 
   const closeDropdown = () => {
-    menu.hidden = true;
     search.setAttribute('aria-expanded', 'false');
     dropdown.classList.remove('is-open');
   };
@@ -130,10 +128,12 @@
     openDropdown();
     filterSchools();
   });
-  search.addEventListener('input', () => {
+  const showMatchingSchools = () => {
     openDropdown();
     filterSchools();
-  });
+  };
+  search.addEventListener('input', showMatchingSchools);
+  search.addEventListener('keyup', showMatchingSchools);
   search.addEventListener('click', () => {
     openDropdown();
     filterSchools();

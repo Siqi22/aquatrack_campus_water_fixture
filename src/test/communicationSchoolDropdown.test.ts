@@ -20,7 +20,7 @@ describe('Communication school dropdown', () => {
       <div class="school-multiselect" data-school-dropdown>
         <input type="search" data-school-search aria-expanded="false">
         <strong data-school-summary>None</strong>
-        <div data-school-menu hidden>
+        <div data-school-menu>
           <span data-school-count>0 selected</span>
           <span data-school-result-count>2 schools</span>
           <input type="checkbox" data-school-select-all>
@@ -46,7 +46,7 @@ describe('Communication school dropdown', () => {
     expect(menu.hidden).toBe(false);
     expect(search.getAttribute('aria-expanded')).toBe('true');
 
-    search.value = 'midd';
+    search.value = 'd';
     search.dispatchEvent(new Event('input', { bubbles: true }));
     expect(options[0].hidden).toBe(true);
     expect(options[1].hidden).toBe(false);
@@ -65,7 +65,8 @@ describe('Communication school dropdown', () => {
     expect(document.querySelector('[data-school-count]')?.textContent).toBe('2 selected');
     expect(document.querySelector('[data-school-summary]')?.textContent).toContain('Example Elementary');
     expect(document.querySelector('[data-school-summary]')?.textContent).toContain('Example Middle');
-    expect(communicationStyles).toMatch(/\.school-dropdown-menu\[hidden\]\s*{\s*display:\s*none;/);
+    expect(communicationStyles).toContain('.school-multiselect:focus-within .school-dropdown-menu');
+    expect(communicationStyles).toMatch(/\.school-dropdown-menu\s*{\s*display:\s*none;/);
     expect(communicationStyles).toContain('.school-combobox-search input[type="search"]');
   });
 });

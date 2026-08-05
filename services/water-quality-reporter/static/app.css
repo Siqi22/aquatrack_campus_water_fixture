@@ -335,6 +335,7 @@ button, label[for], input[type="file"], input[type="radio"] { cursor: pointer; }
 }
 
 .school-dropdown-menu {
+  display: none;
   width: 100%;
   margin-top: 0.5rem;
   padding: 0.65rem;
@@ -344,8 +345,9 @@ button, label[for], input[type="file"], input[type="radio"] { cursor: pointer; }
   box-shadow: 0 8px 22px hsl(var(--foreground) / 0.1);
 }
 
-.school-dropdown-menu[hidden] {
-  display: none;
+.school-multiselect:focus-within .school-dropdown-menu,
+.school-multiselect.is-open .school-dropdown-menu {
+  display: block;
 }
 
 .school-dropdown-menu .school-search-field {
