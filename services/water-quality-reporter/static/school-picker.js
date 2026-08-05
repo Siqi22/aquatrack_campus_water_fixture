@@ -26,9 +26,11 @@
 
     if (count) count.textContent = `${selectedInputs.length} selected`;
     if (summary) {
-      summary.textContent = selectedNames.length ? selectedNames.join(' · ') : 'None';
+      summary.textContent = selectedNames.join(' · ');
       summary.title = selectedNames.join(', ');
+      summary.hidden = selectedNames.length === 0;
     }
+    dropdown.classList.toggle('has-selection', selectedNames.length > 0);
     if (selectAll) {
       selectAll.checked = inputs.length > 0 && selectedInputs.length === inputs.length;
       selectAll.indeterminate = selectedInputs.length > 0 && selectedInputs.length < inputs.length;
@@ -50,6 +52,7 @@
   };
 
   const filterSchools = () => {
+    dropdown.classList.toggle('is-searching', normalizeSearch(search.value).length > 0);
     const terms = normalizeSearch(search.value).split(/\s+/).filter(Boolean);
     let visible = 0;
 
@@ -89,7 +92,11 @@
     }
   });
 
-  inputs.forEach((input) => input.addEventListener('change', updateSelection));
+  inputs.forEach((input) => input.addEventListener('change', () => {
+    search.value = '';
+    filterSchools();
+    updateSelection();
+  }));
   selectAll?.addEventListener('change', () => {
     inputs.forEach((input) => {
       if (!input.closest('.school-picker-option')?.hidden) {

@@ -28,6 +28,7 @@
           <label for="school-search">Schools</label>
           <div class="school-multiselect" data-school-dropdown>
             <div class="school-search-field school-combobox-search">
+              <span class="school-combobox-selected" data-school-summary aria-live="polite"{% if not campus_ids %} hidden{% endif %}>{% if campus_ids %}{{ campus_ids | length }} selected{% endif %}</span>
               <input type="search" id="school-search" placeholder="Search and select schools" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="school-picker-list" aria-expanded="false" data-school-search>
               <span class="school-combobox-chevron" aria-hidden="true">⌄</span>
             </div>
@@ -47,7 +48,6 @@
                 <label class="select-all-control"><input type="checkbox" data-school-select-all><span>Select visible</span></label>
               </div>
             </div>
-            <p class="school-selection-summary"><span>Selected:</span> <strong data-school-summary>{% if campus_ids %}{{ campus_ids | length }} selected{% else %}None{% endif %}</strong></p>
           </div>
           {% if not schools %}
             <p class="field-hint">No schools are available for this AquaTrack account.</p>
@@ -63,5 +63,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='school-picker.js', v='2026-08-05-school-picker-v1') }}" defer></script>
+<script src="{{ url_for('static', filename='school-picker.js', v='2026-08-05-school-picker-v2') }}" defer></script>
 {% endblock %}

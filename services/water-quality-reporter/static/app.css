@@ -307,6 +307,32 @@ button, label[for], input[type="file"], input[type="radio"] { cursor: pointer; }
   padding-right: 2.5rem;
 }
 
+.school-combobox-selected {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  right: 2.5rem;
+  left: 2.25rem;
+  overflow: hidden;
+  color: hsl(var(--foreground));
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.school-multiselect.has-selection:not(.is-searching) .school-combobox-search input[type="search"]::placeholder {
+  color: transparent;
+}
+
+.school-combobox-search:focus-within .school-combobox-selected,
+.school-multiselect.is-searching .school-combobox-selected {
+  display: none;
+}
+
 .school-combobox-chevron {
   position: absolute;
   top: 50%;

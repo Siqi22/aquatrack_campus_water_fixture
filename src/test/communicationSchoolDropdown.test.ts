@@ -14,8 +14,10 @@ describe('Communication school dropdown', () => {
   it('opens, filters recommendations immediately, and supports multiple selections', () => {
     document.body.innerHTML = `
       <div class="school-multiselect" data-school-dropdown>
-        <input type="search" data-school-search aria-expanded="false">
-        <strong data-school-summary>None</strong>
+        <div class="school-combobox-search">
+          <span class="school-combobox-selected" data-school-summary hidden></span>
+          <input type="search" data-school-search aria-expanded="false">
+        </div>
         <div data-school-menu>
           <span data-school-count>0 selected</span>
           <span data-school-result-count>2 schools</span>
@@ -59,8 +61,12 @@ describe('Communication school dropdown', () => {
     inputs[0].click();
 
     expect(document.querySelector('[data-school-count]')?.textContent).toBe('2 selected');
+    expect(search.value).toBe('');
     expect(document.querySelector('[data-school-summary]')?.textContent).toContain('Example Elementary');
     expect(document.querySelector('[data-school-summary]')?.textContent).toContain('Example Middle');
+    expect(document.querySelector('[data-school-summary]')).not.toHaveAttribute('hidden');
+    expect(document.querySelector('[data-school-summary]')?.closest('.school-combobox-search')).not.toBeNull();
+    expect(communicationStyles).toContain('.school-combobox-selected');
     expect(communicationStyles).toContain('.school-multiselect:focus-within .school-dropdown-menu');
     expect(communicationStyles).toMatch(/\.school-dropdown-menu\s*{\s*display:\s*none;/);
     expect(communicationStyles).toContain('.school-combobox-search input[type="search"]');
