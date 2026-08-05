@@ -1,11 +1,12 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Beaker, Calculator, Droplets, Home, LogOut, PenLine } from 'lucide-react';
+import { Beaker, Calculator, Droplets, LogOut, PenLine } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ImportDialog } from '@/components/ImportDialog';
 import { toast } from 'sonner';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { DrinkingFountainIcon } from '@/components/icons/DrinkingFountainIcon';
+import { HomeIcon } from '@/components/icons/HomeIcon';
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
@@ -14,7 +15,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { user, signOut } = useAuth();
   const { organizationName } = useOrganization();
   const tabs = [
-    { to: '/', icon: Home, label: 'Home' },
+    { to: '/', icon: HomeIcon, label: 'Home' },
     { to: '/campus', icon: DrinkingFountainIcon, label: 'Fixture Inventory' },
     { to: '/lead-testing/results', icon: Beaker, label: 'Lead Testing' },
     { to: '/communication', icon: PenLine, label: 'Communication' },

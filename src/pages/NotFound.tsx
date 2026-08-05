@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
-import { Home, MapPinOff } from 'lucide-react';
+import { MapPinOff } from 'lucide-react';
+import { HomeIcon } from '@/components/icons/HomeIcon';
 
 export default function NotFound() {
   const location = useLocation();
@@ -19,7 +20,7 @@ export default function NotFound() {
           <span className="font-mono text-caption">{location.pathname}</span> is not a valid route in AquaTrack.
         </p>
         <Link to="/" className="btn-primary mt-6 inline-flex">
-          <Home className="h-4 w-4" />
+          <HomeIcon className="h-4 w-4" />
           Back to Home
         </Link>
       </div>
