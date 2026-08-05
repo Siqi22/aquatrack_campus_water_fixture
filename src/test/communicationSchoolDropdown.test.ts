@@ -1,17 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const template = readFileSync(
-  'services/water-quality-reporter/flask_templates/start.html',
-  'utf8',
-);
 const communicationStyles = readFileSync(
   'services/water-quality-reporter/static/app.css',
   'utf8',
 );
-const dropdownScript = template.slice(
-  template.lastIndexOf('<script>') + '<script>'.length,
-  template.lastIndexOf('</script>'),
+const dropdownScript = readFileSync(
+  'services/water-quality-reporter/static/school-picker.js',
+  'utf8',
 );
 
 describe('Communication school dropdown', () => {
@@ -25,10 +21,10 @@ describe('Communication school dropdown', () => {
           <span data-school-result-count>2 schools</span>
           <input type="checkbox" data-school-select-all>
           <label class="school-picker-option" data-school-name="example elementary">
-            <input type="checkbox" name="campus_ids" value="1"><span>Example Elementary</span>
+            <input type="checkbox" name="campus_ids" value="1"><span data-school-option-name>Example Elementary</span>
           </label>
           <label class="school-picker-option" data-school-name="example middle">
-            <input type="checkbox" name="campus_ids" value="2"><span>Example Middle</span>
+            <input type="checkbox" name="campus_ids" value="2"><span data-school-option-name>Example Middle</span>
           </label>
           <p data-school-search-empty hidden>No schools found.</p>
         </div>

@@ -198,6 +198,8 @@ class AquaTrackWorkflowTests(unittest.TestCase):
             self.assertIn(b'name="campus_ids"', start.data)
             self.assertIn(b"Example Middle", start.data)
             self.assertIn(b'placeholder="Search and select schools"', start.data)
+            self.assertIn(b"school-picker.js", start.data)
+            self.assertNotIn(b"const filterSchools", start.data)
             self.assertNotIn(b"Water Quality Reporter", start.data)
             self.assertNotIn(b">Back<", start.data)
             self.assertNotIn(b"University of Washington", start.data)
@@ -209,6 +211,12 @@ class AquaTrackWorkflowTests(unittest.TestCase):
             self.assertIn(b"border-radius: 1rem", workflow_styles.data)
             self.assertIn(b"border-right: 1px solid", workflow_styles.data)
             workflow_styles.close()
+
+            school_picker_script = client.get("/static/school-picker.js")
+            self.assertEqual(school_picker_script.status_code, 200)
+            self.assertIn(b"search.addEventListener('input'", school_picker_script.data)
+            self.assertIn(b"option.hidden = !matches", school_picker_script.data)
+            school_picker_script.close()
 
             setup = client.post(
                 "/upload-options",

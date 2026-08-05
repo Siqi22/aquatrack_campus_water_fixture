@@ -362,8 +362,8 @@ button, label[for], input[type="file"], input[type="radio"] { cursor: pointer; }
   gap: 0.75rem;
   padding: 0.5rem 0.7rem;
   border: 1px solid hsl(var(--border));
-  border-bottom: 0;
-  border-radius: 0.75rem 0.75rem 0 0;
+  border-top: 0;
+  border-radius: 0 0 0.75rem 0.75rem;
   background: hsl(var(--muted) / 0.55);
   color: hsl(var(--muted-foreground));
   font-size: 0.7rem;
@@ -379,7 +379,7 @@ button, label[for], input[type="file"], input[type="radio"] { cursor: pointer; }
   max-height: 18rem;
   overflow-y: auto;
   border: 1px solid hsl(var(--border));
-  border-radius: 0 0 0.75rem 0.75rem;
+  border-radius: 0.75rem 0.75rem 0 0;
   background: hsl(var(--card));
 }
 
