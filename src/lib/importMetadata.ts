@@ -1,7 +1,8 @@
 import { normalizeFixtureCategory, type FixtureCategory } from '@/store/fixtureStore';
+import { normalizeFloorKey } from '@/lib/floorUtils';
 
 function normalizeFloorLabel(raw: string): string {
-  return raw.trim();
+  return normalizeFloorKey(raw);
 }
 
 /** Build import provenance (stored in fixtures.import_metadata, not observations). */

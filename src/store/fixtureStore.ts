@@ -255,7 +255,7 @@ function mapFixture(r: FixtureRow, buildingName: string): Fixture {
     campusId: r.campus_id,
     buildingId: r.building_id,
     buildingName,
-    floor: String(r.floor),
+    floor: normalizeFloorKey(String(r.floor)),
     roomNumber: r.nearest_room,
     nearestRoom: r.nearest_room,
     brand: r.brand ?? "",

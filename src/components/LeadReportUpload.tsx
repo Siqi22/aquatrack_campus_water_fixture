@@ -13,6 +13,7 @@ import { Collapsible,CollapsibleContent,CollapsibleTrigger } from '@/components/
 import { Input } from '@/components/ui/input';
 import { leadReportRowBelongsToWorkspace } from '@/lib/leadReportScope';
 import { normalizeSchoolDistrict } from '@/lib/schoolDistrict';
+import { normalizeFloorKey } from '@/lib/floorUtils';
 
 interface ReviewRow extends LeadReportRowDraft { id:string; reportUploadId:string; sourceFileName:string; match:LeadFixtureMatch; selectedFixtureId?:string; confirmed:boolean; excluded:boolean; imported:boolean; importedTestingRoundId?:string }
 const db=supabase as any;
@@ -65,12 +66,13 @@ export function LeadReportUpload({onImported,reviewUnresolved=false}:{onImported
     if(!campus){campus=await addCampus({name:schoolName,school:schoolName,schoolDistrict:normalizeSchoolDistrict(row.schoolDistrict||campuses.find(item=>item.schoolDistrict)?.schoolDistrict),address:''})??undefined}
     if(!campus)throw new Error('The school could not be created.');
     const buildingName=row.building.trim()||'Main Building';
+    const floorKey=normalizeFloorKey(row.floor||'1')||'1';
     let building=buildings.find(item=>item.campusId===campus!.id&&same(item.name,buildingName));
-    const numericFloor=Number.parseInt(row.floor,10);if(!building){building=await addBuilding({campusId:campus.id,name:buildingName,floors:Number.isFinite(numericFloor)?Math.max(1,numericFloor):1})??undefined}
+    const numericFloor=Number.parseInt(floorKey,10);if(!building){building=await addBuilding({campusId:campus.id,name:buildingName,floors:Number.isFinite(numericFloor)?Math.max(1,numericFloor):1})??undefined}
     if(!building)throw new Error('The building could not be created.');
     const location=(row.room||row.fixtureDescription||'Location pending').trim();
-    const existingFixture=fixtures.find(item=>item.buildingId===building!.id&&same(item.floor,row.floor||'1')&&same(item.nearestRoom||item.roomNumber,location));
-    const fixture=existingFixture??await addFixture({campusId:campus.id,buildingId:building.id,buildingName:building.name,floor:row.floor.trim()||'1',roomNumber:location,nearestRoom:location,brand:'',model:'',serialNumber:row.sampleId?`REPORT-${row.sampleId}`:'',photoURL:'',modelPlatePhotoURL:'',lastMaintenanceDate:new Date().toISOString().slice(0,10),filterType:'',category:normalizeFixtureCategory(row.fixtureType||row.fixtureDescription),qualityRating:{pressure:3,cleanliness:3},observations:`Created from uploaded report ${row.sourceFileName}, row ${row.rowNumber}.`,locationConfirmed:false,savedByName:'Lead Report Import'});
+    const existingFixture=fixtures.find(item=>item.buildingId===building!.id&&normalizeFloorKey(item.floor)===floorKey&&same(item.nearestRoom||item.roomNumber,location));
+    const fixture=existingFixture??await addFixture({campusId:campus.id,buildingId:building.id,buildingName:building.name,floor:floorKey,roomNumber:location,nearestRoom:location,brand:'',model:'',serialNumber:row.sampleId?`REPORT-${row.sampleId}`:'',photoURL:'',modelPlatePhotoURL:'',lastMaintenanceDate:new Date().toISOString().slice(0,10),filterType:'',category:normalizeFixtureCategory(row.fixtureType||row.fixtureDescription),qualityRating:{pressure:3,cleanliness:3},observations:`Created from uploaded report ${row.sourceFileName}, row ${row.rowNumber}.`,locationConfirmed:false,savedByName:'Lead Report Import'});
     if(!fixture)throw new Error('The fixture could not be created.');
     await changeRow(row,{selectedFixtureId:fixture.id,match:{fixtureId:fixture.id,status:'high_confidence_match',confidence:1,reasons:['Created from this report row'],alternatives:[]},confirmed:true,excluded:false});
     toast.success(existingFixture?'Existing fixture selected.':'School, building, and fixture data saved.');

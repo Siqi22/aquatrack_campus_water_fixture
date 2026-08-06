@@ -1,6 +1,7 @@
 import { parseCSVText } from '@/lib/importCSV';
 import { rowsToCSV } from '@/lib/spreadsheet';
 import type { Campus, Fixture } from '@/store/fixtureStore';
+import { normalizeFloorKey } from '@/lib/floorUtils';
 
 export interface LeadReportRowDraft {
   rowNumber:number; raw:Record<string,string>; schoolDistrict:string; school:string; building:string; floor:string; room:string;
@@ -83,7 +84,7 @@ export function normalizeLocation(value:string){
 export function matchLeadReportRow(row:LeadReportRowDraft,fixtures:Fixture[],campuses:Campus[]):LeadFixtureMatch{
   const scored=fixtures.map(fixture=>{const campus=campuses.find(item=>item.id===fixture.campusId);let score=0;const reasons:string[]=[];
     const compare=(reported:string,actual:string|undefined,weight:number,reason:string)=>{if(reported&&actual&&normalizeLocation(reported)===normalizeLocation(actual)){score+=weight;reasons.push(reason)}};
-    compare(row.schoolDistrict,campus?.schoolDistrict,.15,'School district matches');compare(row.school,campus?.school||campus?.name,.2,'School matches');compare(row.building,fixture.buildingName,.2,'Building matches');compare(row.floor,fixture.floor,.15,'Floor matches');compare(row.room,fixture.nearestRoom||fixture.roomNumber,.2,'Room matches');
+    compare(row.schoolDistrict,campus?.schoolDistrict,.15,'School district matches');compare(row.school,campus?.school||campus?.name,.2,'School matches');compare(row.building,fixture.buildingName,.2,'Building matches');if(row.floor&&fixture.floor&&normalizeFloorKey(row.floor)===normalizeFloorKey(fixture.floor)){score+=.15;reasons.push('Floor matches')}compare(row.room,fixture.nearestRoom||fixture.roomNumber,.2,'Room matches');
     const identity=[fixture.category,fixture.brand,fixture.model].filter(Boolean).join(' ');compare(row.fixtureType,fixture.category,.1,'Fixture type matches');
     if(row.fixtureDescription&&normalizeLocation(identity).includes(normalizeLocation(row.fixtureDescription))){score+=.1;reasons.push('Fixture description matches')}
     return{fixtureId:fixture.id,score:Math.min(score,1),reasons};
