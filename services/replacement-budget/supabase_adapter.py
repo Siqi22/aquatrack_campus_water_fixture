@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 import os
-import json
+import logging
 from typing import Iterable
-from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
-from urllib.request import Request, urlopen
 
+import requests
 from flask import request
 
 
@@ -58,25 +56,28 @@ class SupabaseAdapter:
         if not self.configured or not token:
             return None
         try:
-            request_object = Request(
+            response = requests.get(
                 f"{self.url}/auth/v1/user",
                 headers=self.headers(token),
-                method="GET",
+                timeout=20,
             )
-            with urlopen(request_object, timeout=20) as response:
-                return json.loads(response.read().decode("utf-8"))
-        except (HTTPError, URLError, TimeoutError, ValueError):
+            if not response.ok:
+                logging.warning("Supabase user verification failed with status %s", response.status_code)
+                return None
+            return response.json()
+        except (requests.RequestException, ValueError) as error:
+            logging.warning("Supabase user verification request failed: %s", type(error).__name__)
             return None
 
     def select(self, table: str, params: dict[str, str]) -> list[dict]:
-        url = f"{self.url}/rest/v1/{table}?{urlencode(params)}"
-        request_object = Request(
-            url,
+        response = requests.get(
+            f"{self.url}/rest/v1/{table}",
             headers={**self.headers(), "Accept": "application/json"},
-            method="GET",
+            params=params,
+            timeout=30,
         )
-        with urlopen(request_object, timeout=30) as response:
-            return json.loads(response.read().decode("utf-8"))
+        response.raise_for_status()
+        return response.json()
 
     def schools(self) -> list[dict]:
         rows = self.select(

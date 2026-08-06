@@ -3,6 +3,7 @@ import { ArrowUpRight, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 const DEFAULT_BUDGET_URL = 'https://aquatrack-replacement-budget.vercel.app';
 
@@ -10,10 +11,11 @@ export default function ReplacementBudget() {
   const { session } = useAuth();
   const [error, setError] = useState('');
 
-  function openBudgetTool() {
-    const accessToken = session?.access_token;
+  async function openBudgetTool() {
+    const { data, error: refreshError } = await supabase.auth.refreshSession();
+    const accessToken = data.session?.access_token;
     if (!accessToken) {
-      setError('Your AquaTrack session is unavailable. Sign in again and retry.');
+      setError(refreshError?.message || 'Your AquaTrack session has expired. Sign in again and retry.');
       return;
     }
     setError('');
@@ -22,7 +24,7 @@ export default function ReplacementBudget() {
   }
 
   useEffect(() => {
-    openBudgetTool();
+    void openBudgetTool();
     // The session access token is used only for this one-time secure handoff.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.access_token]);
@@ -36,7 +38,7 @@ export default function ReplacementBudget() {
           <p className="mt-3 text-sm font-semibold">Connecting securely…</p>
           <p className="mt-1 text-xs text-muted-foreground">Your schools, fixtures, and lead results will carry over from AquaTrack.</p>
         </>}
-        <Button className="mt-5" variant="outline" onClick={openBudgetTool}>
+        <Button className="mt-5" variant="outline" onClick={()=>void openBudgetTool()}>
           <ArrowUpRight className="mr-2 h-4 w-4" />Open Replacement Budget
         </Button>
       </div>

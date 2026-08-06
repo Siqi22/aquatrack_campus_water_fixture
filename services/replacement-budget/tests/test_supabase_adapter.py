@@ -1,11 +1,37 @@
 import os
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from supabase_adapter import SupabaseAdapter
 
 
 class SupabaseBudgetCatalogTests(unittest.TestCase):
+    def test_verify_user_uses_the_current_aquatrack_token(self):
+        with patch.dict(
+            os.environ,
+            {"SUPABASE_URL": "https://example.supabase.co", "SUPABASE_PUBLISHABLE_KEY": "key"},
+        ):
+            adapter = SupabaseAdapter()
+
+        response = Mock(ok=True)
+        response.json.return_value = {"id": "user-1"}
+        with patch("supabase_adapter.requests.get", return_value=response) as get:
+            user = adapter.verify_user("fresh-access-token")
+
+        self.assertEqual(user, {"id": "user-1"})
+        self.assertEqual(get.call_args[1]["headers"]["Authorization"], "Bearer fresh-access-token")
+        self.assertEqual(get.call_args[1]["headers"]["apikey"], "key")
+
+    def test_verify_user_rejects_an_invalid_token(self):
+        with patch.dict(
+            os.environ,
+            {"SUPABASE_URL": "https://example.supabase.co", "SUPABASE_PUBLISHABLE_KEY": "key"},
+        ):
+            adapter = SupabaseAdapter()
+
+        with patch("supabase_adapter.requests.get", return_value=Mock(ok=False, status_code=401)):
+            self.assertIsNone(adapter.verify_user("expired-token"))
+
     def test_catalog_maps_aquatrack_inventory_into_original_budget_shape(self):
         with patch.dict(
             os.environ,
