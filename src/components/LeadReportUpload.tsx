@@ -13,7 +13,7 @@ import { Collapsible,CollapsibleContent,CollapsibleTrigger } from '@/components/
 import { Input } from '@/components/ui/input';
 import { leadReportRowBelongsToWorkspace } from '@/lib/leadReportScope';
 import { normalizeSchoolDistrict } from '@/lib/schoolDistrict';
-import { normalizeFloorKey } from '@/lib/floorUtils';
+import { formatFloorLabel, normalizeFloorKey } from '@/lib/floorUtils';
 
 interface ReviewRow extends LeadReportRowDraft { id:string; reportUploadId:string; sourceFileName:string; match:LeadFixtureMatch; selectedFixtureId?:string; confirmed:boolean; excluded:boolean; imported:boolean; importedTestingRoundId?:string }
 const db=supabase as any;
@@ -183,7 +183,7 @@ function ReviewCard({row,fixtures,onChange,onCreate}:{row:ReviewRow;fixtures:Fix
         {normalizedSearch&&<div className="max-h-52 overflow-y-auto rounded-xl border bg-background p-1">
           {choices.slice(0,10).map(fixture=><button type="button" key={fixture.id} onClick={()=>{setPendingFixtureId(fixture.id);setSearch('')}} className="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-secondary">
             <span className="font-medium">{fixture.buildingName} · Room {fixture.roomNumber}</span>
-            <span className="mt-0.5 block text-xs text-muted-foreground">Floor {fixture.floor} · {label(fixture.category)}{fixture.brand?` · ${fixture.brand}`:''}{fixture.model?` ${fixture.model}`:''}</span>
+            <span className="mt-0.5 block text-xs text-muted-foreground">{formatFloorLabel(fixture.floor)} · {label(fixture.category)}{fixture.brand?` · ${fixture.brand}`:''}{fixture.model?` ${fixture.model}`:''}</span>
           </button>)}
           {!choices.length&&<p className="px-3 py-4 text-center text-sm text-muted-foreground">No matching fixtures found.</p>}
         </div>}
@@ -191,7 +191,7 @@ function ReviewCard({row,fixtures,onChange,onCreate}:{row:ReviewRow;fixtures:Fix
         {pendingFixture&&<div className="rounded-xl border border-primary/30 bg-background p-3">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Match found</p>
           <p className="mt-1 text-sm font-semibold">{pendingFixture.buildingName} · Room {pendingFixture.roomNumber}</p>
-          <p className="text-xs text-muted-foreground">Floor {pendingFixture.floor} · {label(pendingFixture.category)}</p>
+          <p className="text-xs text-muted-foreground">{formatFloorLabel(pendingFixture.floor)} · {label(pendingFixture.category)}</p>
           <Button type="button" className="mt-3 w-full" size="sm" onClick={linkEntry}><Link2 className="mr-1.5 h-4 w-4"/>Link entry</Button>
         </div>}
 

@@ -30,6 +30,7 @@ import {
 import { toast } from 'sonner';
 import { LeadTestingPanel } from '@/components/LeadTestingPanel';
 import { useOrganization } from '@/contexts/OrganizationContext';
+import { formatFloorLabel } from '@/lib/floorUtils';
 
 export default function FixtureDetail() {
   const { isSchoolDistrict, locationLabel } = useOrganization();
@@ -192,7 +193,7 @@ export default function FixtureDetail() {
     <div className="page-shell max-w-4xl pb-8">
       <PageHeader
         title={editing ? displayBuilding?.name || fixture.buildingName : fixture.buildingName}
-        subtitle={`Floor ${displayFloor} · Room ${displayRoom}`}
+        subtitle={`${formatFloorLabel(displayFloor)} · Room ${displayRoom}`}
         onBack={() => navigate(-1)}
         action={
           editing ? (

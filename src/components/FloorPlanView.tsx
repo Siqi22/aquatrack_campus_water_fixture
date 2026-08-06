@@ -7,6 +7,7 @@ import { floorStatusPillClass, fixtureStatusDotClass } from '@/lib/statusStyles'
 import { Droplets, Lock, PlusCircle, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { matchesLeadFixtureFilter, type LeadFixtureFilter } from '@/lib/leadTestingFilters';
+import { formatFloorLabel } from '@/lib/floorUtils';
 
 interface FloorPlanViewProps {
   buildingId: string;
@@ -83,7 +84,7 @@ export function FloorPlanView({ buildingId, floor, buildingName, campusId, leadF
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-xs font-semibold text-foreground">
-              {buildingName} — {FIELD_LABELS.floor} {floor}
+              {buildingName} — {formatFloorLabel(floor)}
             </p>
             <p className="text-[10px] text-muted-foreground">{fixtures.length} fixture{fixtures.length === 1 ? '' : 's'} recorded</p>
           </div>

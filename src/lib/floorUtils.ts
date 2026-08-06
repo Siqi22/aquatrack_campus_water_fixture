@@ -22,6 +22,10 @@ export function normalizeFloorKey(floor: string): string {
   return named[lower] ?? trimmed;
 }
 
+export function formatFloorLabel(floor: string): string {
+  return `Floor ${normalizeFloorKey(floor) || '1'}`;
+}
+
 export function floorProgressKey(buildingId: string, floor: string): string {
   return `${buildingId}:${normalizeFloorKey(floor)}`;
 }

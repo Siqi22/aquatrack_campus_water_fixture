@@ -15,6 +15,7 @@ import {
 } from '@/lib/leadTestingFilters';
 import { Button } from '@/components/ui/button';
 import { LeadResultsExportDialog } from '@/components/LeadResultsExportDialog';
+import { formatFloorLabel } from '@/lib/floorUtils';
 
 const ALL_SCHOOLS_VALUE = 'all-schools';
 
@@ -130,7 +131,7 @@ export default function CampusNavigator() {
     return (
       <div className="page-shell">
         <PageHeader
-          title={`Floor ${selectedFloor.floor}`}
+          title={formatFloorLabel(selectedFloor.floor)}
           subtitle={campusBuildings.find((b) => b.id === selectedFloor.buildingId)?.name ?? 'Building'}
           onBack={backFromFloor}
         />
@@ -276,7 +277,7 @@ export default function CampusNavigator() {
                         className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-secondary/50"
                       >
                         <Layers className="h-4 w-4 text-muted-foreground" />
-                        <span className="flex-1 text-sm text-foreground">Floor {fp.floor}</span>
+                        <span className="flex-1 text-sm text-foreground">{formatFloorLabel(fp.floor)}</span>
                         <ChevronRight className="h-3 w-3 text-muted-foreground" />
                       </button>
                     ))}

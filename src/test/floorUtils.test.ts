@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeFloorKey } from '@/lib/floorUtils';
+import { formatFloorLabel, normalizeFloorKey } from '@/lib/floorUtils';
 
 describe('normalizeFloorKey', () => {
   it.each([
@@ -17,5 +17,13 @@ describe('normalizeFloorKey', () => {
 
   it('preserves an alphanumeric floor identifier', () => {
     expect(normalizeFloorKey('L2')).toBe('L2');
+  });
+
+  it.each([
+    ['Floor', 'Floor 1'],
+    ['Floor Floor', 'Floor 1'],
+    ['Floor 2', 'Floor 2'],
+  ])('formats %s without repeating Floor', (input, expected) => {
+    expect(formatFloorLabel(input)).toBe(expected);
   });
 });
