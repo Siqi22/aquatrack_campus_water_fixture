@@ -1,4 +1,5 @@
 import { createContext, ReactNode, useContext } from 'react';
+import { DEFAULT_SCHOOL_DISTRICT } from '@/lib/schoolDistrict';
 
 export type OrganizationMode = 'uw' | 'school_district';
 
@@ -19,7 +20,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
       value={{
         organizationMode,
         isSchoolDistrict,
-        organizationName: 'School District',
+        organizationName: DEFAULT_SCHOOL_DISTRICT,
         locationLabel: 'School',
       }}
     >

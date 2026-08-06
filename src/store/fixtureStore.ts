@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { supabase } from "@/integrations/supabase/client";
+import { DEFAULT_SCHOOL_DISTRICT, normalizeSchoolDistrict } from "@/lib/schoolDistrict";
 import type { Database } from "@/integrations/supabase/types";
 import type {
   ImportAnalysis,
@@ -230,7 +231,7 @@ type FixtureRow = Database["public"]["Tables"]["fixtures"]["Row"];
 type FloorProgressRow = Database["public"]["Tables"]["floor_progress"]["Row"];
 
 function mapCampus(r: CampusRow): Campus {
-  return { id: r.id, name: r.name, schoolDistrict: r.school_district ?? undefined, school: r.school, address: r.address ?? "" };
+  return { id: r.id, name: r.name, schoolDistrict: normalizeSchoolDistrict(r.school_district), school: r.school, address: r.address ?? "" };
 }
 function mapBuilding(r: BuildingRow): Building {
   return {
@@ -628,7 +629,7 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
           .from("campuses")
           .insert({
             name: organizationMode === "school_district" ? "My School" : "Main Campus",
-            school_district: "",
+            school_district: organizationMode === "school_district" ? DEFAULT_SCHOOL_DISTRICT : "",
             school: organizationMode === "school_district" ? "My School" : "University of Washington",
             organization_mode: organizationMode,
             address: "",
@@ -666,7 +667,9 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
       .from("campuses")
       .insert({
         name: campus.name,
-        school_district: campus.schoolDistrict ?? null,
+        school_district: get().organizationMode === "school_district"
+          ? normalizeSchoolDistrict(campus.schoolDistrict)
+          : campus.schoolDistrict ?? null,
         organization_mode: get().organizationMode,
         school: campus.school,
         address: campus.address,

@@ -12,6 +12,18 @@ from flask import request
 from wqr.models import Fixture
 
 
+DEFAULT_SCHOOL_DISTRICT = "North Valley School District"
+UNKNOWN_DISTRICTS = {
+    "", "unknown", "unknown district", "unknown school district",
+    "not recorded", "district not recorded", "school district",
+}
+
+
+def _district_name(value: str | None) -> str:
+    district = (value or "").strip()
+    return DEFAULT_SCHOOL_DISTRICT if district.casefold() in UNKNOWN_DISTRICTS else district
+
+
 class SupabaseAdapter:
     def __init__(self):
         self.url = os.environ.get("SUPABASE_URL", "").rstrip("/")
@@ -65,11 +77,12 @@ class SupabaseAdapter:
         return data[0] if data else None
 
     def schools(self) -> list[dict]:
-        return self.select("campuses", {
+        rows = self.select("campuses", {
             "select": "id,name,school,school_district,address",
             "organization_mode": "eq.school_district",
             "order": "school.asc",
         })
+        return [{**row, "school_district": _district_name(row.get("school_district"))} for row in rows]
 
     def school(self, campus_id: str) -> dict | None:
         rows = self.select("campuses", {
@@ -78,7 +91,7 @@ class SupabaseAdapter:
             "organization_mode": "eq.school_district",
             "limit": "1",
         })
-        return rows[0] if rows else None
+        return {**rows[0], "school_district": _district_name(rows[0].get("school_district"))} if rows else None
 
     def fixtures(self, campus_id: str | None = None) -> list[dict]:
         campuses = self.schools()

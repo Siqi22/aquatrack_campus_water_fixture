@@ -36,6 +36,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { uploadFixturePhoto } from '@/lib/uploadPhoto';
 import { toast } from 'sonner';
 import { useOrganization } from '@/contexts/OrganizationContext';
+import { DEFAULT_SCHOOL_DISTRICT } from '@/lib/schoolDistrict';
 
 export default function AddAsset() {
   const { isSchoolDistrict, locationLabel } = useOrganization();
@@ -89,7 +90,7 @@ export default function AddAsset() {
 
   // University/campus creation + fuzzy matching
   const [campusQuery, setCampusQuery] = useState('');
-  const [schoolDistrict, setSchoolDistrict] = useState('');
+  const [schoolDistrict, setSchoolDistrict] = useState(DEFAULT_SCHOOL_DISTRICT);
   const [universityName, setUniversityName] = useState('');
   const [campusName, setCampusName] = useState('');
   const [campusAddress, setCampusAddress] = useState('');
@@ -195,7 +196,7 @@ export default function AddAsset() {
       toast.success('Campus created');
     }
     setCampusQuery('');
-    setSchoolDistrict('');
+    setSchoolDistrict(DEFAULT_SCHOOL_DISTRICT);
     setUniversityName('');
     setCampusName('');
     setCampusAddress('');
@@ -608,7 +609,7 @@ export default function AddAsset() {
                     }`}
                   >
                     <p className="break-words text-sm font-semibold text-foreground">{isSchoolDistrict ? c.school : c.name}</p>
-                    <p className="break-words text-[11px] text-muted-foreground">{isSchoolDistrict ? `${c.schoolDistrict || 'District not recorded'} • ` : ''}{c.address}</p>
+                    <p className="break-words text-[11px] text-muted-foreground">{isSchoolDistrict ? `${c.schoolDistrict || DEFAULT_SCHOOL_DISTRICT} • ` : ''}{c.address}</p>
                   </button>
                 );
               })}

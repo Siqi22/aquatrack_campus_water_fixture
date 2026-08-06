@@ -22,6 +22,17 @@ CATEGORY_TO_BUDGET_TYPE = {
     "Other": "Other",
 }
 
+DEFAULT_SCHOOL_DISTRICT = "North Valley School District"
+UNKNOWN_DISTRICTS = {
+    "", "unknown", "unknown district", "unknown school district",
+    "not recorded", "district not recorded", "school district",
+}
+
+
+def _district_name(value: str | None) -> str:
+    district = (value or "").strip()
+    return DEFAULT_SCHOOL_DISTRICT if district.casefold() in UNKNOWN_DISTRICTS else district
+
 
 def _school_type(name: str) -> str:
     normalized = name.casefold()
@@ -94,7 +105,7 @@ class SupabaseAdapter:
                 "name": row.get("school") or row.get("name") or "School",
                 "type": _school_type(row.get("school") or row.get("name") or ""),
                 "address": row.get("address") or "Address not recorded",
-                "district_name": row.get("school_district") or "School District",
+                "district_name": _district_name(row.get("school_district")),
             }
             for row in rows
         ]
