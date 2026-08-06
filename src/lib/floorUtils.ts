@@ -6,7 +6,7 @@ export function normalizeFloorKey(floor: string): string {
   const lower = trimmed.toLowerCase().replace(/\./g, '').replace(/\s+/g, ' ');
   if (/^(floor\s*)+$/.test(lower) || /^(fl\s*)+$/.test(lower)) return '1';
 
-  const numeric = lower.match(/^(?:floor|fl)?\s*(\d+)(?:st|nd|rd|th)?(?:\s*(?:floor|fl))?$/);
+  const numeric = lower.match(/^(?:(?:floor|fl)\s*)*(\d+)(?:st|nd|rd|th)?(?:\s*(?:floor|fl))*$/);
   if (numeric) return String(parseInt(numeric[1], 10));
 
   const named: Record<string, string> = {

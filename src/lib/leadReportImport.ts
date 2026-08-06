@@ -31,7 +31,7 @@ export function parseLeadReportCSV(csv:string):LeadReportRowDraft[]{
   const indices=Object.fromEntries((Object.keys(aliases) as (keyof typeof aliases)[]).map(field=>[field,indexFor(headers,field)])) as Record<keyof typeof aliases,number>;
   if(indices.resultValue<0)throw new Error('Could not find a Lead Result column.');
   const get=(row:string[],field:keyof typeof aliases)=>indices[field]<0?'':(row[indices[field]]??'').trim();
-  return rows.map((row,index)=>({rowNumber:index+2,raw:Object.fromEntries(headers.map((header,column)=>[header,row[column]??''])),schoolDistrict:get(row,'schoolDistrict'),school:get(row,'school'),building:get(row,'building'),floor:get(row,'floor'),room:get(row,'room'),fixtureDescription:get(row,'fixtureDescription'),fixtureType:get(row,'fixtureType'),sampleId:get(row,'sampleId'),sampleDate:normalizeDate(get(row,'sampleDate')),resultValue:get(row,'resultValue'),resultUnit:get(row,'resultUnit')||inferUnit(headers[indices.resultValue]??'')})).filter(row=>row.resultValue||row.sampleId||row.room);
+  return rows.map((row,index)=>({rowNumber:index+2,raw:Object.fromEntries(headers.map((header,column)=>[header,row[column]??''])),schoolDistrict:get(row,'schoolDistrict'),school:get(row,'school'),building:get(row,'building'),floor:normalizeFloorKey(get(row,'floor')),room:get(row,'room'),fixtureDescription:get(row,'fixtureDescription'),fixtureType:get(row,'fixtureType'),sampleId:get(row,'sampleId'),sampleDate:normalizeDate(get(row,'sampleDate')),resultValue:get(row,'resultValue'),resultUnit:get(row,'resultUnit')||inferUnit(headers[indices.resultValue]??'')})).filter(row=>row.resultValue||row.sampleId||row.room);
 }
 
 export async function extractPdfReport(file:File):Promise<LeadReportRowDraft[]>{

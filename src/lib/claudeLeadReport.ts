@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { LeadReportRowDraft } from '@/lib/leadReportImport';
+import { normalizeFloorKey } from '@/lib/floorUtils';
 
 function resolveApiUrl() {
   const explicit = import.meta.env.VITE_LEAD_PDF_API_URL?.trim();
@@ -38,5 +39,8 @@ export async function extractLeadReportWithClaude(
   if (!Array.isArray(body.rows) || !body.rows.length) {
     throw new Error('Claude found no fixture-level lead results in this PDF.');
   }
-  return body.rows;
+  return body.rows.map((row) => ({
+    ...row,
+    floor: normalizeFloorKey(row.floor),
+  }));
 }

@@ -26,7 +26,7 @@ SELECT
   CASE
     WHEN lower(btrim(fp.floor)) ~ '^(floor\s*)+$' THEN '1'
     WHEN lower(replace(btrim(fp.floor), '.', '')) ~ '^fl\s*$' THEN '1'
-    WHEN lower(replace(btrim(fp.floor), '.', '')) ~ '^(floor|fl)?\s*[0-9]+(st|nd|rd|th)?\s*(floor|fl)?$'
+    WHEN lower(replace(btrim(fp.floor), '.', '')) ~ '^((floor|fl)\s*)*[0-9]+(st|nd|rd|th)?(\s*(floor|fl))*$'
       THEN (regexp_match(lower(btrim(fp.floor)), '([0-9]+)'))[1]::INTEGER::TEXT
     WHEN lower(btrim(fp.floor)) IN ('first', 'first floor') THEN '1'
     WHEN lower(btrim(fp.floor)) IN ('second', 'second floor') THEN '2'
@@ -57,7 +57,7 @@ UPDATE public.fixtures f
 SET floor = CASE
   WHEN lower(btrim(f.floor)) ~ '^(floor\s*)+$' THEN '1'
   WHEN lower(replace(btrim(f.floor), '.', '')) ~ '^fl\s*$' THEN '1'
-  WHEN lower(replace(btrim(f.floor), '.', '')) ~ '^(floor|fl)?\s*[0-9]+(st|nd|rd|th)?\s*(floor|fl)?$'
+  WHEN lower(replace(btrim(f.floor), '.', '')) ~ '^((floor|fl)\s*)*[0-9]+(st|nd|rd|th)?(\s*(floor|fl))*$'
     THEN (regexp_match(lower(btrim(f.floor)), '([0-9]+)'))[1]::INTEGER::TEXT
   WHEN lower(btrim(f.floor)) IN ('first', 'first floor') THEN '1'
   WHEN lower(btrim(f.floor)) IN ('second', 'second floor') THEN '2'
