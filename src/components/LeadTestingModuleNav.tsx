@@ -2,9 +2,9 @@ import { ClipboardCheck, FileUp, FlaskConical } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 
 const sections = [
-  { to: '/lead-testing/results', label: 'View Results', icon: FlaskConical },
   { to: '/lead-testing/sampling', label: 'Sampling', icon: ClipboardCheck },
-  { to: '/lead-testing/upload', label: 'Upload Report', icon: FileUp },
+  { to: '/lead-testing/upload', label: 'Record Results', icon: FileUp },
+  { to: '/lead-testing/results', label: 'View Results', icon: FlaskConical },
 ];
 
 export function LeadTestingModuleNav() {

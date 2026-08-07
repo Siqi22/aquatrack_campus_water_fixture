@@ -13,14 +13,14 @@ import { useFixtureStore } from '@/store/fixtureStore';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { useLeadTesting } from '@/hooks/useLeadTesting';
 import { DrinkingFountainIcon } from '@/components/icons/DrinkingFountainIcon';
+import { resolveWorkspaceSchoolDistrict } from '@/lib/schoolDistrict';
 
 export default function Dashboard() {
   const { organizationName } = useOrganization();
   const { fixtures, campuses, buildings, loading, loaded } = useFixtureStore();
   const lead = useLeadTesting();
 
-  const districtName =
-    campuses.find((campus) => campus.schoolDistrict?.trim())?.schoolDistrict || organizationName;
+  const districtName = resolveWorkspaceSchoolDistrict(campuses, organizationName);
 
   const latestRoundByFixture = useMemo(() => {
     const latest = new Map<string, (typeof lead.rounds)[number]>();

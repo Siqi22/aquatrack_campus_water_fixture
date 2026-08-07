@@ -10,19 +10,21 @@ import { LeadTestingModuleNav } from '@/components/LeadTestingModuleNav';
 import { QuickStat } from '@/components/layout/QuickStat';
 import { leadReportRowBelongsToWorkspace } from '@/lib/leadReportScope';
 import { formatFloorLabel } from '@/lib/floorUtils';
+import { useOrganization } from '@/contexts/OrganizationContext';
+import { resolveWorkspaceSchoolDistrict } from '@/lib/schoolDistrict';
 
 interface ResultItem { round:TestingRound; school:string; location:string }
 
 export default function LeadTestingResults(){
-  const {fixtures,campuses}=useFixtureStore();const lead=useLeadTesting();const[unresolved,setUnresolved]=useState(0);
+  const {fixtures,campuses}=useFixtureStore();const{organizationName}=useOrganization();const lead=useLeadTesting();const[unresolved,setUnresolved]=useState(0);
   const fixtureIds=useMemo(()=>new Set(fixtures.map(fixture=>fixture.id)),[fixtures]);
-  const districtName=campuses.find(campus=>campus.schoolDistrict)?.schoolDistrict??'';
+  const districtName=resolveWorkspaceSchoolDistrict(campuses,organizationName);
   const schoolNames=useMemo(()=>new Set(campuses.map(campus=>(campus.school||campus.name).trim().toLowerCase())),[campuses]);
   const imported=useMemo<ResultItem[]>(()=>lead.rounds.filter(round=>fixtureIds.has(round.fixture_id)&&round.report_upload_id&&round.result_value).flatMap(round=>{const fixture=fixtures.find(item=>item.id===round.fixture_id);if(!fixture)return[];const campus=campuses.find(item=>item.id===fixture.campusId);if(!campus)return[];return[{round,school:campus.school,location:`${fixture.buildingName} · ${formatFloorLabel(fixture.floor)} · Room ${fixture.roomNumber}`}]}),[lead.rounds,fixtureIds,fixtures,campuses]);
   const verified=imported.length;
   useEffect(()=>{void(async()=>{const db=supabase as any;const result=await db.from('lead_testing_report_rows').select('id,school_name,proposed_fixture_id,confirmed_fixture_id,imported_testing_round_id,match_status,user_confirmed,lead_testing_report_uploads(district_or_organization)').is('imported_testing_round_id',null).eq('user_confirmed',false).neq('match_status','excluded').is('deleted_at',null);if(result.error)return;setUnresolved((result.data??[]).filter((row:any)=>leadReportRowBelongsToWorkspace(row,fixtureIds,districtName,schoolNames)).length)})()},[fixtureIds,districtName,schoolNames,lead.rounds.length]);
   const above15=imported.filter(item=>(item.round.result_ppb??0)>15).sort((a,b)=>(b.round.result_ppb??0)-(a.round.result_ppb??0));const above5=imported.filter(item=>(item.round.result_ppb??0)>5&&(item.round.result_ppb??0)<=15).sort((a,b)=>(b.round.result_ppb??0)-(a.round.result_ppb??0));const passing=imported.filter(item=>(item.round.result_ppb??0)<=5).sort((a,b)=>(b.round.result_ppb??0)-(a.round.result_ppb??0));
-  return <div className="page-shell"><PageHeader title="View Results" subtitle="Imported laboratory results"/><LeadTestingModuleNav/>
+  return <div className="page-shell"><PageHeader title={`View Lead Testing Results for ${districtName}`} subtitle="Imported laboratory results"/><LeadTestingModuleNav/>
     <div className="grid grid-cols-2 gap-2"><QuickStat label="Verified" value={verified}/><QuickStat label="Unresolved Matches" value={unresolved} to="/lead-testing/upload?review=unresolved"/></div>
     <div className="mt-5 space-y-5">{above15.length>0&&<ResultGroup title="Above 15 ppb" items={above15} tone="urgent"/>}{above5.length>0&&<ResultGroup title="Above 5 through 15 ppb" items={above5} tone="warning"/>}{passing.length>0&&<ResultGroup title="5 ppb or less" items={passing}/>} {!imported.length&&<div className="empty-state mt-10"><p className="text-sm font-semibold">No imported laboratory results</p><p className="mt-1 text-xs text-muted-foreground">Upload and confirm a report to see results here.</p></div>}</div>
   </div>;
