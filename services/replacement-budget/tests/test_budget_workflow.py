@@ -46,6 +46,8 @@ class BudgetWorkflowTests(unittest.TestCase):
     def test_first_step_is_district_specific_and_has_placeholder_schools(self):
         response = self.client.get("/")
         self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Estimate Budget for Lead Remediation", response.data)
+        self.assertIn(b"Choose schools to include", response.data)
         self.assertNotIn(b"North Valley School District", response.data)
         self.assertIn(b"School A", response.data)
         self.assertIn(b"School B", response.data)
