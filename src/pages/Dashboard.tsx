@@ -19,9 +19,8 @@ export default function Dashboard() {
   const { fixtures, campuses, buildings, loading, loaded } = useFixtureStore();
   const lead = useLeadTesting();
 
-  const districtName = (
-    campuses.find((campus) => campus.schoolDistrict?.trim())?.schoolDistrict || organizationName
-  ).replace(/\s+School District$/i, '');
+  const districtName =
+    campuses.find((campus) => campus.schoolDistrict?.trim())?.schoolDistrict || organizationName;
 
   const latestRoundByFixture = useMemo(() => {
     const latest = new Map<string, (typeof lead.rounds)[number]>();
