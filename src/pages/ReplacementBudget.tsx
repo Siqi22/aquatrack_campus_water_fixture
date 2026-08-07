@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowUpRight, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -10,12 +10,20 @@ const DEFAULT_BUDGET_URL = 'https://aquatrack-replacement-budget.vercel.app';
 export default function ReplacementBudget() {
   const { session } = useAuth();
   const [error, setError] = useState('');
+  const autoLaunchStarted = useRef(false);
 
   async function openBudgetTool() {
-    const { data, error: refreshError } = await supabase.auth.refreshSession();
-    const accessToken = data.session?.access_token;
+    let accessToken = session?.access_token;
+    let refreshError: { message?: string } | null = null;
+    const expiresSoon = !session?.expires_at || session.expires_at <= Math.floor(Date.now() / 1000) + 60;
+    if (accessToken && expiresSoon) {
+      const refreshed = await supabase.auth.refreshSession();
+      accessToken = refreshed.data.session?.access_token;
+      refreshError = refreshed.error;
+    }
     if (!accessToken) {
       setError(refreshError?.message || 'Your AquaTrack session has expired. Sign in again and retry.');
+      autoLaunchStarted.current = false;
       return;
     }
     setError('');
@@ -24,6 +32,8 @@ export default function ReplacementBudget() {
   }
 
   useEffect(() => {
+    if (!session?.access_token || autoLaunchStarted.current) return;
+    autoLaunchStarted.current = true;
     void openBudgetTool();
     // The session access token is used only for this one-time secure handoff.
     // eslint-disable-next-line react-hooks/exhaustive-deps

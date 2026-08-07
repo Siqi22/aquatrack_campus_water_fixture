@@ -152,7 +152,7 @@ export default function CampusNavigator() {
       <PageHeader
         title={
           showingAllSchools
-            ? districtName
+            ? `${districtName} Fixture Inventory`
             : isSchoolDistrict
               ? currentCampus?.school || 'School'
               : locationLabel
