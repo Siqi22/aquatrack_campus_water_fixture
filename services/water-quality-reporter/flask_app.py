@@ -91,7 +91,11 @@ AQUATRACK_URL = os.environ.get(
 
 @app.context_processor
 def inject_aquatrack_navigation():
-    return {"aquatrack_url": AQUATRACK_URL}
+    user = getattr(g, "current_user", None) or {}
+    return {
+        "aquatrack_url": AQUATRACK_URL,
+        "user_email": user.get("email") or session.get("user_email", "Signed-in user"),
+    }
 
 
 # ---- AquaTrack authentication ----------------------------------------------
@@ -126,6 +130,7 @@ def require_aquatrack_user():
         )
     g.current_user = user
     session["user_id"] = user.get("id")
+    session["user_email"] = user.get("email", "")
 
 
 @app.get("/health")
@@ -167,6 +172,8 @@ def auth_session():
     user = supabase.verify_user(token)
     if not user:
         return {"error": "Invalid or expired AquaTrack session"}, 401
+    session["user_id"] = user.get("id")
+    session["user_email"] = user.get("email", "")
     response = make_response({"ok": True})
     response.set_cookie(
         "wqr_access_token",

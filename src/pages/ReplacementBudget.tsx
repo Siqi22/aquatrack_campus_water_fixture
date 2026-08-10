@@ -39,7 +39,7 @@ export default function ReplacementBudget() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.access_token]);
 
-  return <div className="page-shell max-w-xl">
+  return <div className="page-shell">
     <PageHeader title="Replacement Budget" subtitle="Opening AquaTrack Replacement Budget" />
     <div className="card-section">
       <div className="panel-body py-10 text-center">

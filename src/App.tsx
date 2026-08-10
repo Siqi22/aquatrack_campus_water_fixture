@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { useEffect } from "react";
+import { BrowserRouter, Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -18,8 +19,20 @@ import LeadTestingUpload from "./pages/LeadTestingUpload";
 import Communication from "./pages/Communication";
 import ReplacementBudget from "./pages/ReplacementBudget";
 import NotFound from "./pages/NotFound";
+import { useAuth } from "@/contexts/AuthContext";
 
 const queryClient = new QueryClient();
+
+function Logout() {
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    void signOut().finally(() => navigate('/auth', { replace: true }));
+  }, [navigate, signOut]);
+
+  return <div className="grid min-h-screen place-items-center text-sm text-muted-foreground">Signing out…</div>;
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -31,6 +44,7 @@ const App = () => (
           <AuthProvider>
           <Routes>
             <Route path="/auth" element={<Auth />} />
+            <Route path="/logout" element={<Logout />} />
             <Route
               path="/*"
               element={

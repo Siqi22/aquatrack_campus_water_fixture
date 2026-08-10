@@ -4,13 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}AquaTrack{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='app.css', v='2026-08-05-school-autocomplete-v9') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css', v='2026-08-10-desktop-shell-v1') }}">
   {% block head %}{% endblock %}
 </head>
 <body class="app-surface">
-  <header class="app-header">
-    <div class="app-header__inner {{ 'app-header__inner--wide' if page_shell_class == 'page-shell--wide' else '' }}">
-      <a class="brand" href="{{ url_for('index') }}" aria-label="AquaTrack Communication home">
+  <div class="app-layout">
+    <aside class="desktop-sidebar" aria-label="AquaTrack navigation">
+      <a class="brand" href="{{ aquatrack_url }}/" aria-label="AquaTrack home">
         <span class="brand__mark" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 2.7s6.3 6.9 6.3 12A6.3 6.3 0 1 1 5.7 14.7c0-5.1 6.3-12 6.3-12Z"/>
@@ -19,21 +19,36 @@
         </span>
         <span class="brand__copy">
           <strong>AquaTrack</strong>
-          <span>Communication</span>
+          <span>School Water Management</span>
         </span>
       </a>
-      {% if request.endpoint != 'index' %}
-        <a class="btn-icon-text" href="{{ url_for('index') }}" aria-label="Start a new report">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-            <path d="M12 5v14M5 12h14"/>
-          </svg>
-          <span>New report</span>
-        </a>
-      {% endif %}
-    </div>
-  </header>
+      <nav class="desktop-sidebar__nav">
+        <a class="app-nav-tab" href="{{ aquatrack_url }}/" aria-label="Home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg><span>Home</span></a>
+        <a class="app-nav-tab" href="{{ aquatrack_url }}/campus" aria-label="Fixture Inventory"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V10a7 7 0 0 1 14 0v2h3"/><path d="M8 21V10a4 4 0 0 1 8 0v5h3"/><path d="M3 21h8"/><path d="M19 17.5s1.5 1.7 1.5 2.5a1.5 1.5 0 0 1-3 0c0-.8 1.5-2.5 1.5-2.5Z"/></svg><span>Fixture Inventory</span></a>
+        <a class="app-nav-tab" href="{{ aquatrack_url }}/lead-testing/results" aria-label="Lead Testing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6"/><path d="M10 9V3h4v6l5 9a2 2 0 0 1-1.75 3H6.75A2 2 0 0 1 5 18l5-9Z"/><path d="M8.5 15h7"/></svg><span>Lead Testing</span></a>
+        <a class="app-nav-tab is-active" href="{{ url_for('index') }}" aria-current="page" aria-label="Communication"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/><path d="m15 5 3 3"/></svg><span>Communication</span></a>
+        <a class="app-nav-tab" href="{{ aquatrack_url }}/replacement-budget" aria-label="Replacement Budget"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h10"/><path d="M7 11h2M12 11h2M17 11h.01M7 15h2M12 15h2M17 15h.01M7 18h2M12 18h5"/></svg><span>Budget</span></a>
+      </nav>
+    </aside>
 
-  <main class="page-shell {{ page_shell_class|default('') }}">
+    <div class="app-content-column">
+      <header class="app-header">
+        <div class="app-header__inner">
+          <a class="brand mobile-brand" href="{{ aquatrack_url }}/" aria-label="AquaTrack home">
+            <span class="brand__mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2.7s6.3 6.9 6.3 12A6.3 6.3 0 1 1 5.7 14.7c0-5.1 6.3-12 6.3-12Z"/></svg></span>
+            <span class="brand__copy"><strong>AquaTrack</strong></span>
+          </a>
+          <div class="topbar-actions">
+            {% if request.endpoint != 'index' %}<a class="btn-icon-text" href="{{ url_for('index') }}" aria-label="Start a new report"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span>New report</span></a>{% endif %}
+            <details class="user-menu">
+              <summary><span class="user-avatar">{{ user_email[:1]|upper }}</span><span class="user-email">{{ user_email }}</span><span aria-hidden="true">⌄</span></summary>
+              <div class="user-menu__panel"><span>Signed in as</span><strong>{{ user_email }}</strong><a href="{{ aquatrack_url }}/logout">Log out</a></div>
+            </details>
+          </div>
+        </div>
+      </header>
+
+      <main class="page-shell {{ page_shell_class|default('') }}">
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         <div class="flash-stack" aria-live="polite">
@@ -46,8 +61,10 @@
         </div>
       {% endif %}
     {% endwith %}
-    {% block content %}{% endblock %}
-  </main>
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
   <nav class="app-bottom-nav" aria-label="AquaTrack navigation">
     <div class="app-bottom-nav__inner">
       <a class="app-nav-tab" href="{{ aquatrack_url }}/" aria-label="Home">

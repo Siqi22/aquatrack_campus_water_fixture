@@ -27,7 +27,7 @@ export default function Communication() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.access_token]);
 
-  return <div className="page-shell max-w-xl">
+  return <div className="page-shell">
     <PageHeader title="Communication" subtitle="Opening AquaTrack Communication" />
     <div className="card-section">
       <div className="panel-body py-10 text-center">

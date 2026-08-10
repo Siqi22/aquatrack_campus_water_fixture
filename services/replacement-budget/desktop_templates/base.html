@@ -11,19 +11,37 @@
     <title>{% block title %}AquaTrack Replacement Budget{% endblock %}</title>
   </head>
   <body>
-    <div class="app-surface">
-      <header class="app-header">
-        <div class="app-header-inner">
-          <a href="{{ url_for('budget_schools') }}" class="brand-link" aria-label="AquaTrack Replacement Budget home">
+    <div class="app-layout app-surface">
+      <aside class="desktop-sidebar" aria-label="AquaTrack navigation">
+        <a href="{{ aquatrack_url }}/" class="brand-link" aria-label="AquaTrack home">
+          <span class="brand-mark">{{ icon('droplets') }}</span>
+          <span class="brand-copy"><span class="brand-name">AquaTrack</span><span class="brand-subtitle">School Water Management</span></span>
+        </a>
+        <nav class="desktop-sidebar-nav">
+          <a class="app-nav-tab" href="{{ aquatrack_url }}/" aria-label="Home">{{ icon('home') }}<span>Home</span></a>
+          <a class="app-nav-tab" href="{{ aquatrack_url }}/campus" aria-label="Fixture Inventory">{{ icon('fixture') }}<span>Fixture Inventory</span></a>
+          <a class="app-nav-tab" href="{{ aquatrack_url }}/lead-testing/results" aria-label="Lead Testing">{{ icon('beaker') }}<span>Lead Testing</span></a>
+          <a class="app-nav-tab" href="{{ aquatrack_url }}/communication" aria-label="Communication">{{ icon('pen') }}<span>Communication</span></a>
+          <a class="app-nav-tab is-active" href="{{ url_for('budget_schools') }}" aria-current="page" aria-label="Replacement Budget">{{ icon('calculator') }}<span>Budget</span></a>
+        </nav>
+      </aside>
+      <div class="app-content-column">
+        <header class="app-header">
+          <div class="app-header-inner">
+            <a href="{{ aquatrack_url }}/" class="brand-link mobile-brand" aria-label="AquaTrack home">
             <span class="brand-mark">{{ icon('droplets') }}</span>
             <span class="brand-copy">
               <span class="brand-name">AquaTrack</span>
-              <span class="brand-subtitle">Replacement Budget</span>
             </span>
           </a>
-        </div>
-      </header>
-      <div class="app-main">{% block content %}{% endblock %}</div>
+            <details class="user-menu">
+              <summary><span class="user-avatar">{{ user_email[:1]|upper }}</span><span class="user-email">{{ user_email }}</span><span aria-hidden="true">⌄</span></summary>
+              <div class="user-menu-panel"><span>Signed in as</span><strong>{{ user_email }}</strong><a href="{{ aquatrack_url }}/logout">Log out</a></div>
+            </details>
+          </div>
+        </header>
+        <div class="app-main">{% block content %}{% endblock %}</div>
+      </div>
     </div>
     <nav class="app-bottom-nav" aria-label="AquaTrack navigation">
       <div class="app-bottom-nav-inner">
