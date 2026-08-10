@@ -28,12 +28,6 @@
       <div class="app-content-column">
         <header class="app-header">
           <div class="app-header-inner">
-            <a href="{{ aquatrack_url }}/" class="brand-link mobile-brand" aria-label="AquaTrack home">
-            <span class="brand-mark">{{ icon('droplets') }}</span>
-            <span class="brand-copy">
-              <span class="brand-name">AquaTrack</span>
-            </span>
-          </a>
             <details class="user-menu">
               <summary><span class="user-avatar">{{ user_email[:1]|upper }}</span><span class="user-email">{{ user_email }}</span><span aria-hidden="true">⌄</span></summary>
               <div class="user-menu-panel"><span>Signed in as</span><strong>{{ user_email }}</strong><a href="{{ aquatrack_url }}/logout">Log out</a></div>

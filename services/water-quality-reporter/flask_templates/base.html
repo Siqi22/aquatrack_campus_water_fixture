@@ -34,10 +34,6 @@
     <div class="app-content-column">
       <header class="app-header">
         <div class="app-header__inner">
-          <a class="brand mobile-brand" href="{{ aquatrack_url }}/" aria-label="AquaTrack home">
-            <span class="brand__mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2.7s6.3 6.9 6.3 12A6.3 6.3 0 1 1 5.7 14.7c0-5.1 6.3-12 6.3-12Z"/></svg></span>
-            <span class="brand__copy"><strong>AquaTrack</strong></span>
-          </a>
           <div class="topbar-actions">
             {% if request.endpoint != 'index' %}<a class="btn-icon-text" href="{{ url_for('index') }}" aria-label="Start a new report"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span>New report</span></a>{% endif %}
             <details class="user-menu">
