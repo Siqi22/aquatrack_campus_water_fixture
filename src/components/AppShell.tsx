@@ -83,7 +83,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </span>
         </Link>
         <nav className="sidebar-nav">{navigation(true)}</nav>
-        <div className="mt-auto border-t pt-4">
+        <div className="sidebar-organization mt-auto border-t pt-4">
           <p className="truncate px-3 text-xs font-medium text-muted-foreground">{organizationName}</p>
         </div>
       </aside>

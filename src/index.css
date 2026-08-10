@@ -103,7 +103,8 @@
   }
 
   .app-layout {
-    @apply min-h-screen bg-background;
+    @apply grid min-h-screen bg-background;
+    grid-template-columns: 4.75rem minmax(0, 1fr);
   }
 
   .app-content-column {
@@ -111,7 +112,7 @@
   }
 
   .desktop-sidebar {
-    @apply hidden;
+    @apply sticky top-0 flex h-screen flex-col border-r bg-card px-2 py-5;
   }
 
   .app-topbar {
@@ -119,12 +120,20 @@
   }
 
   .app-topbar-inner {
-    @apply mx-auto flex min-h-16 w-full max-w-7xl items-center justify-between gap-3 px-4 md:px-6 lg:justify-end lg:px-8;
+    @apply mx-auto flex min-h-16 w-full max-w-7xl items-center justify-end gap-3 px-4 md:px-6 lg:px-8;
   }
 
   .app-brand,
   .mobile-brand {
     @apply flex min-w-0 items-center gap-2.5 no-underline;
+  }
+
+  .app-brand {
+    @apply justify-center pb-5;
+  }
+
+  .app-brand > span:last-child {
+    @apply hidden;
   }
 
   .app-brand-mark {
@@ -136,7 +145,7 @@
   }
 
   .app-main-content {
-    @apply w-full flex-1 overflow-y-auto pb-24 lg:pb-0;
+    @apply w-full flex-1 overflow-y-auto pb-0;
   }
 
   .page-shell {
@@ -228,7 +237,7 @@
   }
 
   .nav-bar {
-    @apply fixed bottom-0 left-0 right-0 z-50 border-t bg-card/95 backdrop-blur-md;
+    @apply hidden;
   }
 
   .nav-tab {
@@ -239,35 +248,57 @@
     @apply nav-tab text-primary;
   }
 
-  @media (min-width: 1024px) {
+  .sidebar-nav {
+    @apply mt-2 flex flex-col gap-1;
+  }
+
+  .sidebar-tab {
+    @apply flex min-w-0 items-center justify-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground;
+  }
+
+  .sidebar-tab span {
+    @apply hidden;
+  }
+
+  .sidebar-tab-active {
+    @apply bg-primary/10 font-semibold text-primary hover:bg-primary/10 hover:text-primary;
+  }
+
+  .sidebar-organization {
+    @apply hidden;
+  }
+
+  .mobile-brand {
+    @apply hidden;
+  }
+
+  @media (min-width: 768px) {
     .app-layout {
-      display: grid;
       grid-template-columns: 15rem minmax(0, 1fr);
     }
 
     .desktop-sidebar {
-      @apply sticky top-0 flex h-screen flex-col border-r bg-card px-4 py-5;
+      @apply px-4;
     }
 
     .app-brand {
-      @apply px-2 pb-5;
+      @apply justify-start px-2;
     }
 
-    .sidebar-nav {
-      @apply mt-2 flex flex-col gap-1;
+    .app-brand > span:last-child {
+      @apply block;
     }
 
     .sidebar-tab {
-      @apply flex min-w-0 items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground;
+      @apply justify-start;
     }
 
-    .sidebar-tab-active {
-      @apply bg-primary/10 font-semibold text-primary hover:bg-primary/10 hover:text-primary;
+    .sidebar-tab span {
+      @apply block;
     }
 
-    .mobile-brand,
-    .nav-bar {
-      @apply hidden;
+    .sidebar-organization {
+      @apply block;
     }
   }
 
