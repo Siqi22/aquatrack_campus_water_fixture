@@ -104,7 +104,7 @@
 
   .app-layout {
     @apply grid min-h-screen bg-background;
-    grid-template-columns: 4.75rem minmax(0, 1fr);
+    grid-template-columns: 15rem minmax(0, 1fr);
   }
 
   .app-content-column {
@@ -112,7 +112,7 @@
   }
 
   .desktop-sidebar {
-    @apply sticky top-0 flex h-screen flex-col border-r bg-card px-2 py-5;
+    @apply sticky top-0 flex h-screen flex-col border-r bg-card px-4 py-5;
   }
 
   .app-topbar {
@@ -129,11 +129,11 @@
   }
 
   .app-brand {
-    @apply justify-center pb-5;
+    @apply justify-start px-2 pb-5;
   }
 
   .app-brand > span:last-child {
-    @apply hidden;
+    @apply block;
   }
 
   .app-brand-mark {
@@ -253,11 +253,11 @@
   }
 
   .sidebar-tab {
-    @apply flex min-w-0 items-center justify-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground;
+    @apply flex min-w-0 items-center justify-start gap-3 rounded-xl px-3 py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground;
   }
 
   .sidebar-tab span {
-    @apply hidden;
+    @apply block;
   }
 
   .sidebar-tab-active {
@@ -265,7 +265,7 @@
   }
 
   .sidebar-organization {
-    @apply hidden;
+    @apply block;
   }
 
   .mobile-brand {
