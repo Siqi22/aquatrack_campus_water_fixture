@@ -97,7 +97,7 @@ class ActionLevel:
 class ReportContext:
     """Everything needed to render one report."""
     building: str
-    report_date: Optional[date]        # None = author fills in date manually in Word
+    report_date: Optional[date]        # None falls back to today's date when rendered
     sampling_date_range: str           # e.g. "April 7, 2026"
     introduction_md: str               # human-written narrative
     actions_taken_md: str              # human-written narrative

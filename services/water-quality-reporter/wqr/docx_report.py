@@ -5,6 +5,7 @@ nearly always tweak wording before sending to building occupants.
 """
 from __future__ import annotations
 from copy import deepcopy
+from datetime import date
 import re
 from io import BytesIO
 from pathlib import Path
@@ -1019,9 +1020,7 @@ def render_docx(ctx: ReportContext, registry: FixtureRegistry,
                 _add_header_with_logo(doc)
 
         # ---- Memo metadata ----
-        # Date is intentionally blank when report_date is None — author fills
-        # in the final date manually in Word before signing.
-        date_text = ctx.report_date.strftime("%B %d, %Y") if ctx.report_date else ""
+        date_text = (ctx.report_date or date.today()).strftime("%B %d, %Y")
         for label, value in [
             ("Date", date_text),
             ("To", f"{ctx.building} Community" if getattr(ctx, "report_style", "uw") == "wa_school"
@@ -1033,6 +1032,11 @@ def render_docx(ctx: ReportContext, registry: FixtureRegistry,
             r = p.add_run(f"{label}: ")
             r.bold = True
             p.add_run(value)
+    else:
+        p = doc.add_paragraph()
+        r = p.add_run("Date: ")
+        r.bold = True
+        p.add_run((ctx.report_date or date.today()).strftime("%B %d, %Y"))
 
     # ---- Introduction ----
     if not getattr(ctx, "reference_style_applied", False):

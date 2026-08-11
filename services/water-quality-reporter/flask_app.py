@@ -16,6 +16,7 @@ import uuid
 import zipfile
 from collections import Counter
 from datetime import date, datetime
+from zoneinfo import ZoneInfo
 from io import BytesIO
 from pathlib import Path
 
@@ -2432,7 +2433,7 @@ def _handle_compose_post(upload_id: str, samples):
 
     ctx = ReportContext(
         building=report_building,
-        report_date=None,  # blank in DOCX; author types final date in Word
+        report_date=datetime.now(ZoneInfo("America/Los_Angeles")).date(),
         sampling_date_range=(
             request.form.get("sampling_dates", "").strip()
             or _sample_date_range(filtered)

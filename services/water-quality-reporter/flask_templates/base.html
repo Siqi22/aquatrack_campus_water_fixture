@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}AquaTrack{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='app.css', v='2026-08-11-topbar-district-v5') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css', v='2026-08-11-report-date-v6') }}">
   {% block head %}{% endblock %}
 </head>
 <body class="app-surface">
@@ -38,7 +38,7 @@
           <div class="topbar-actions">
             <details class="user-menu">
               <summary><span class="user-avatar">{{ user_email[:1]|upper }}</span><span class="user-email">{{ user_email }}</span><span aria-hidden="true">⌄</span></summary>
-              <div class="user-menu__panel"><span>Signed in as</span><strong>{{ user_email }}</strong><a href="{{ aquatrack_url }}/logout">Log out</a></div>
+              <div class="user-menu__panel"><span>Signed in as</span><strong>{{ user_email }}</strong><a href="{{ aquatrack_url }}/logout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/></svg>Log out</a></div>
             </details>
           </div>
         </div>

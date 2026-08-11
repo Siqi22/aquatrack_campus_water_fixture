@@ -164,8 +164,9 @@ function ReviewCard({row,fixtures,onChange,onCreate}:{row:ReviewRow;fixtures:Fix
     <div className="panel-body space-y-3">
       <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
         <Cell label="School" value={row.school}/>
-        <Cell label="Fixture Location" value={suggested?`${suggested.buildingName} · Room ${suggested.roomNumber}`:[row.building,row.room&&`Room ${row.room}`].filter(Boolean).join(' · ')}/>
+        <Cell label="Building" value={suggested?.buildingName||row.building}/>
         <Cell label="Fixture Description" value={row.fixtureDescription||row.fixtureType}/>
+        <Cell label="Fixture Location" value={suggested?[formatFloorLabel(suggested.floor),suggested.nearestRoom||suggested.roomNumber].filter(Boolean).join(' · '):[row.floor&&formatFloorLabel(row.floor),row.room].filter(Boolean).join(' · ')}/>
         <Cell label="Lead Result" value={result?formatLeadMeasurement(row.resultValue,row.resultUnit,result.ppb):'Invalid result'}/>
       </div>
 

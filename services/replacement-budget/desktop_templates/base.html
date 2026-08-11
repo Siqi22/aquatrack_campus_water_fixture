@@ -31,7 +31,7 @@
             <p class="topbar-organization" title="{{ organization_name }}">{{ organization_name }}</p>
             <details class="user-menu">
               <summary><span class="user-avatar">{{ user_email[:1]|upper }}</span><span class="user-email">{{ user_email }}</span><span aria-hidden="true">⌄</span></summary>
-              <div class="user-menu-panel"><span>Signed in as</span><strong>{{ user_email }}</strong><a href="{{ aquatrack_url }}/logout">Log out</a></div>
+              <div class="user-menu-panel"><span>Signed in as</span><strong>{{ user_email }}</strong><a href="{{ aquatrack_url }}/logout">{{ icon('logout') }}Log out</a></div>
             </details>
           </div>
         </header>

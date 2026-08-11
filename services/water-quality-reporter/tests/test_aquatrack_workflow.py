@@ -1,8 +1,10 @@
 from io import BytesIO
 from pathlib import Path
+from datetime import datetime
 import tempfile
 import unittest
 from unittest.mock import patch
+from zoneinfo import ZoneInfo
 
 from docx import Document
 from PIL import Image, ImageDraw
@@ -342,6 +344,10 @@ class AquaTrackWorkflowTests(unittest.TestCase):
             self.assertIn("Hallway A", results_table.rows[1].cells[2].text)
             self.assertEqual(results_table.rows[1].cells[3].text, "6")
             report_paragraphs = [paragraph.text for paragraph in report.paragraphs]
+            expected_date = datetime.now(
+                ZoneInfo("America/Los_Angeles")
+            ).strftime("%B %d, %Y")
+            self.assertIn(f"Date: {expected_date}", report_paragraphs)
             self.assertIn("Questions", report_paragraphs)
             self.assertIn(
                 "Jamie Rivera — District Communications — 555-0100, "

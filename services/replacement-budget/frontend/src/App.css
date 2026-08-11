@@ -118,7 +118,8 @@
 }
 .user-menu-panel span { color: hsl(var(--muted-foreground)); font-size: 0.68rem; }
 .user-menu-panel strong { overflow: hidden; font-size: 0.78rem; text-overflow: ellipsis; }
-.user-menu-panel a { margin-top: 0.35rem; padding-top: 0.55rem; border-top: 1px solid hsl(var(--border)); color: #c83232; font-weight: 600; text-decoration: none; }
+.user-menu-panel a { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.35rem; padding-top: 0.55rem; border-top: 1px solid hsl(var(--border)); color: #c83232; font-weight: 600; text-decoration: none; }
+.user-menu-panel a svg { width: 1rem; height: 1rem; flex: 0 0 auto; }
 
 .brand-link {
   min-width: 0;
