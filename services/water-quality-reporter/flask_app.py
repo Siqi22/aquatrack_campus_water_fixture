@@ -7,11 +7,13 @@ Run:  python app.py
 """
 from __future__ import annotations
 import json
+import mimetypes
 import os
 import pickle
 import re
 import secrets
 import uuid
+import zipfile
 from collections import Counter
 from datetime import date, datetime
 from io import BytesIO
@@ -1011,6 +1013,7 @@ def _build_source_preview(
         "error": "",
         "relevant_pages": [],
         "omitted_pages": 0,
+        "embedded_images": [],
     }
     try:
         if suffix == ".csv":
@@ -1033,6 +1036,13 @@ def _build_source_preview(
 
         if suffix == ".docx":
             from docx import Document
+
+            with zipfile.ZipFile(path) as archive:
+                preview["embedded_images"] = [
+                    name
+                    for name in archive.namelist()
+                    if name.startswith("word/media/") and not name.endswith("/")
+                ][:4]
 
             doc = Document(str(path))
             header_paragraphs: list[str] = []
@@ -1898,6 +1908,39 @@ def original_pdf_page(upload_id, file_idx: int, page_number: int):
         mimetype="image/png",
         as_attachment=False,
         download_name=f"{path.stem}-page-{page_number}.png",
+        max_age=300,
+    )
+
+
+@app.get("/original/<upload_id>/<int:file_idx>/asset/<int:asset_index>")
+def original_docx_asset(upload_id, file_idx: int, asset_index: int):
+    """Serve an embedded Word image for the in-page document preview."""
+    data = _load_session_data(upload_id)
+    if data is None:
+        abort(404)
+    files = data.get("meta", {}).get("original_files", [])
+    if file_idx < 0 or file_idx >= len(files):
+        abort(404)
+    path = Path(files[file_idx]["path"])
+    if path.suffix.lower() != ".docx" or not path.exists():
+        abort(404)
+
+    with zipfile.ZipFile(path) as archive:
+        media = [
+            name
+            for name in archive.namelist()
+            if name.startswith("word/media/") and not name.endswith("/")
+        ][:4]
+        if asset_index < 0 or asset_index >= len(media):
+            abort(404)
+        asset_name = media[asset_index]
+        output = BytesIO(archive.read(asset_name))
+
+    return send_file(
+        output,
+        mimetype=mimetypes.guess_type(asset_name)[0] or "application/octet-stream",
+        as_attachment=False,
+        download_name=Path(asset_name).name,
         max_age=300,
     )
 

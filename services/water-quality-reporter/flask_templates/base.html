@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}AquaTrack{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='app.css', v='2026-08-10-desktop-shell-v1') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css', v='2026-08-10-review-documents-v2') }}">
   {% block head %}{% endblock %}
 </head>
 <body class="app-surface">
@@ -35,7 +35,6 @@
       <header class="app-header">
         <div class="app-header__inner">
           <div class="topbar-actions">
-            {% if request.endpoint != 'index' %}<a class="btn-icon-text" href="{{ url_for('index') }}" aria-label="Start a new report"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span>New report</span></a>{% endif %}
             <details class="user-menu">
               <summary><span class="user-avatar">{{ user_email[:1]|upper }}</span><span class="user-email">{{ user_email }}</span><span aria-hidden="true">⌄</span></summary>
               <div class="user-menu__panel"><span>Signed in as</span><strong>{{ user_email }}</strong><a href="{{ aquatrack_url }}/logout">Log out</a></div>

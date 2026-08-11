@@ -46,23 +46,13 @@
     <h2>Sample report style</h2>
     <p>Review the example communication and School District Header used in this report.</p>
   </div>
-  <div class="qc-body">
-    <div class="source-tabs" role="tablist" aria-label="Uploaded file previews">
+  <div class="qc-body source-document-grid">
       {% for file in preview_files %}
-        <button type="button" class="source-tab {% if loop.first %}active{% endif %}"
-                data-target="source-preview-{{ loop.index0 }}" role="tab">
-          {{ file.label or file.filename }}
-        </button>
-      {% endfor %}
-    </div>
-    <div class="source-pane">
-      {% for file in preview_files %}
-      <div class="source-preview {% if loop.first %}active{% endif %}" id="source-preview-{{ loop.index0 }}" role="tabpanel">
+      <article class="source-document-card">
         <div class="source-title">
-          <strong>{{ file.label or file.filename }}</strong>
-          <a href="{{ url_for('original_file', upload_id=upload_id, file_idx=file.file_idx) }}" target="_blank">open source</a>
+          <div><strong>{{ file.label or file.filename }}</strong><small>{{ file.filename }}</small></div>
         </div>
-        <p><small>{{ file.filename }}</small></p>
+        <div class="source-document-page">
         {% if file.preview.error %}<div class="warn-banner">{{ file.preview.error }}</div>{% endif %}
         {% if file.preview.is_pdf %}
           <div class="source-page-stack">
@@ -77,10 +67,17 @@
             {% endfor %}
           </div>
         {% endif %}
+        {% if file.preview.embedded_images %}
+          <div class="source-document-images">
+            {% for image_name in file.preview.embedded_images %}
+              <img src="{{ url_for('original_docx_asset', upload_id=upload_id, file_idx=file.file_idx, asset_index=loop.index0) }}" alt="Image from {{ file.filename }}" loading="lazy">
+            {% endfor %}
+          </div>
+        {% endif %}
         {% if file.preview.text and not file.preview.is_pdf %}<pre class="source-text">{{ file.preview.text }}</pre>{% endif %}
-      </div>
+        </div>
+      </article>
       {% endfor %}
-    </div>
   </div>
 </section>
 {% endif %}
@@ -114,7 +111,7 @@
 </div>
 </fieldset>
 
-<fieldset class="card-section">
+<fieldset class="card-section report-narrative">
 <legend>Report narrative</legend>
 <div class="fieldset-body">
 <p class="field-hint mt-0">Markdown is supported: <code>**bold**</code>, <code>*italic*</code>, and a blank line for a new paragraph.</p>
@@ -171,18 +168,6 @@
 
 {% block scripts %}
 <script>
-  const sourceTabs = Array.from(document.querySelectorAll('.source-tab'));
-  const sourcePreviews = Array.from(document.querySelectorAll('.source-preview'));
-  sourceTabs.forEach(tabButton => {
-    tabButton.addEventListener('click', () => {
-      sourceTabs.forEach(button => button.classList.remove('active'));
-      sourcePreviews.forEach(panel => panel.classList.remove('active'));
-      tabButton.classList.add('active');
-      const target = document.getElementById(tabButton.dataset.target);
-      if (target) target.classList.add('active');
-    });
-  });
-
   const composeForm = document.getElementById('compose-form');
   document.querySelectorAll('[data-save-draft]').forEach(link => {
     link.addEventListener('click', async event => {
