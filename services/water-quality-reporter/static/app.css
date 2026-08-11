@@ -69,6 +69,17 @@ body {
 .desktop-sidebar .app-nav-tab span { display: inline; }
 .desktop-sidebar .app-nav-tab:hover { color: hsl(var(--foreground)); background: hsl(var(--secondary)); }
 .desktop-sidebar .app-nav-tab.is-active { color: hsl(var(--primary)); background: hsl(var(--primary) / 0.1); font-weight: 600; }
+.sidebar-district {
+  margin-top: auto;
+  padding: 1rem 0.75rem 0;
+  overflow: hidden;
+  border-top: 1px solid hsl(var(--border));
+  color: hsl(var(--muted-foreground));
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+}
 .mobile-brand, .app-bottom-nav { display: none; }
 
 a { color: hsl(var(--primary)); text-underline-offset: 0.18em; }

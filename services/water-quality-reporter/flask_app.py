@@ -94,8 +94,21 @@ AQUATRACK_URL = os.environ.get(
 @app.context_processor
 def inject_aquatrack_navigation():
     user = getattr(g, "current_user", None) or {}
+    organization_name = session.get("organization_name", "")
+    if not organization_name and user and supabase.configured:
+        try:
+            schools = supabase.schools()
+            organization_name = next(
+                (school.get("school_district", "") for school in schools if school.get("school_district")),
+                "",
+            )
+            if organization_name:
+                session["organization_name"] = organization_name
+        except Exception:
+            organization_name = ""
     return {
         "aquatrack_url": AQUATRACK_URL,
+        "organization_name": organization_name or "North Valley School District",
         "user_email": user.get("email") or session.get("user_email", "Signed-in user"),
     }
 
