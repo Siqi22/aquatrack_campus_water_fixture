@@ -9,19 +9,21 @@ const sections = [
 
 export function LeadTestingModuleNav() {
   return (
-    <nav className="mb-4 grid grid-cols-3 gap-1 rounded-xl bg-secondary/50 p-1" aria-label="Lead Testing navigation">
+    <nav className="mb-5 grid grid-cols-3 gap-2 rounded-2xl bg-secondary/60 p-1.5" aria-label="Lead Testing navigation">
       {sections.map(({ to, label, icon: Icon, end }) => (
         <NavLink
           key={to}
           to={to}
           end={end}
           className={({ isActive }) =>
-            `flex min-w-0 flex-col items-center gap-1 rounded-lg px-1 py-2 text-[10px] font-semibold ${
-              isActive ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground'
+            `flex min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl border px-2 py-3 text-sm font-semibold transition-colors ${
+              isActive
+                ? 'border-primary/30 bg-card text-primary shadow-sm'
+                : 'border-transparent text-muted-foreground hover:bg-card/60 hover:text-foreground'
             }`
           }
         >
-          <Icon className="h-4 w-4" />
+          <Icon className="h-5 w-5" strokeWidth={2.25} />
           <span className="truncate">{label}</span>
         </NavLink>
       ))}
