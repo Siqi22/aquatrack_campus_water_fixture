@@ -5,6 +5,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ImportDialog } from '@/components/ImportDialog';
 import { toast } from 'sonner';
 import { useOrganization } from '@/contexts/OrganizationContext';
+import { useFixtureStore } from '@/store/fixtureStore';
+import { resolveWorkspaceSchoolDistrict } from '@/lib/schoolDistrict';
 import { DrinkingFountainIcon } from '@/components/icons/DrinkingFountainIcon';
 import { HomeIcon } from '@/components/icons/HomeIcon';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -23,6 +25,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, signOut } = useAuth();
   const { organizationName } = useOrganization();
+  const campuses = useFixtureStore((state) => state.campuses);
+  const districtName = resolveWorkspaceSchoolDistrict(campuses, organizationName);
   const tabs = [
     { to: '/', icon: HomeIcon, label: 'Home' },
     { to: '/campus', icon: DrinkingFountainIcon, label: 'Fixture Inventory' },
@@ -83,18 +87,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           </span>
         </Link>
         <nav className="sidebar-nav">{navigation(true)}</nav>
-        <div className="sidebar-organization mt-auto border-t pt-4">
-          <p className="truncate px-3 text-xs font-medium text-muted-foreground">{organizationName}</p>
-        </div>
       </aside>
 
       <div className="app-content-column">
         <header className="app-topbar">
           <div className="app-topbar-inner">
-            <Link to="/" className="mobile-brand">
-              <span className="app-brand-mark"><Droplets className="h-4 w-4" /></span>
-              <span className="truncate text-sm font-bold text-foreground">AquaTrack</span>
-            </Link>
+            <p className="topbar-organization" title={districtName}>{districtName}</p>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button type="button" className="user-menu-trigger" aria-label="Open user menu">

@@ -43,17 +43,6 @@
 .desktop-sidebar .app-nav-tab span { display: inline; }
 .desktop-sidebar .app-nav-tab:hover { color: hsl(var(--foreground)); background: hsl(var(--secondary)); }
 .desktop-sidebar .app-nav-tab.is-active { color: hsl(var(--primary)); background: hsl(var(--primary) / 0.1); font-weight: 600; }
-.sidebar-district {
-  margin-top: auto;
-  padding: 1rem 0.75rem 0;
-  overflow: hidden;
-  border-top: 1px solid hsl(var(--border));
-  color: hsl(var(--muted-foreground));
-  font-size: 0.72rem;
-  font-weight: 600;
-  line-height: 1.4;
-  text-overflow: ellipsis;
-}
 .mobile-brand, .app-bottom-nav { display: none; }
 
 .app-header {
@@ -73,8 +62,20 @@
   padding: 0.65rem 1rem;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 1rem;
+}
+
+.topbar-organization {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: hsl(var(--foreground));
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .user-menu { position: relative; }
@@ -269,7 +270,7 @@
     text-align: left;
   }
   .desktop-sidebar .app-nav-tab span { display: inline; }
-  .app-header-inner { justify-content: flex-end; padding-right: 2rem; padding-left: 2rem; }
+  .app-header-inner { justify-content: space-between; padding-right: 2rem; padding-left: 2rem; }
   .page { width: min(80rem, 100%); padding-right: 2rem; padding-bottom: 2rem; padding-left: 2rem; }
 }
 

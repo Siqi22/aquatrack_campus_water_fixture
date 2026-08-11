@@ -10,17 +10,12 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useFixtureStore } from '@/store/fixtureStore';
-import { useOrganization } from '@/contexts/OrganizationContext';
 import { useLeadTesting } from '@/hooks/useLeadTesting';
 import { DrinkingFountainIcon } from '@/components/icons/DrinkingFountainIcon';
-import { resolveWorkspaceSchoolDistrict } from '@/lib/schoolDistrict';
 
 export default function Dashboard() {
-  const { organizationName } = useOrganization();
   const { fixtures, campuses, buildings, loading, loaded } = useFixtureStore();
   const lead = useLeadTesting();
-
-  const districtName = resolveWorkspaceSchoolDistrict(campuses, organizationName);
 
   const latestRoundByFixture = useMemo(() => {
     const latest = new Map<string, (typeof lead.rounds)[number]>();
@@ -74,8 +69,7 @@ export default function Dashboard() {
     <div className="page-shell">
       <header className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="section-label">{districtName}</p>
-          <h1 className="page-title mt-1">Lead Testing Overview</h1>
+          <h1 className="page-title">Lead Testing Overview</h1>
           <p className="page-subtitle">Track lead testing progress across all schools.</p>
         </div>
         <p className="text-xs text-muted-foreground">

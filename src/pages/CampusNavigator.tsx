@@ -16,7 +16,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { LeadResultsExportDialog } from '@/components/LeadResultsExportDialog';
 import { formatFloorLabel } from '@/lib/floorUtils';
-import { resolveWorkspaceSchoolDistrict } from '@/lib/schoolDistrict';
 
 const ALL_SCHOOLS_VALUE = 'all-schools';
 
@@ -39,7 +38,7 @@ export default function CampusNavigator() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { campuses, getBuildingsByCampus, getFixturesByBuilding, getFixturesByCampus, getFloorsByBuilding } =
     useFixtureStore();
-  const { isSchoolDistrict, locationLabel, organizationName } = useOrganization();
+  const { isSchoolDistrict, locationLabel } = useOrganization();
   const visibleCampuses = campuses;
   const requestedFilter = searchParams.get('leadFilter');
   const leadFilter: LeadFixtureFilter = isLeadFixtureFilter(requestedFilter) ? requestedFilter : 'all';
@@ -66,7 +65,6 @@ export default function CampusNavigator() {
       getFixturesByBuilding(building.id).some((fixture) => matchesLeadFixtureFilter(fixture, leadFilter)),
   );
   const currentCampus = campuses.find((c) => c.id === selectedCampus);
-  const districtName = resolveWorkspaceSchoolDistrict(visibleCampuses, organizationName);
 
   useEffect(() => {
     if (!defaultCampusId || hydrated) return;
@@ -152,7 +150,7 @@ export default function CampusNavigator() {
       <PageHeader
         title={
           showingAllSchools
-            ? `${districtName} Fixture Inventory`
+            ? 'Fixture Inventory'
             : isSchoolDistrict
               ? currentCampus?.school || 'School'
               : locationLabel
