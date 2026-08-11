@@ -162,6 +162,7 @@ def auth_launch():
     <p id="status">Opening AquaTrack Communication…</p>
     <script>
       const token = new URLSearchParams(location.hash.slice(1)).get('access_token');
+      const district = new URLSearchParams(location.search).get('district') || '';
       history.replaceState(null, '', location.pathname);
       if (!token) {
         document.getElementById('status').textContent = 'Return to AquaTrack and try again.';
@@ -169,7 +170,7 @@ def auth_launch():
         fetch('./session', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({access_token: token})
+          body: JSON.stringify({access_token: token, district})
         }).then(async response => {
           if (!response.ok) throw new Error(await response.text());
           location.replace('../');
@@ -183,12 +184,16 @@ def auth_launch():
 
 @app.post("/auth/session")
 def auth_session():
-    token = (request.get_json(silent=True) or {}).get("access_token", "")
+    payload = request.get_json(silent=True) or {}
+    token = payload.get("access_token", "")
     user = supabase.verify_user(token)
     if not user:
         return {"error": "Invalid or expired AquaTrack session"}, 401
     session["user_id"] = user.get("id")
     session["user_email"] = user.get("email", "")
+    district = str(payload.get("district", "")).strip()
+    if district:
+        session["organization_name"] = district[:200]
     response = make_response({"ok": True})
     response.set_cookie(
         "wqr_access_token",

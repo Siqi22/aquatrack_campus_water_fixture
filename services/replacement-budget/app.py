@@ -94,7 +94,7 @@ def inject_aquatrack_navigation():
     return {
         "aquatrack_url": AQUATRACK_URL,
         "communication_url": COMMUNICATION_URL,
-        "organization_name": (catalog or {}).get("district_name", "School District"),
+        "organization_name": session.get("organization_name") or (catalog or {}).get("district_name", "School District"),
         "user_email": (getattr(g, "current_user", None) or {}).get("email") or session.get("user_email", "Signed-in user"),
         "build_id": BUILD_ID,
     }
@@ -134,13 +134,14 @@ def auth_launch():
     <p id="status">Opening AquaTrack Replacement Budget…</p>
     <script>
       const token = new URLSearchParams(location.hash.slice(1)).get('access_token');
+      const district = new URLSearchParams(location.search).get('district') || '';
       history.replaceState(null, '', location.pathname);
       if (!token) {
         document.getElementById('status').textContent = 'Return to AquaTrack and try again.';
       } else {
         fetch('./session', {
           method: 'POST', headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({access_token: token})
+          body: JSON.stringify({access_token: token, district})
         }).then(async response => {
           if (!response.ok) throw new Error(await response.text());
           location.replace('../');
@@ -154,12 +155,16 @@ def auth_launch():
 
 @app.post("/auth/session")
 def auth_session():
-    token = (request.get_json(silent=True) or {}).get("access_token", "")
+    payload = request.get_json(silent=True) or {}
+    token = payload.get("access_token", "")
     user = supabase.verify_user(token)
     if not user:
         return {"error": "Invalid or expired AquaTrack session"}, 401
     session["user_id"] = user.get("id")
     session["user_email"] = user.get("email", "")
+    district = str(payload.get("district", "")).strip()
+    if district:
+        session["organization_name"] = district[:200]
     # Opening the tool from AquaTrack starts a fresh budget. Navigation within
     # the budget service continues to preserve the in-progress selection.
     session.pop("budget_state", None)

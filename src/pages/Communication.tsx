@@ -3,11 +3,18 @@ import { ArrowUpRight, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOrganization } from '@/contexts/OrganizationContext';
+import { useFixtureStore } from '@/store/fixtureStore';
+import { resolveWorkspaceSchoolDistrict } from '@/lib/schoolDistrict';
 
 const DEFAULT_REPORTER_URL = 'https://aquatrack-water-quality-reporter.vercel.app';
 
 export default function Communication() {
   const { session } = useAuth();
+  const { organizationName } = useOrganization();
+  const campuses = useFixtureStore((state) => state.campuses);
+  const inventoryLoaded = useFixtureStore((state) => state.loaded);
+  const districtName = resolveWorkspaceSchoolDistrict(campuses, organizationName);
   const [error, setError] = useState('');
 
   function openReporter() {
@@ -18,14 +25,15 @@ export default function Communication() {
     }
     setError('');
     const configured = (import.meta.env.VITE_COMMUNICATION_TOOL_URL || DEFAULT_REPORTER_URL).replace(/\/$/, '');
-    window.location.replace(`${configured}/auth/launch#access_token=${encodeURIComponent(accessToken)}`);
+    window.location.replace(`${configured}/auth/launch?district=${encodeURIComponent(districtName)}#access_token=${encodeURIComponent(accessToken)}`);
   }
 
   useEffect(() => {
+    if (!inventoryLoaded) return;
     openReporter();
-    // The session access token is the only value needed for this one-time handoff.
+    // Wait for inventory so the handoff carries the active workspace district.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.access_token]);
+  }, [session?.access_token, inventoryLoaded]);
 
   return <div className="page-shell">
     <PageHeader title="Communication" subtitle="Opening AquaTrack Communication" />

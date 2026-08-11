@@ -4,11 +4,18 @@ import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useOrganization } from '@/contexts/OrganizationContext';
+import { useFixtureStore } from '@/store/fixtureStore';
+import { resolveWorkspaceSchoolDistrict } from '@/lib/schoolDistrict';
 
 const DEFAULT_BUDGET_URL = 'https://aquatrack-replacement-budget.vercel.app';
 
 export default function ReplacementBudget() {
   const { session } = useAuth();
+  const { organizationName } = useOrganization();
+  const campuses = useFixtureStore((state) => state.campuses);
+  const inventoryLoaded = useFixtureStore((state) => state.loaded);
+  const districtName = resolveWorkspaceSchoolDistrict(campuses, organizationName);
   const [error, setError] = useState('');
   const autoLaunchStarted = useRef(false);
 
@@ -28,16 +35,16 @@ export default function ReplacementBudget() {
     }
     setError('');
     const configured = (import.meta.env.VITE_REPLACEMENT_BUDGET_URL || DEFAULT_BUDGET_URL).replace(/\/$/, '');
-    window.location.replace(`${configured}/auth/launch#access_token=${encodeURIComponent(accessToken)}`);
+    window.location.replace(`${configured}/auth/launch?district=${encodeURIComponent(districtName)}#access_token=${encodeURIComponent(accessToken)}`);
   }
 
   useEffect(() => {
-    if (!session?.access_token || autoLaunchStarted.current) return;
+    if (!session?.access_token || !inventoryLoaded || autoLaunchStarted.current) return;
     autoLaunchStarted.current = true;
     void openBudgetTool();
     // The session access token is used only for this one-time secure handoff.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.access_token]);
+  }, [session?.access_token, inventoryLoaded]);
 
   return <div className="page-shell">
     <PageHeader title="Replacement Budget" subtitle="Opening AquaTrack Replacement Budget" />
