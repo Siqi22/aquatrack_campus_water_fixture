@@ -1,6 +1,7 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 
 :root {
+  font-size: 17px;
   --background: 210 25% 98%;
   --foreground: 210 40% 12%;
   --card: 0 0% 100%;
