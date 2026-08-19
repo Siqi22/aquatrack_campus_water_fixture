@@ -121,9 +121,15 @@ export default function LeadTestingResults() {
               <div className="grid grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_6rem_minmax(0,1.15fr)_6rem] gap-3 border-b bg-secondary/40 px-3 py-2 text-left text-[10px] font-semibold text-muted-foreground">
                 <span>School</span><span>Building</span><span>Floor</span><span>Fixture Location</span><span>Lead (ppb)</span>
               </div>
-              {sortedImported.map((item) => (
-                <Link to={`/fixture/${item.round.fixture_id}`} key={item.round.id} className="grid grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_6rem_minmax(0,1.15fr)_6rem] gap-3 border-b px-3 py-3 text-left text-xs last:border-b-0 hover:bg-secondary/30">
-                  <span className="min-w-0">{item.school}</span>
+              {sortedImported.map((item, index) => {
+                const startsSchoolGroup = index === 0 || compareText(sortedImported[index - 1].school, item.school) !== 0;
+                return (
+                <Link
+                  to={`/fixture/${item.round.fixture_id}`}
+                  key={item.round.id}
+                  className={`grid grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_6rem_minmax(0,1.15fr)_6rem] gap-3 border-b px-3 py-3 text-left text-xs last:border-b-0 hover:bg-secondary/30 ${startsSchoolGroup ? 'border-t-2 border-t-primary/35 bg-primary/[0.04]' : ''}`}
+                >
+                  <span className={`min-w-0 ${startsSchoolGroup ? 'font-bold text-foreground' : ''}`}>{item.school}</span>
                   <span className="min-w-0">{item.building}</span>
                   <span className="min-w-0">{formatFloorLabel(item.floor)}</span>
                   <span className="min-w-0">{item.location || '—'}</span>
@@ -131,7 +137,8 @@ export default function LeadTestingResults() {
                     {formatLeadMeasurement(item.round.result_value, item.round.result_original_unit, item.round.result_ppb).replace(/ ppb$/, '')}
                   </span>
                 </Link>
-              ))}
+                );
+              })}
             </div>
           </div>
         ) : (

@@ -11,5 +11,8 @@ describe('Lead testing result sorting controls', () => {
     expect(source).toContain('compareFloorKeys(left.floor, right.floor)');
     expect(source).toContain('Lead Level (ppb)');
     expect(source).toContain('(right.round.result_ppb ?? -1) - (left.round.result_ppb ?? -1)');
+    expect(source).toContain('startsSchoolGroup');
+    expect(source).toContain('border-t-2 border-t-primary/35');
+    expect(source).toContain('font-bold text-foreground');
   });
 });
