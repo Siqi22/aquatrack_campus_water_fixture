@@ -26,4 +26,11 @@ describe('Lead report matching review hierarchy', () => {
     expect(source).toContain("row.match.status==='high_confidence_match'");
     expect(source).toContain('confirmAllMatches');
   });
+
+  it('offers bulk exclusion without changing imported results', () => {
+    expect(source).toContain('Exclude All (');
+    expect(source).toContain('excludeAllRows');
+    expect(source).toContain("rows.filter(row=>!row.excluded&&!row.imported)");
+    expect(source).toContain("match_status:'excluded'");
+  });
 });
