@@ -9,7 +9,7 @@ describe('Lead report matching review hierarchy', () => {
     expect(source).toContain('Create new fixture');
     expect(source).toContain("'Create new'");
     expect(source).toContain('>Exclude<');
-    expect(source).toContain('!row.imported&&(row.excluded||unresolved)');
+    expect(source).toContain('!row.imported&&<Button');
     expect(source.indexOf('>Exclude<')).toBeLessThan(source.indexOf('Create new fixture'));
 
     expect(source).not.toContain('Include this result');
@@ -19,7 +19,9 @@ describe('Lead report matching review hierarchy', () => {
     expect(source).not.toContain('Edit report details');
     expect(source).not.toContain('Check Match Again');
     expect(source).not.toContain('Include instead');
-    expect(source).toContain('Undo exclusion');
+    expect(source).not.toContain('Undo exclusion');
+    expect(source).toContain('>Include<');
+    expect(source).toContain('canConfirm');
     expect(source).toContain("'Confirm creation'");
   });
 

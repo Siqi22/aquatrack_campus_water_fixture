@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CheckCheck, ChevronDown, FileCheck2, Link2, Plus, RotateCcw, Search, Upload, X } from 'lucide-react';
+import { Check, CheckCheck, ChevronDown, FileCheck2, Link2, Plus, Search, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { parseSpreadsheetFile } from '@/lib/spreadsheet';
@@ -184,7 +184,7 @@ function ReviewCard({row,fixtures,onChange,onCreate}:{row:ReviewRow;fixtures:Fix
       </div>
       <div className="flex flex-wrap items-center justify-end gap-2">
         <MatchBadge row={row}/>
-        {!row.imported&&(row.excluded||unresolved)&&<Button type="button" size="sm" variant="outline" className={row.excluded?'bg-background':'border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive'} onClick={()=>{onChange({excluded:!row.excluded,confirmed:false});if(row.excluded)openFixtureFinder()}}>{row.excluded?<><RotateCcw className="h-4 w-4"/>Undo exclusion</>:<><X className="h-4 w-4"/>Exclude</>}</Button>}
+        {!row.imported&&<Button type="button" size="sm" variant="outline" className={row.excluded?'border-primary/40 text-primary hover:bg-primary/10 hover:text-primary':'border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive'} onClick={()=>{if(row.excluded){const canConfirm=Boolean(row.selectedFixtureId&&row.match.status==='high_confidence_match');onChange({excluded:false,confirmed:canConfirm});if(!canConfirm)openFixtureFinder()}else{onChange({excluded:true,confirmed:false})}}}>{row.excluded?<><Check className="h-4 w-4"/>Include</>:<><X className="h-4 w-4"/>Exclude</>}</Button>}
       </div>
     </div>
     <div className="panel-body space-y-3">
