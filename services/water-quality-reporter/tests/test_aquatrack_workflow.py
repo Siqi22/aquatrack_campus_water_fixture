@@ -284,6 +284,10 @@ class AquaTrackWorkflowTests(unittest.TestCase):
             review = client.get(style.headers["Location"])
             self.assertEqual(review.status_code, 200)
             self.assertIn(b"Review and Edit", review.data)
+            expected_date = datetime.now(
+                ZoneInfo("America/Los_Angeles")
+            ).strftime("%B %d, %Y")
+            self.assertIn(expected_date.encode(), review.data)
             self.assertIn(b"Sample report style", review.data)
             self.assertIn(b"School District Header", review.data)
             self.assertIn(b"header.docx", review.data)
@@ -344,9 +348,6 @@ class AquaTrackWorkflowTests(unittest.TestCase):
             self.assertIn("Hallway A", results_table.rows[1].cells[2].text)
             self.assertEqual(results_table.rows[1].cells[3].text, "6")
             report_paragraphs = [paragraph.text for paragraph in report.paragraphs]
-            expected_date = datetime.now(
-                ZoneInfo("America/Los_Angeles")
-            ).strftime("%B %d, %Y")
             self.assertIn(f"Date: {expected_date}", report_paragraphs)
             self.assertIn("Questions", report_paragraphs)
             self.assertIn(

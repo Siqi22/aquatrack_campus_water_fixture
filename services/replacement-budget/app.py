@@ -84,6 +84,14 @@ def _catalog() -> dict:
     catalog = getattr(g, "budget_catalog", None)
     if catalog is None:
         catalog = supabase.catalog() if supabase.configured else _placeholder_catalog()
+        active_district = str(session.get("organization_name") or "").strip()
+        if active_district and active_district.casefold() not in {
+            "school district",
+            "multiple school districts",
+            "unknown",
+            "unknown school district",
+        }:
+            catalog = {**catalog, "district_name": active_district}
         g.budget_catalog = catalog
     return catalog
 

@@ -15,16 +15,16 @@ import { DrinkingFountainIcon } from '@/components/icons/DrinkingFountainIcon';
 
 export default function Dashboard() {
   const { fixtures, campuses, buildings, loading, loaded } = useFixtureStore();
-  const lead = useLeadTesting();
+  const { rounds } = useLeadTesting();
 
   const latestRoundByFixture = useMemo(() => {
-    const latest = new Map<string, (typeof lead.rounds)[number]>();
-    lead.rounds.forEach((round) => {
+    const latest = new Map<string, (typeof rounds)[number]>();
+    rounds.forEach((round) => {
       const current = latest.get(round.fixture_id);
       if (!current || round.round_number > current.round_number) latest.set(round.fixture_id, round);
     });
     return latest;
-  }, [lead.rounds]);
+  }, [rounds]);
 
   const fixtureState = (fixtureId: string) => {
     const fixture = fixtures.find((item) => item.id === fixtureId);
@@ -54,9 +54,20 @@ export default function Dashboard() {
     remediation: schoolCount((status) => ['action_required', 'remediation_in_progress'].includes(status)),
   };
 
-  const schoolsWithFixtureData = new Set(fixtures.map((fixture) => fixture.campusId)).size;
-  const fixtureDataCoverage = campuses.length > 0
-    ? Math.round((schoolsWithFixtureData / campuses.length) * 100)
+  const fixturesWithInitialResults = useMemo(
+    () => new Set(
+      rounds
+        .filter((round) => round.round_type === 'initial_test' && Boolean(round.result_value || round.result_received_at))
+        .map((round) => round.fixture_id),
+    ),
+    [rounds],
+  );
+  const schoolsWithCompletedInitialTesting = campuses.filter((campus) => {
+    const schoolFixtures = fixtures.filter((fixture) => fixture.campusId === campus.id);
+    return schoolFixtures.length > 0 && schoolFixtures.every((fixture) => fixturesWithInitialResults.has(fixture.id));
+  }).length;
+  const initialTestingCoverage = campuses.length > 0
+    ? Math.round((schoolsWithCompletedInitialTesting / campuses.length) * 100)
     : 0;
 
   const lastUpdated = fixtures
@@ -83,10 +94,10 @@ export default function Dashboard() {
         <div className="space-y-4">
           <div className="grid gap-4 xl:grid-cols-[minmax(15rem,0.7fr)_minmax(0,1.8fr)]">
             <Link to="/campus" className="card-soft block p-4 transition-colors hover:bg-secondary/20" aria-label="Fixture inventory status">
-              <SectionHeading icon={DrinkingFountainIcon} title="Fixture Inventory" subtitle="Schools with fixture locations" />
+              <SectionHeading icon={DrinkingFountainIcon} title="Fixture Inventory" subtitle="Schools with completed initial testing" />
               <div className="mt-3 flex items-end justify-between gap-3">
-                <p className="text-3xl font-bold tabular-nums text-foreground">{fixtureDataCoverage}%</p>
-                <p className="pb-1 text-right text-[11px] text-muted-foreground">{schoolsWithFixtureData} of {campuses.length} schools</p>
+                <p className="text-3xl font-bold tabular-nums text-foreground">{initialTestingCoverage}%</p>
+                <p className="pb-1 text-right text-[11px] text-muted-foreground">{schoolsWithCompletedInitialTesting} of {campuses.length} schools</p>
               </div>
             </Link>
 

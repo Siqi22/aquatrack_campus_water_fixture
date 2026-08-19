@@ -48,7 +48,8 @@ class BudgetWorkflowTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Estimate Budget for Lead Remediation", response.data)
         self.assertIn(b"Choose schools to include", response.data)
-        self.assertNotIn(b"North Valley School District", response.data)
+        self.assertIn(b'title="North Valley School District"', response.data)
+        self.assertNotIn(b"North Valley School District Estimate Budget", response.data)
         self.assertIn(b"School A", response.data)
         self.assertIn(b"School B", response.data)
         self.assertIn(b"School C", response.data)
@@ -177,6 +178,26 @@ class BudgetWorkflowTests(unittest.TestCase):
         self.assertEqual(summary_values["Labor cost"], 2500)
         self.assertEqual(summary_values["Total estimated budget"], expected_total)
         self.assertEqual(workbook["Budget Detail"].max_row, len(selected) + 1)
+
+    def test_excel_uses_the_active_aquatrack_district_name(self):
+        self._build_budget()
+        with self.client.session_transaction() as current_session:
+            current_session["organization_name"] = "Example Valley School District"
+            current_session["budget_state"]["district_name"] = "Example Valley School District"
+
+        export = self.client.post("/budget/export")
+        self.assertEqual(export.status_code, 200)
+        workbook = load_workbook(io.BytesIO(export.data), data_only=True)
+        summary = workbook["Budget Summary"]
+        summary_values = {
+            summary.cell(row=row, column=1).value: summary.cell(row=row, column=2).value
+            for row in range(3, 14)
+        }
+        self.assertEqual(summary_values["District"], "Example Valley School District")
+        self.assertIn(
+            "Example_Valley_School_District_remediation_budget.xlsx",
+            export.headers["Content-Disposition"],
+        )
 
     def test_later_steps_require_prior_completion(self):
         response = self.client.get("/budget/replacements")

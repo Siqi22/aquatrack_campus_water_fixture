@@ -17,6 +17,7 @@
 <div class="info-banner">
   <strong>Report setup:</strong>
   School/district report for <strong>{{ report_school_name }}</strong>{% if initial_organization %}, {{ initial_organization }}{% endif %}.
+  <span><strong>Report date:</strong> {{ report_date_display }}.</span>
   <a href="{{ url_for('index') }}">Change</a>
 </div>
 

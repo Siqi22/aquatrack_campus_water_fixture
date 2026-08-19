@@ -92,6 +92,10 @@ AQUATRACK_URL = os.environ.get(
 ).rstrip("/")
 
 
+def _local_report_date() -> date:
+    return datetime.now(ZoneInfo("America/Los_Angeles")).date()
+
+
 @app.context_processor
 def inject_aquatrack_navigation():
     user = getattr(g, "current_user", None) or {}
@@ -2168,6 +2172,7 @@ def compose(upload_id):
         report_school_name=(
             compose_draft.get("school_name") or initial_school_name or suggested
         ),
+        report_date_display=_local_report_date().strftime("%B %d, %Y"),
     )
 
 
@@ -2433,7 +2438,7 @@ def _handle_compose_post(upload_id: str, samples):
 
     ctx = ReportContext(
         building=report_building,
-        report_date=datetime.now(ZoneInfo("America/Los_Angeles")).date(),
+        report_date=_local_report_date(),
         sampling_date_range=(
             request.form.get("sampling_dates", "").strip()
             or _sample_date_range(filtered)

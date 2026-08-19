@@ -20,4 +20,10 @@ describe('Lead report matching review hierarchy', () => {
     expect(source).not.toContain('Check Match Again');
     expect(source).toContain("'Confirm creation'");
   });
+
+  it('offers bulk confirmation only for high-confidence fixture matches', () => {
+    expect(source).toContain('Confirm All (');
+    expect(source).toContain("row.match.status==='high_confidence_match'");
+    expect(source).toContain('confirmAllMatches');
+  });
 });
