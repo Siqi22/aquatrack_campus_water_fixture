@@ -122,7 +122,8 @@ export default function LeadTestingResults() {
                 <span>School</span><span>Building</span><span>Floor</span><span>Fixture Location</span><span>Lead (ppb)</span>
               </div>
               {sortedImported.map((item, index) => {
-                const startsSchoolGroup = index === 0 || compareText(sortedImported[index - 1].school, item.school) !== 0;
+                const startsSchoolGroup = sortBy === 'location'
+                  && (index === 0 || compareText(sortedImported[index - 1].school, item.school) !== 0);
                 return (
                 <Link
                   to={`/fixture/${item.round.fixture_id}`}
