@@ -42,7 +42,7 @@ export default function LeadTestingResults() {
   const { organizationName } = useOrganization();
   const lead = useLeadTesting();
   const [unresolved, setUnresolved] = useState(0);
-  const [sortBy, setSortBy] = useState<ResultSort>('location');
+  const [sortBy, setSortBy] = useState<ResultSort>('lead');
   const fixtureIds = useMemo(() => new Set(fixtures.map((fixture) => fixture.id)), [fixtures]);
   const districtName = resolveWorkspaceSchoolDistrict(campuses, organizationName);
   const schoolNames = useMemo(

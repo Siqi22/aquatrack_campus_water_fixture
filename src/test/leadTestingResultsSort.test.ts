@@ -4,8 +4,8 @@ import { describe, expect, it } from 'vitest';
 const source = readFileSync('src/pages/LeadTestingResults.tsx', 'utf8');
 
 describe('Lead testing result sorting controls', () => {
-  it('defaults to school, building, and floor order and offers lead-level order', () => {
-    expect(source).toContain("useState<ResultSort>('location')");
+  it('defaults to lead-level order and offers school, building, and floor order', () => {
+    expect(source).toContain("useState<ResultSort>('lead')");
     expect(source).toContain('compareText(left.school, right.school)');
     expect(source).toContain('compareText(left.building, right.building)');
     expect(source).toContain('compareFloorKeys(left.floor, right.floor)');
