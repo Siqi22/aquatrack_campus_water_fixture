@@ -11,6 +11,11 @@ describe('Lead testing result sorting controls', () => {
     expect(source).toContain('compareFloorKeys(left.floor, right.floor)');
     expect(source).toContain('Lead Level (ppb)');
     expect(source).toContain('(right.round.result_ppb ?? -1) - (left.round.result_ppb ?? -1)');
+    expect(source).toContain("title: 'Above 15 ppb'");
+    expect(source).toContain("title: 'Above 5 through 15 ppb'");
+    expect(source).toContain("title: '5 ppb or less'");
+    expect(source).toContain('sortWithinGroup');
+    expect(source).toContain('compareText(group.items[index - 1].school, item.school)');
     expect(source).toContain('startsSchoolGroup');
     expect(source).toContain("startsSchoolGroup = sortBy === 'location'");
     expect(source).toContain('border-t-2 border-t-primary/35');

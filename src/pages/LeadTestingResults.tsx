@@ -67,13 +67,20 @@ export default function LeadTestingResults() {
       }),
     [lead.rounds, fixtureIds, fixtures, campuses],
   );
-  const sortedImported = useMemo(() => [...imported].sort((left, right) => {
-    if (sortBy === 'lead') {
-      const leadDifference = (right.round.result_ppb ?? -1) - (left.round.result_ppb ?? -1);
-      if (leadDifference) return leadDifference;
-    }
-    return compareLocation(left, right);
-  }), [imported, sortBy]);
+  const resultGroups = useMemo(() => {
+    const sortWithinGroup = (items: ResultItem[]) => [...items].sort((left, right) => {
+      if (sortBy === 'lead') {
+        const leadDifference = (right.round.result_ppb ?? -1) - (left.round.result_ppb ?? -1);
+        if (leadDifference) return leadDifference;
+      }
+      return compareLocation(left, right);
+    });
+    return [
+      { title: 'Above 15 ppb', tone: 'text-status-urgent', items: sortWithinGroup(imported.filter((item) => (item.round.result_ppb ?? 0) > 15)) },
+      { title: 'Above 5 through 15 ppb', tone: 'text-status-warning', items: sortWithinGroup(imported.filter((item) => (item.round.result_ppb ?? 0) > 5 && (item.round.result_ppb ?? 0) <= 15)) },
+      { title: '5 ppb or less', tone: '', items: sortWithinGroup(imported.filter((item) => (item.round.result_ppb ?? 0) <= 5)) },
+    ].filter((group) => group.items.length > 0);
+  }, [imported, sortBy]);
 
   useEffect(() => {
     void (async () => {
@@ -115,32 +122,39 @@ export default function LeadTestingResults() {
           </div>
         </div>
 
-        {sortedImported.length > 0 ? (
-          <div className="overflow-x-auto rounded-xl border">
-            <div className="min-w-[56rem]">
-              <div className="grid grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_6rem_minmax(0,1.15fr)_6rem] gap-3 border-b bg-secondary/40 px-3 py-2 text-left text-[10px] font-semibold text-muted-foreground">
-                <span>School</span><span>Building</span><span>Floor</span><span>Fixture Location</span><span>Lead (ppb)</span>
-              </div>
-              {sortedImported.map((item, index) => {
-                const startsSchoolGroup = sortBy === 'location'
-                  && (index === 0 || compareText(sortedImported[index - 1].school, item.school) !== 0);
-                return (
-                <Link
-                  to={`/fixture/${item.round.fixture_id}`}
-                  key={item.round.id}
-                  className={`grid grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_6rem_minmax(0,1.15fr)_6rem] gap-3 border-b px-3 py-3 text-left text-xs last:border-b-0 hover:bg-secondary/30 ${startsSchoolGroup ? 'border-t-2 border-t-primary/35 bg-primary/[0.04]' : ''}`}
-                >
-                  <span className={`min-w-0 ${startsSchoolGroup ? 'font-bold text-foreground' : ''}`}>{item.school}</span>
-                  <span className="min-w-0">{item.building}</span>
-                  <span className="min-w-0">{formatFloorLabel(item.floor)}</span>
-                  <span className="min-w-0">{item.location || '—'}</span>
-                  <span className={`whitespace-nowrap font-bold tabular-nums ${leadResultColor(item.round.result_ppb)}`}>
-                    {formatLeadMeasurement(item.round.result_value, item.round.result_original_unit, item.round.result_ppb).replace(/ ppb$/, '')}
-                  </span>
-                </Link>
-                );
-              })}
-            </div>
+        {resultGroups.length > 0 ? (
+          <div className="space-y-5">
+            {resultGroups.map((group) => (
+              <section key={group.title} className="space-y-2">
+                <h3 className={`section-label ${group.tone}`}>{group.title} · {group.items.length}</h3>
+                <div className="overflow-x-auto rounded-xl border">
+                  <div className="min-w-[56rem]">
+                    <div className="grid grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_6rem_minmax(0,1.15fr)_6rem] gap-3 border-b bg-secondary/40 px-3 py-2 text-left text-[10px] font-semibold text-muted-foreground">
+                      <span>School</span><span>Building</span><span>Floor</span><span>Fixture Location</span><span>Lead (ppb)</span>
+                    </div>
+                    {group.items.map((item, index) => {
+                      const startsSchoolGroup = sortBy === 'location'
+                        && (index === 0 || compareText(group.items[index - 1].school, item.school) !== 0);
+                      return (
+                        <Link
+                          to={`/fixture/${item.round.fixture_id}`}
+                          key={item.round.id}
+                          className={`grid grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_6rem_minmax(0,1.15fr)_6rem] gap-3 border-b px-3 py-3 text-left text-xs last:border-b-0 hover:bg-secondary/30 ${startsSchoolGroup ? 'border-t-2 border-t-primary/35 bg-primary/[0.04]' : ''}`}
+                        >
+                          <span className={`min-w-0 ${startsSchoolGroup ? 'font-bold text-foreground' : ''}`}>{item.school}</span>
+                          <span className="min-w-0">{item.building}</span>
+                          <span className="min-w-0">{formatFloorLabel(item.floor)}</span>
+                          <span className="min-w-0">{item.location || '—'}</span>
+                          <span className={`whitespace-nowrap font-bold tabular-nums ${leadResultColor(item.round.result_ppb)}`}>
+                            {formatLeadMeasurement(item.round.result_value, item.round.result_original_unit, item.round.result_ppb).replace(/ ppb$/, '')}
+                          </span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              </section>
+            ))}
           </div>
         ) : (
           <div className="empty-state mt-10">
