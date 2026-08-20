@@ -33,15 +33,17 @@ describe('Lead report matching review hierarchy', () => {
     expect(source).not.toContain('confirmAllMatches');
     expect(source).toContain("row.selectedFixtureId&&!row.confirmed&&!row.imported");
     expect(source).toContain('<Checkbox checked={allEligibleIncluded}');
-    expect(source).toContain("checked===true?includeAllRows():excludeAllRows()");
+    expect(source).toContain("checked===true?includeAllRows():clearAllRows()");
     expect(source).toContain('Include All ({bulkEligible.length})');
     expect(source).toContain('included and ready');
   });
 
   it('offers bulk exclusion without changing imported results', () => {
     expect(source).toContain('excludeAllRows');
-    expect(source).toContain("checked===true?includeAllRows():excludeAllRows()");
-    expect(source).toContain("rows.filter(row=>row.confirmed&&!row.excluded&&!row.imported)");
+    expect(source).toContain('<Checkbox checked={allRowsExcluded}');
+    expect(source).toContain("checked===true?excludeAllRows():clearAllRows()");
+    expect(source).toContain('Exclude All ({reviewRows.length})');
+    expect(source).toContain('reviewRows.filter(row=>!row.excluded)');
     expect(source).toContain("match_status:'excluded'");
   });
 
