@@ -31,7 +31,8 @@ describe('Lead report matching review hierarchy', () => {
   it('starts with high-confidence matches unselected and offers Include All', () => {
     expect(source).not.toContain('Confirm All (');
     expect(source).not.toContain('confirmAllMatches');
-    expect(source).toContain("row.match.status==='high_confidence_match'&&row.selectedFixtureId&&!row.confirmed&&!row.excluded&&!row.imported");
+    expect(source).toContain("row.match.status==='high_confidence_match'&&row.selectedFixtureId&&!row.confirmed&&!row.imported");
+    expect(source).not.toContain("row.selectedFixtureId&&!row.confirmed&&!row.excluded&&!row.imported");
     expect(source).toContain('included and ready');
   });
 

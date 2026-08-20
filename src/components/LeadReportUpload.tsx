@@ -24,7 +24,7 @@ export function LeadReportUpload({onImported,reviewUnresolved=false}:{onImported
   const fixtureIds=useMemo(()=>new Set(fixtures.map(fixture=>fixture.id)),[fixtures]);const districtName=campuses.find(campus=>campus.schoolDistrict)?.schoolDistrict??'';const schoolNames=useMemo(()=>new Set(campuses.map(campus=>(campus.school||campus.name).trim().toLowerCase())),[campuses]);
   const ready=rows.filter(row=>row.confirmed&&!row.excluded&&!row.imported).length;
   const needsReview=rows.filter(row=>!row.confirmed&&!row.excluded&&!row.imported).length;
-  const includable=rows.filter(row=>row.match.status==='high_confidence_match'&&row.selectedFixtureId&&!row.confirmed&&!row.excluded&&!row.imported);
+  const includable=rows.filter(row=>row.match.status==='high_confidence_match'&&row.selectedFixtureId&&!row.confirmed&&!row.imported);
   const excludable=rows.filter(row=>row.confirmed&&!row.excluded&&!row.imported);
   const canSubmit=rows.length>0&&needsReview===0;
   useEffect(()=>{if(!reviewUnresolved)return;void(async()=>{setBusy(true);try{const result=await db.from('lead_testing_report_rows').select('*,lead_testing_report_uploads(file_name,district_or_organization)').is('imported_testing_round_id',null).eq('user_confirmed',false).neq('match_status','excluded').is('deleted_at',null).order('report_upload_id').order('row_number');if(result.error)throw result.error;setRows((result.data??[]).filter((row:any)=>leadReportRowBelongsToWorkspace(row,fixtureIds,districtName,schoolNames)).map(reviewRowFromDb));setFileName('Unresolved report matches')}catch(error){toast.error(errorMessage(error),{duration:8000})}finally{setBusy(false);setReviewLoaded(true)}})()},[reviewUnresolved,fixtureIds,districtName,schoolNames]);
