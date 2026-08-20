@@ -8,9 +8,9 @@ describe('Lead report matching review hierarchy', () => {
     expect(source).toContain('Search existing fixtures');
     expect(source).toContain('Create new fixture');
     expect(source).toContain("'Create new'");
-    expect(source).toContain('>Exclude<');
-    expect(source).toContain('!row.imported&&<Button');
-    expect(source.indexOf('>Exclude<')).toBeLessThan(source.indexOf('Create new fixture'));
+    expect(source).toContain('<span>Exclude</span>');
+    expect(source).toContain("<Checkbox checked={row.excluded}");
+    expect(source.indexOf('<span>Exclude</span>')).toBeLessThan(source.indexOf('Create new fixture'));
 
     expect(source).not.toContain('Include this result');
     expect(source).not.toContain('Search existing fixtures first');
@@ -20,8 +20,9 @@ describe('Lead report matching review hierarchy', () => {
     expect(source).not.toContain('Check Match Again');
     expect(source).not.toContain('Include instead');
     expect(source).not.toContain('Undo exclusion');
-    expect(source).toContain('>Include<');
-    expect(source).toContain('canConfirm');
+    expect(source).toContain('<span>Include</span>');
+    expect(source).toContain("<Checkbox checked={isIncluded}");
+    expect(source).toContain('canInclude');
     expect(source).toContain("return'Included'");
     expect(source).not.toContain('Confirm match');
     expect(source).not.toContain('disabled>Included');
@@ -42,7 +43,7 @@ describe('Lead report matching review hierarchy', () => {
   it('keeps exclusion as a row-level action', () => {
     expect(source).not.toContain('excludeAllRows');
     expect(source).not.toContain('Exclude All (');
-    expect(source).toContain('>Exclude<');
+    expect(source).toContain('<span>Exclude</span>');
     expect(source).toContain("match_status:next.excluded?'excluded':next.confirmed?'manually_matched':next.match.status");
   });
 

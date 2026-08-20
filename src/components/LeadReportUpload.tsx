@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Check, ChevronDown, FileCheck2, Link2, Plus, Search, Upload, X } from 'lucide-react';
+import { ChevronDown, FileCheck2, Link2, Plus, Search, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { parseSpreadsheetFile } from '@/lib/spreadsheet';
@@ -187,7 +187,7 @@ function ReviewCard({row,fixtures,onChange,onCreate}:{row:ReviewRow;fixtures:Fix
       </div>
       <div className="flex flex-wrap items-center justify-end gap-2">
         <MatchBadge row={row}/>
-        {!row.imported&&<Button type="button" size="sm" variant="outline" className={isIncluded?'border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive':'border-primary/40 text-primary hover:bg-primary/10 hover:text-primary'} onClick={()=>{if(isIncluded){onChange({excluded:true,confirmed:false})}else{const canConfirm=Boolean(row.selectedFixtureId&&row.match.status==='high_confidence_match');onChange({excluded:false,confirmed:canConfirm});if(!canConfirm)openFixtureFinder()}}}>{isIncluded?<><X className="h-4 w-4"/>Exclude</>:<><Check className="h-4 w-4"/>Include</>}</Button>}
+        {!row.imported&&<div className="flex items-center gap-2"><label className={`flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold ${isIncluded?'border-primary/40 bg-primary/5 text-primary':'border-border bg-background'}`}><Checkbox checked={isIncluded} onCheckedChange={checked=>{if(checked===true){const canInclude=Boolean(row.selectedFixtureId);onChange({excluded:false,confirmed:canInclude});if(!canInclude)openFixtureFinder()}else onChange({excluded:false,confirmed:false})}}/><span>Include</span></label><label className={`flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold ${row.excluded?'border-destructive/40 bg-destructive/5 text-destructive':'border-border bg-background'}`}><Checkbox checked={row.excluded} onCheckedChange={checked=>onChange(checked===true?{excluded:true,confirmed:false}:{excluded:false,confirmed:false})}/><span>Exclude</span></label></div>}
       </div>
     </div>
     <div className="panel-body space-y-3">
