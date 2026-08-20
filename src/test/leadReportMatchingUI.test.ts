@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 const source = readFileSync('src/components/LeadReportUpload.tsx', 'utf8');
 
 describe('Lead report matching review hierarchy', () => {
-  it('limits exclusion to unresolved rows and simplifies the unmatched path', () => {
+  it('uses explicit include and exclude selection while simplifying the unmatched path', () => {
     expect(source).toContain('Search existing fixtures');
     expect(source).toContain('Create new fixture');
     expect(source).toContain("'Create new'");
@@ -22,26 +22,29 @@ describe('Lead report matching review hierarchy', () => {
     expect(source).not.toContain('Undo exclusion');
     expect(source).toContain('>Include<');
     expect(source).toContain('canConfirm');
+    expect(source).toContain("return'Included'");
+    expect(source).not.toContain('Confirm match');
+    expect(source).not.toContain('disabled>Included');
     expect(source).toContain("'Confirm creation'");
   });
 
-  it('offers bulk confirmation only for high-confidence fixture matches', () => {
-    expect(source).toContain('Confirm All (');
-    expect(source).toContain("row.match.status==='high_confidence_match'");
-    expect(source).toContain('confirmAllMatches');
+  it('starts with high-confidence matches unselected and offers Include All', () => {
+    expect(source).not.toContain('Confirm All (');
+    expect(source).not.toContain('confirmAllMatches');
+    expect(source).toContain("row.match.status==='high_confidence_match'&&row.selectedFixtureId&&!row.confirmed&&!row.excluded&&!row.imported");
+    expect(source).toContain('included and ready');
   });
 
   it('offers bulk exclusion without changing imported results', () => {
     expect(source).toContain('Exclude All (');
     expect(source).toContain('excludeAllRows');
-    expect(source).toContain("rows.filter(row=>!row.excluded&&!row.imported)");
+    expect(source).toContain("rows.filter(row=>row.confirmed&&!row.excluded&&!row.imported)");
     expect(source).toContain("match_status:'excluded'");
   });
 
   it('offers bulk inclusion without changing imported results', () => {
     expect(source).toContain('Include All (');
     expect(source).toContain('includeAllRows');
-    expect(source).toContain("rows.filter(row=>row.excluded&&!row.imported)");
-    expect(source).toContain("canConfirm?'manually_matched':row.match.status");
+    expect(source).toContain("user_confirmed:true,match_status:'manually_matched'");
   });
 });

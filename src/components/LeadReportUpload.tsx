@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Check, CheckCheck, ChevronDown, FileCheck2, Link2, Plus, Search, Upload, X } from 'lucide-react';
+import { Check, ChevronDown, FileCheck2, Link2, Plus, Search, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { parseSpreadsheetFile } from '@/lib/spreadsheet';
@@ -24,9 +24,8 @@ export function LeadReportUpload({onImported,reviewUnresolved=false}:{onImported
   const fixtureIds=useMemo(()=>new Set(fixtures.map(fixture=>fixture.id)),[fixtures]);const districtName=campuses.find(campus=>campus.schoolDistrict)?.schoolDistrict??'';const schoolNames=useMemo(()=>new Set(campuses.map(campus=>(campus.school||campus.name).trim().toLowerCase())),[campuses]);
   const ready=rows.filter(row=>row.confirmed&&!row.excluded&&!row.imported).length;
   const needsReview=rows.filter(row=>!row.confirmed&&!row.excluded&&!row.imported).length;
-  const confirmable=rows.filter(row=>row.match.status==='high_confidence_match'&&row.selectedFixtureId&&!row.confirmed&&!row.excluded&&!row.imported);
-  const excludable=rows.filter(row=>!row.excluded&&!row.imported);
-  const includable=rows.filter(row=>row.excluded&&!row.imported);
+  const includable=rows.filter(row=>row.match.status==='high_confidence_match'&&row.selectedFixtureId&&!row.confirmed&&!row.excluded&&!row.imported);
+  const excludable=rows.filter(row=>row.confirmed&&!row.excluded&&!row.imported);
   const canSubmit=rows.length>0&&needsReview===0;
   useEffect(()=>{if(!reviewUnresolved)return;void(async()=>{setBusy(true);try{const result=await db.from('lead_testing_report_rows').select('*,lead_testing_report_uploads(file_name,district_or_organization)').is('imported_testing_round_id',null).eq('user_confirmed',false).neq('match_status','excluded').is('deleted_at',null).order('report_upload_id').order('row_number');if(result.error)throw result.error;setRows((result.data??[]).filter((row:any)=>leadReportRowBelongsToWorkspace(row,fixtureIds,districtName,schoolNames)).map(reviewRowFromDb));setFileName('Unresolved report matches')}catch(error){toast.error(errorMessage(error),{duration:8000})}finally{setBusy(false);setReviewLoaded(true)}})()},[reviewUnresolved,fixtureIds,districtName,schoolNames]);
   useEffect(()=>{if(reviewUnresolved||restoreAttempted.current)return;restoreAttempted.current=true;const reportId=localStorage.getItem(ACTIVE_REPORT_STORAGE_KEY);if(!reportId)return;void(async()=>{setBusy(true);try{const report=await db.from('lead_testing_report_uploads').select('id,file_name').eq('id',reportId).is('deleted_at',null).maybeSingle();if(report.error)throw report.error;if(!report.data){localStorage.removeItem(ACTIVE_REPORT_STORAGE_KEY);return}await openExistingReport(report.data)}catch(error){localStorage.removeItem(ACTIVE_REPORT_STORAGE_KEY);toast.error(errorMessage(error),{duration:8000})}finally{setBusy(false)}})()},[reviewUnresolved]);
@@ -62,18 +61,6 @@ export function LeadReportUpload({onImported,reviewUnresolved=false}:{onImported
     const ids=new Map((saved.data??[]).map((item:any)=>[item.row_number,item.id]));setRows(review.map(row=>({...row,id:ids.get(row.rowNumber)??row.id})));setFileName(file.name);localStorage.setItem(ACTIVE_REPORT_STORAGE_KEY,created.data.id);toast.success(`${parsed.length} rows extracted. Review every match before importing.`);
   }catch(error){if(temporaryStoragePath)await supabase.storage.from('lead-testing-reports').remove([temporaryStoragePath]);toast.error(reportProcessingError(error),{duration:10000})}finally{setBusy(false)}}
   async function changeRow(row:ReviewRow,patch:Partial<ReviewRow>,rematch=false){let next={...row,...patch};if(rematch){const match=matchLeadReportRow(next,fixtures,campuses);next={...next,match,selectedFixtureId:match.fixtureId,confirmed:false}}setRows(current=>current.map(item=>item.id===row.id?next:item));const updated=await db.from('lead_testing_report_rows').update({...rowToDb(next,row.reportUploadId),confirmed_fixture_id:next.selectedFixtureId||null,user_confirmed:next.confirmed,match_status:next.excluded?'excluded':next.confirmed?'manually_matched':next.match.status}).eq('id',row.id);if(updated.error)toast.error(errorMessage(updated.error))}
-  async function confirmAllMatches(){
-    if(!confirmable.length)return;
-    setBusy(true);
-    try{
-      const confirmedIds=new Set(confirmable.map(row=>row.id));
-      const results=await Promise.all(confirmable.map(row=>db.from('lead_testing_report_rows').update({confirmed_fixture_id:row.selectedFixtureId,user_confirmed:true,match_status:'manually_matched'}).eq('id',row.id)));
-      const failed=results.find(result=>result.error);
-      if(failed?.error)throw failed.error;
-      setRows(current=>current.map(row=>confirmedIds.has(row.id)?{...row,confirmed:true,excluded:false}:row));
-      toast.success(`${confirmable.length} match${confirmable.length===1?'':'es'} confirmed.`);
-    }catch(error){toast.error(errorMessage(error),{duration:8000})}finally{setBusy(false)}
-  }
   async function excludeAllRows(){
     if(!excludable.length)return;
     setBusy(true);
@@ -90,11 +77,11 @@ export function LeadReportUpload({onImported,reviewUnresolved=false}:{onImported
     if(!includable.length)return;
     setBusy(true);
     try{
-      const includedIds=new Map(includable.map(row=>[row.id,Boolean(row.selectedFixtureId&&row.match.status==='high_confidence_match')]));
-      const results=await Promise.all(includable.map(row=>{const canConfirm=includedIds.get(row.id)===true;return db.from('lead_testing_report_rows').update({confirmed_fixture_id:canConfirm?row.selectedFixtureId:null,user_confirmed:canConfirm,match_status:canConfirm?'manually_matched':row.match.status}).eq('id',row.id)}));
+      const includedIds=new Set(includable.map(row=>row.id));
+      const results=await Promise.all(includable.map(row=>db.from('lead_testing_report_rows').update({confirmed_fixture_id:row.selectedFixtureId,user_confirmed:true,match_status:'manually_matched'}).eq('id',row.id)));
       const failed=results.find(result=>result.error);
       if(failed?.error)throw failed.error;
-      setRows(current=>current.map(row=>includedIds.has(row.id)?{...row,confirmed:includedIds.get(row.id)===true,excluded:false}:row));
+      setRows(current=>current.map(row=>includedIds.has(row.id)?{...row,confirmed:true,excluded:false}:row));
       toast.success(`${includable.length} result${includable.length===1?'':'s'} included.`);
     }catch(error){toast.error(errorMessage(error),{duration:8000})}finally{setBusy(false)}
   }
@@ -140,7 +127,7 @@ export function LeadReportUpload({onImported,reviewUnresolved=false}:{onImported
     for(const reportId of [...new Set(rows.map(row=>row.reportUploadId))]){const[pendingResult,importedResult]=await Promise.all([db.from('lead_testing_report_rows').select('id',{count:'exact',head:true}).eq('report_upload_id',reportId).is('imported_testing_round_id',null).neq('match_status','excluded'),db.from('lead_testing_report_rows').select('id',{count:'exact',head:true}).eq('report_upload_id',reportId).eq('match_status','imported')]);const unresolved=pendingResult.count??0;await db.from('lead_testing_report_uploads').update({matched_row_count:importedResult.count??0,unresolved_row_count:unresolved,processing_status:unresolved===0?'imported':'partially_matched'}).eq('id',reportId)}localStorage.removeItem(ACTIVE_REPORT_STORAGE_KEY);await loadAll();await onImported?.();toast.success(imported||updated?[`${imported} new result${imported===1?'':'s'} imported`,`${updated} existing result${updated===1?'':'s'} updated`].filter(message=>!message.startsWith('0 ')).join(' · '):'Review submitted. No testing records were changed.');
   }catch(error){toast.error(errorMessage(error),{duration:8000})}finally{setBusy(false)}}
   if(!rows.length){if(reviewUnresolved)return <div className="empty-state mt-10"><p className="text-sm font-semibold">{reviewLoaded?'No unresolved matches':'Loading unresolved matches…'}</p><p className="mt-1 text-xs text-muted-foreground">{reviewLoaded?'Every uploaded report row has been matched, imported, or excluded.':'Please wait.'}</p></div>;return <div className="card-section"><div className="panel-header"><div className="flex gap-2"><Upload className="h-4 w-4"/><h2 className="font-semibold">Upload Test Report</h2></div></div><div className="panel-body"><p className="text-sm text-muted-foreground">Upload CSV, Excel, or PDF. Match or add fixtures during review.</p><label htmlFor="lead-report-file" className={`mt-3 flex min-h-12 items-center justify-between gap-3 rounded-xl border border-input bg-background px-4 text-sm font-medium transition-colors ${busy?'cursor-not-allowed opacity-60':'cursor-pointer hover:border-primary hover:bg-secondary/30'}`}><span className="flex items-center gap-2"><Upload className="h-4 w-4 text-primary"/>{busy?'Processing report…':'Choose report file'}</span><span className="text-sm font-normal text-muted-foreground">CSV, Excel, or PDF</span></label><Input id="lead-report-file" className="sr-only" disabled={busy} type="file" accept=".csv,.xlsx,.pdf" onChange={event=>{const file=event.target.files?.[0];if(file)void processFile(file);event.currentTarget.value=''}}/><p className="mt-2 text-xs text-muted-foreground">{busy?'Extracting rows and matching existing fixtures…':'Nothing is created until you review an unmatched row.'}</p></div></div>}
-  return <div className="space-y-3"><div className="card-soft flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold">Review · {fileName}</p><p className="text-xs text-muted-foreground">{ready} matched and ready · {needsReview} need review</p></div><div className="flex flex-wrap gap-2">{confirmable.length>0&&<Button type="button" variant="outline" disabled={busy} onClick={()=>void confirmAllMatches()}><CheckCheck className="h-4 w-4"/>Confirm All ({confirmable.length})</Button>}{includable.length>0&&<Button type="button" variant="outline" className="border-primary/40 text-primary hover:bg-primary/10 hover:text-primary" disabled={busy} onClick={()=>void includeAllRows()}><Check className="h-4 w-4"/>Include All ({includable.length})</Button>}{excludable.length>0&&<Button type="button" variant="outline" className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive" disabled={busy} onClick={()=>void excludeAllRows()}><X className="h-4 w-4"/>Exclude All ({excludable.length})</Button>}</div></div>{rows.map(row=><ReviewCard key={row.id} row={row} fixtures={fixtures} onCreate={()=>createFixtureForRow(row)} onChange={(patch,rematch)=>void changeRow(row,patch,rematch)}/>)}
+  return <div className="space-y-3"><div className="card-soft flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold">Review · {fileName}</p><p className="text-xs text-muted-foreground">{ready} included and ready · {needsReview} need review</p></div><div className="flex flex-wrap gap-2">{includable.length>0&&<Button type="button" variant="outline" className="border-primary/40 text-primary hover:bg-primary/10 hover:text-primary" disabled={busy} onClick={()=>void includeAllRows()}><Check className="h-4 w-4"/>Include All ({includable.length})</Button>}{excludable.length>0&&<Button type="button" variant="outline" className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive" disabled={busy} onClick={()=>void excludeAllRows()}><X className="h-4 w-4"/>Exclude All ({excludable.length})</Button>}</div></div>{rows.map(row=><ReviewCard key={row.id} row={row} fixtures={fixtures} onCreate={()=>createFixtureForRow(row)} onChange={(patch,rematch)=>void changeRow(row,patch,rematch)}/>)}
     <div className="sticky bottom-3 rounded-2xl border bg-background/95 p-4 shadow-lg backdrop-blur"><Button className="w-full" size="lg" disabled={busy||!canSubmit} onClick={importConfirmed}><FileCheck2 className="mr-2 h-4 w-4"/>{busy?'Submitting…':'Submit'}</Button><p className="mt-2 text-center text-xs text-muted-foreground">{needsReview>0?`${needsReview} result${needsReview===1?'':'s'} still need to be matched or excluded.`:ready>0?'Included results will be imported. Excluded rows will not change the system.':'Excluded rows will not change the system. Existing results are updated only when details changed.'}</p></div>
   </div>;
 }
@@ -159,6 +146,7 @@ function ReviewCard({row,fixtures,onChange,onCreate}:{row:ReviewRow;fixtures:Fix
   const choices=normalizedSearch?fixtures.filter(fixture=>[fixture.id,fixture.buildingName,fixture.floor,fixture.roomNumber,fixture.nearestRoom,fixture.category,fixture.brand,fixture.model].filter(Boolean).join(' ').toLowerCase().includes(normalizedSearch)).slice(0,100):[];
   const unresolved=['multiple_matches','no_match'].includes(row.match.status)&&!row.confirmed;
   const showFixtureFinder=!row.imported&&!row.excluded&&(findingAnother||unresolved);
+  const isIncluded=row.confirmed&&!row.excluded;
 
   function openFixtureFinder(){
     setFindingAnother(true);
@@ -197,7 +185,7 @@ function ReviewCard({row,fixtures,onChange,onCreate}:{row:ReviewRow;fixtures:Fix
       </div>
       <div className="flex flex-wrap items-center justify-end gap-2">
         <MatchBadge row={row}/>
-        {!row.imported&&<Button type="button" size="sm" variant="outline" className={row.excluded?'border-primary/40 text-primary hover:bg-primary/10 hover:text-primary':'border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive'} onClick={()=>{if(row.excluded){const canConfirm=Boolean(row.selectedFixtureId&&row.match.status==='high_confidence_match');onChange({excluded:false,confirmed:canConfirm});if(!canConfirm)openFixtureFinder()}else{onChange({excluded:true,confirmed:false})}}}>{row.excluded?<><Check className="h-4 w-4"/>Include</>:<><X className="h-4 w-4"/>Exclude</>}</Button>}
+        {!row.imported&&<Button type="button" size="sm" variant="outline" className={isIncluded?'border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive':'border-primary/40 text-primary hover:bg-primary/10 hover:text-primary'} onClick={()=>{if(isIncluded){onChange({excluded:true,confirmed:false})}else{const canConfirm=Boolean(row.selectedFixtureId&&row.match.status==='high_confidence_match');onChange({excluded:false,confirmed:canConfirm});if(!canConfirm)openFixtureFinder()}}}>{isIncluded?<><X className="h-4 w-4"/>Exclude</>:<><Check className="h-4 w-4"/>Include</>}</Button>}
       </div>
     </div>
     <div className="panel-body space-y-3">
@@ -250,10 +238,6 @@ function ReviewCard({row,fixtures,onChange,onCreate}:{row:ReviewRow;fixtures:Fix
         </CollapsibleContent>
       </Collapsible>
 
-      <div className="flex flex-wrap items-center gap-2">
-        {!showFixtureFinder&&row.selectedFixtureId&&!row.confirmed&&!row.excluded&&!row.imported&&<Button type="button" size="sm" variant="outline" onClick={()=>onChange({confirmed:true})}>Confirm match</Button>}
-        {row.confirmed&&!row.excluded&&!row.imported&&<Button type="button" size="sm" disabled>Included</Button>}
-      </div>
     </div>
   </div>;
 }
@@ -266,6 +250,6 @@ function errorMessage(error:unknown){if(error instanceof Error)return error.mess
 function reportProcessingError(error:unknown){const message=errorMessage(error);if(/content_sha256|schema cache/i.test(message))return'The report deduplication database update has not been applied yet. Run migration 20260728030000_lead_report_content_deduplication.sql in Supabase, then try again.';if(message==='Import failed. Please try again.')return'Could not process report. Check that the report storage and database migrations are available, then try again.';return message}
 function rawField(raw:Record<string,unknown>,names:string[]){const entry=Object.entries(raw).find(([key])=>names.includes(key.toLowerCase().trim().replace(/[_-]+/g,' ')));return entry?.[1]==null?'':String(entry[1])}
 function reviewRowFromDb(item:any):ReviewRow{const raw=(item.raw_text_or_raw_data??{}) as Record<string,unknown>;const storedStatus=['high_confidence_match','possible_match','multiple_matches','no_match'].includes(item.match_status)?item.match_status:item.proposed_fixture_id||item.confirmed_fixture_id?'high_confidence_match':'no_match';const upload=Array.isArray(item.lead_testing_report_uploads)?item.lead_testing_report_uploads[0]:item.lead_testing_report_uploads;return{id:item.id,reportUploadId:item.report_upload_id,sourceFileName:upload?.file_name??'Uploaded report',rowNumber:item.row_number,raw:Object.fromEntries(Object.entries(raw).map(([key,value])=>[key,value==null?'':String(value)])),schoolDistrict:normalizeSchoolDistrict(item.school_district),school:item.school_name??'',building:item.building_name??'',floor:normalizeFloorKey(rawField(raw,['floor','level'])),room:item.room??'',fixtureDescription:item.fixture_description??'',fixtureType:item.fixture_type??'',sampleId:item.sample_id??'',sampleDate:item.sample_date??'',resultValue:item.result_value??'',resultUnit:item.result_unit??'ppb',match:{fixtureId:item.proposed_fixture_id??item.confirmed_fixture_id??undefined,status:storedStatus,confidence:item.match_confidence??0,reasons:item.match_reasons??[],alternatives:[]},selectedFixtureId:item.confirmed_fixture_id??item.proposed_fixture_id??undefined,confirmed:Boolean(item.user_confirmed),excluded:item.match_status==='excluded',imported:Boolean(item.imported_testing_round_id),importedTestingRoundId:item.imported_testing_round_id??undefined}}
-function matchStatusText(row:ReviewRow){if(row.imported)return'Imported';if(row.excluded)return'Excluded';if(row.confirmed)return'Matched';if(row.match.status==='high_confidence_match')return'Matched';if(row.match.status==='possible_match')return'Possible Match';if(row.match.status==='multiple_matches')return'Multiple Matches';return'No Match'}
-function MatchBadge({row}:{row:ReviewRow}){const text=matchStatusText(row);const color=text==='Matched'?'bg-emerald-100 text-emerald-800':text==='Imported'?'bg-blue-100 text-blue-800':text==='Possible Match'?'bg-amber-100 text-amber-800':text==='Multiple Matches'?'bg-violet-100 text-violet-800':text==='Excluded'?'bg-slate-100 text-slate-700':'bg-red-100 text-red-800';return <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${color}`}>{text}</span>}
+function matchStatusText(row:ReviewRow){if(row.imported)return'Imported';if(row.excluded)return'Excluded';if(row.confirmed)return'Included';if(row.match.status==='high_confidence_match')return'Matched';if(row.match.status==='possible_match')return'Possible Match';if(row.match.status==='multiple_matches')return'Multiple Matches';return'No Match'}
+function MatchBadge({row}:{row:ReviewRow}){const text=matchStatusText(row);const color=text==='Included'?'bg-emerald-100 text-emerald-800':text==='Matched'?'bg-cyan-100 text-cyan-800':text==='Imported'?'bg-blue-100 text-blue-800':text==='Possible Match'?'bg-amber-100 text-amber-800':text==='Multiple Matches'?'bg-violet-100 text-violet-800':text==='Excluded'?'bg-slate-100 text-slate-700':'bg-red-100 text-red-800';return <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${color}`}>{text}</span>}
 function Cell({label:caption,value}:{label:string;value?:string}){return <div className="min-w-0 text-left"><p className="text-[10px] text-muted-foreground">{caption}</p><p className="break-words font-medium">{value||'—'}</p></div>}
