@@ -32,14 +32,15 @@ describe('Lead report matching review hierarchy', () => {
     expect(source).not.toContain('Confirm All (');
     expect(source).not.toContain('confirmAllMatches');
     expect(source).toContain("row.selectedFixtureId&&!row.confirmed&&!row.imported");
-    expect(source).toContain('hasReviewRows&&!showExcludeAll');
-    expect(source).toContain('disabled={busy||includable.length===0}');
+    expect(source).toContain('<Checkbox checked={allEligibleIncluded}');
+    expect(source).toContain("checked===true?includeAllRows():excludeAllRows()");
+    expect(source).toContain('Include All ({bulkEligible.length})');
     expect(source).toContain('included and ready');
   });
 
   it('offers bulk exclusion without changing imported results', () => {
-    expect(source).toContain('Exclude All (');
     expect(source).toContain('excludeAllRows');
+    expect(source).toContain("checked===true?includeAllRows():excludeAllRows()");
     expect(source).toContain("rows.filter(row=>row.confirmed&&!row.excluded&&!row.imported)");
     expect(source).toContain("match_status:'excluded'");
   });
@@ -48,6 +49,6 @@ describe('Lead report matching review hierarchy', () => {
     expect(source).toContain('Include All (');
     expect(source).toContain('includeAllRows');
     expect(source).toContain("user_confirmed:true,match_status:'manually_matched'");
-    expect(source).toContain('includable.length===0&&excludable.length>0');
+    expect(source).toContain('bulkEligible.every(row=>row.confirmed&&!row.excluded)');
   });
 });
