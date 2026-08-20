@@ -34,6 +34,9 @@ describe('Lead report matching review hierarchy', () => {
     expect(source).not.toContain('confirmAllMatches');
     expect(source).toContain("row.selectedFixtureId&&!row.confirmed&&!row.imported");
     expect(source).toContain("useState<'include'|null>(null)");
+    expect(source).toContain('REVIEW_SELECTION_INITIALIZED_PREFIX');
+    expect(source).toContain('reviewRows.map(row=>row.imported?row:{...row,confirmed:false,excluded:false})');
+    expect(source).toContain('openExistingReport(exactDuplicate.data,true)');
     expect(source).toContain("<Checkbox checked={bulkChoice==='include'}");
     expect(source).toContain("checked===true?includeAllRows():clearAllRows()");
     expect(source).toContain('Include All ({bulkEligible.length})');

@@ -19,6 +19,7 @@ import { formatFloorLabel, normalizeFloorKey } from '@/lib/floorUtils';
 interface ReviewRow extends LeadReportRowDraft { id:string; reportUploadId:string; sourceFileName:string; match:LeadFixtureMatch; selectedFixtureId?:string; confirmed:boolean; excluded:boolean; imported:boolean; importedTestingRoundId?:string }
 const db=supabase as any;
 const ACTIVE_REPORT_STORAGE_KEY='aquatrack.activeLeadReportId';
+const REVIEW_SELECTION_INITIALIZED_PREFIX='aquatrack.leadReviewSelectionInitialized.';
 
 export function LeadReportUpload({onImported,reviewUnresolved=false}:{onImported?:()=>void|Promise<void>;reviewUnresolved?:boolean}){
   const {fixtures,campuses,buildings,addCampus,addBuilding,addFixture,loadAll}=useFixtureStore();const[rows,setRows]=useState<ReviewRow[]>([]);const[fileName,setFileName]=useState('');const[busy,setBusy]=useState(false);const[reviewLoaded,setReviewLoaded]=useState(!reviewUnresolved);const[bulkChoice,setBulkChoice]=useState<'include'|null>(null);const restoreAttempted=useRef(false);
@@ -31,16 +32,25 @@ export function LeadReportUpload({onImported,reviewUnresolved=false}:{onImported
   const canSubmit=rows.length>0&&needsReview===0;
   useEffect(()=>{if(!reviewUnresolved)return;void(async()=>{setBusy(true);try{const result=await db.from('lead_testing_report_rows').select('*,lead_testing_report_uploads(file_name,district_or_organization)').is('imported_testing_round_id',null).eq('user_confirmed',false).neq('match_status','excluded').is('deleted_at',null).order('report_upload_id').order('row_number');if(result.error)throw result.error;setRows((result.data??[]).filter((row:any)=>leadReportRowBelongsToWorkspace(row,fixtureIds,districtName,schoolNames)).map(reviewRowFromDb));setBulkChoice(null);setFileName('Unresolved report matches')}catch(error){toast.error(errorMessage(error),{duration:8000})}finally{setBusy(false);setReviewLoaded(true)}})()},[reviewUnresolved,fixtureIds,districtName,schoolNames]);
   useEffect(()=>{if(reviewUnresolved||restoreAttempted.current)return;restoreAttempted.current=true;const reportId=localStorage.getItem(ACTIVE_REPORT_STORAGE_KEY);if(!reportId)return;void(async()=>{setBusy(true);try{const report=await db.from('lead_testing_report_uploads').select('id,file_name').eq('id',reportId).is('deleted_at',null).maybeSingle();if(report.error)throw report.error;if(!report.data){localStorage.removeItem(ACTIVE_REPORT_STORAGE_KEY);return}await openExistingReport(report.data)}catch(error){localStorage.removeItem(ACTIVE_REPORT_STORAGE_KEY);toast.error(errorMessage(error),{duration:8000})}finally{setBusy(false)}})()},[reviewUnresolved]);
-  async function openExistingReport(report:{id:string;file_name:string}){
+  async function openExistingReport(report:{id:string;file_name:string},resetSelection=false){
     const existing=await db.from('lead_testing_report_rows').select('*,lead_testing_report_uploads(file_name)').eq('report_upload_id',report.id).is('deleted_at',null).order('row_number');
     if(existing.error)throw existing.error;
     if(!existing.data?.length)throw new Error('This report already exists, but its extracted rows are unavailable.');
-    setRows(existing.data.map(reviewRowFromDb));setBulkChoice(null);setFileName(report.file_name);localStorage.setItem(ACTIVE_REPORT_STORAGE_KEY,report.id);
+    let reviewRows=existing.data.map(reviewRowFromDb);
+    const initializedKey=`${REVIEW_SELECTION_INITIALIZED_PREFIX}${report.id}`;
+    if(resetSelection||localStorage.getItem(initializedKey)!=='1'){
+      const pendingRows=reviewRows.filter(row=>!row.imported);
+      const resetResults=await Promise.all(pendingRows.map(row=>db.from('lead_testing_report_rows').update({proposed_fixture_id:row.selectedFixtureId||row.match.fixtureId||null,confirmed_fixture_id:null,user_confirmed:false,match_status:row.match.status}).eq('id',row.id)));
+      const failed=resetResults.find(result=>result.error);if(failed?.error)throw failed.error;
+      reviewRows=reviewRows.map(row=>row.imported?row:{...row,confirmed:false,excluded:false});
+      localStorage.setItem(initializedKey,'1');
+    }
+    setRows(reviewRows);setBulkChoice(null);setFileName(report.file_name);localStorage.setItem(ACTIVE_REPORT_STORAGE_KEY,report.id);
   }
   async function processFile(file:File){let temporaryStoragePath='';setBusy(true);try{
     const extension=file.name.split('.').pop()?.toLowerCase();if(!extension||!['csv','xlsx','pdf'].includes(extension))throw new Error('Choose a CSV, Excel, or PDF report.');
     const hash=await sha256(file);
-    const exactDuplicate=await db.from('lead_testing_report_uploads').select('id,file_name').eq('file_sha256',hash).is('deleted_at',null).maybeSingle();if(exactDuplicate.error)throw exactDuplicate.error;if(exactDuplicate.data){await openExistingReport(exactDuplicate.data);return}
+    const exactDuplicate=await db.from('lead_testing_report_uploads').select('id,file_name').eq('file_sha256',hash).is('deleted_at',null).maybeSingle();if(exactDuplicate.error)throw exactDuplicate.error;if(exactDuplicate.data){await openExistingReport(exactDuplicate.data,true);return}
     const {data:auth}=await supabase.auth.getUser();if(!auth.user)throw new Error('Sign in to upload a report.');
     let storagePath='';
     let parsed:LeadReportRowDraft[];
@@ -55,12 +65,12 @@ export function LeadReportUpload({onImported,reviewUnresolved=false}:{onImported
     if(!parsed.length)throw new Error('No lead-result rows were extracted.');parsed.forEach(row=>{row.schoolDistrict=normalizeSchoolDistrict(row.schoolDistrict);normalizeLeadResult(row.resultValue,row.resultUnit)});
     const contentHash=await sha256Text(canonicalReportContent(parsed));
     const duplicate=await db.from('lead_testing_report_uploads').select('id,file_name').eq('content_sha256',contentHash).is('deleted_at',null).maybeSingle();
-    if(duplicate.error)throw duplicate.error;if(duplicate.data){if(storagePath)await supabase.storage.from('lead-testing-reports').remove([storagePath]);temporaryStoragePath='';await openExistingReport(duplicate.data);return}
+    if(duplicate.error)throw duplicate.error;if(duplicate.data){if(storagePath)await supabase.storage.from('lead-testing-reports').remove([storagePath]);temporaryStoragePath='';await openExistingReport(duplicate.data,true);return}
     if(!storagePath){storagePath=`${auth.user.id}/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;const storage=await supabase.storage.from('lead-testing-reports').upload(storagePath,file);if(storage.error)throw storage.error}
     const created=await db.from('lead_testing_report_uploads').insert({file_name:file.name,file_url:storagePath,file_type:extension,file_sha256:hash,content_sha256:contentHash,uploaded_by:auth.user?.id,district_or_organization:parsed.find(row=>row.schoolDistrict)?.schoolDistrict||null,processing_status:'ready_for_review',extracted_row_count:parsed.length,unresolved_row_count:parsed.length}).select('*').single();if(created.error)throw created.error;temporaryStoragePath='';
     const review=parsed.map(row=>{const match=matchLeadReportRow(row,fixtures,campuses);return{...row,id:crypto.randomUUID(),reportUploadId:created.data.id,sourceFileName:file.name,match,selectedFixtureId:match.fixtureId,confirmed:false,excluded:false,imported:false}});
     const saved=await db.from('lead_testing_report_rows').insert(review.map(row=>rowToDb(row,created.data.id))).select('id,row_number');if(saved.error)throw saved.error;
-    const ids=new Map((saved.data??[]).map((item:any)=>[item.row_number,item.id]));setRows(review.map(row=>({...row,id:ids.get(row.rowNumber)??row.id})));setBulkChoice(null);setFileName(file.name);localStorage.setItem(ACTIVE_REPORT_STORAGE_KEY,created.data.id);toast.success(`${parsed.length} rows extracted. Review every match before importing.`);
+    const ids=new Map((saved.data??[]).map((item:any)=>[item.row_number,item.id]));setRows(review.map(row=>({...row,id:ids.get(row.rowNumber)??row.id})));setBulkChoice(null);setFileName(file.name);localStorage.setItem(ACTIVE_REPORT_STORAGE_KEY,created.data.id);localStorage.setItem(`${REVIEW_SELECTION_INITIALIZED_PREFIX}${created.data.id}`,'1');toast.success(`${parsed.length} rows extracted. Review every match before importing.`);
   }catch(error){if(temporaryStoragePath)await supabase.storage.from('lead-testing-reports').remove([temporaryStoragePath]);toast.error(reportProcessingError(error),{duration:10000})}finally{setBusy(false)}}
   async function changeRow(row:ReviewRow,patch:Partial<ReviewRow>,rematch=false){setBulkChoice(null);let next={...row,...patch};if(rematch){const match=matchLeadReportRow(next,fixtures,campuses);next={...next,match,selectedFixtureId:match.fixtureId,confirmed:false}}setRows(current=>current.map(item=>item.id===row.id?next:item));const updated=await db.from('lead_testing_report_rows').update({...rowToDb(next,row.reportUploadId),confirmed_fixture_id:next.selectedFixtureId||null,user_confirmed:next.confirmed,match_status:next.excluded?'excluded':next.confirmed?'manually_matched':next.match.status}).eq('id',row.id);if(updated.error)toast.error(errorMessage(updated.error))}
   async function includeAllRows(){
