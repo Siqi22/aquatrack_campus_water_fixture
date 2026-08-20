@@ -28,11 +28,12 @@ describe('Lead report matching review hierarchy', () => {
     expect(source).toContain("'Confirm creation'");
   });
 
-  it('starts with high-confidence matches unselected and offers Include All', () => {
+  it('starts with matches unselected and always shows the bulk action', () => {
     expect(source).not.toContain('Confirm All (');
     expect(source).not.toContain('confirmAllMatches');
-    expect(source).toContain("row.match.status==='high_confidence_match'&&row.selectedFixtureId&&!row.confirmed&&!row.imported");
-    expect(source).not.toContain("row.selectedFixtureId&&!row.confirmed&&!row.excluded&&!row.imported");
+    expect(source).toContain("row.selectedFixtureId&&!row.confirmed&&!row.imported");
+    expect(source).toContain('hasReviewRows&&!showExcludeAll');
+    expect(source).toContain('disabled={busy||includable.length===0}');
     expect(source).toContain('included and ready');
   });
 
@@ -47,5 +48,6 @@ describe('Lead report matching review hierarchy', () => {
     expect(source).toContain('Include All (');
     expect(source).toContain('includeAllRows');
     expect(source).toContain("user_confirmed:true,match_status:'manually_matched'");
+    expect(source).toContain('includable.length===0&&excludable.length>0');
   });
 });
