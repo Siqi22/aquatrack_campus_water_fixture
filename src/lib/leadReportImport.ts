@@ -1,6 +1,7 @@
 import { parseCSVText } from '@/lib/importCSV';
 import { rowsToCSV } from '@/lib/spreadsheet';
 import type { Campus, Fixture } from '@/store/fixtureStore';
+import { getFixtureCategoryLabel } from '@/store/fixtureStore';
 import { normalizeFloorKey } from '@/lib/floorUtils';
 
 export interface LeadReportRowDraft {
@@ -81,6 +82,7 @@ function normalizeDohFixtureType(value:string){const normalized=value.toLowerCas
 export function normalizeLocation(value:string){
   return value.replace(/([a-z])([A-Z])/g,'$1 $2').toLowerCase().trim().replace(/[.,#]/g,' ').replace(/\b(rm|room)\b/g,'room').replace(/\bbubbler\b/g,'drinking fountain').replace(/\btap\b/g,'faucet').replace(/\bbottle\s*fill(?:er)?\b/g,'bottle filler').replace(/\bwater\s*fountain\b/g,'drinking fountain').replace(/\s+/g,' ');
 }
+export function resolveMatchedFixtureType(reportedType:string,fixture?:Fixture){const databaseType=fixture?getFixtureCategoryLabel(fixture.category):'';if(databaseType&&databaseType.toLowerCase()!=='other')return databaseType;const reported=reportedType.trim();return reported&&reported.toLowerCase()!=='other'?reported:databaseType||reported}
 export function matchLeadReportRow(row:LeadReportRowDraft,fixtures:Fixture[],campuses:Campus[]):LeadFixtureMatch{
   const scored=fixtures.map(fixture=>{const campus=campuses.find(item=>item.id===fixture.campusId);let score=0;const reasons:string[]=[];
     const compare=(reported:string,actual:string|undefined,weight:number,reason:string)=>{if(reported&&actual&&normalizeLocation(reported)===normalizeLocation(actual)){score+=weight;reasons.push(reason)}};

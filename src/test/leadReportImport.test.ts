@@ -1,5 +1,5 @@
 import { describe,expect,it } from 'vitest';
-import { matchLeadReportRow,normalizeLocation,parseLeadReportCSV,parseWashingtonDohReport } from '@/lib/leadReportImport';
+import { matchLeadReportRow,normalizeLocation,parseLeadReportCSV,parseWashingtonDohReport,resolveMatchedFixtureType } from '@/lib/leadReportImport';
 import type { Campus,Fixture } from '@/store/fixtureStore';
 
 const campus:Campus={id:'campus-1',name:'North Campus',schoolDistrict:'Seattle Public Schools',school:'Lincoln High',address:''};
@@ -15,4 +15,6 @@ describe('existing fixture matching',()=>{
   it('returns high confidence for a unique prioritized location match',()=>{const[row]=parseLeadReportCSV('School District,School,Building,Floor,Room,Fixture Type,Result\nSeattle Public Schools,Lincoln High,Science Building,2,205,Bottle Refill Station,4.9');const match=matchLeadReportRow(row,[fixture('fixture-a','205'),fixture('fixture-b','210')],[campus]);expect(match.fixtureId).toBe('fixture-a');expect(match.status).toBe('high_confidence_match')});
   it('requires user choice for multiple equal matches',()=>{const[row]=parseLeadReportCSV('School,Building,Floor,Room,Result\nLincoln High,Science Building,2,205,4.9');const match=matchLeadReportRow(row,[fixture('fixture-a','205'),fixture('fixture-b','205')],[campus]);expect(match.status).toBe('multiple_matches');expect(match.alternatives).toHaveLength(2)});
   it('returns no match rather than creating a fixture',()=>{const[row]=parseLeadReportCSV('School,Building,Floor,Room,Result\nUnknown,Elsewhere,9,999,4.9');expect(matchLeadReportRow(row,[fixture('fixture-a','205')],[campus]).status).toBe('no_match')});
+  it('uses the matched database fixture type instead of a generic report type',()=>{expect(resolveMatchedFixtureType('Other',{...fixture('fixture-a','205'),category:'MetalFountain'})).toBe('Metal fountain')});
+  it('keeps a specific report type when the database category is generic',()=>{expect(resolveMatchedFixtureType('Classroom sink',{...fixture('fixture-a','205'),category:'Other'})).toBe('Classroom sink')});
 });

@@ -4,10 +4,10 @@ import { ChevronDown, FileCheck2, Link2, Plus, Search, Upload } from 'lucide-rea
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { parseSpreadsheetFile } from '@/lib/spreadsheet';
-import { matchLeadReportRow, parseLeadReportCSV, type LeadFixtureMatch, type LeadReportRowDraft } from '@/lib/leadReportImport';
+import { matchLeadReportRow, parseLeadReportCSV, resolveMatchedFixtureType, type LeadFixtureMatch, type LeadReportRowDraft } from '@/lib/leadReportImport';
 import { extractLeadReportWithClaude } from '@/lib/claudeLeadReport';
 import { formatLeadMeasurement, normalizeLeadResult, label } from '@/lib/leadTesting';
-import { normalizeFixtureCategory, useFixtureStore, type Fixture } from '@/store/fixtureStore';
+import { getFixtureCategoryLabel, normalizeFixtureCategory, useFixtureStore, type Fixture } from '@/store/fixtureStore';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible,CollapsibleContent,CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -68,20 +68,20 @@ export function LeadReportUpload({onImported,reviewUnresolved=false}:{onImported
     if(duplicate.error)throw duplicate.error;if(duplicate.data){if(storagePath)await supabase.storage.from('lead-testing-reports').remove([storagePath]);temporaryStoragePath='';await openExistingReport(duplicate.data,true);return}
     if(!storagePath){storagePath=`${auth.user.id}/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;const storage=await supabase.storage.from('lead-testing-reports').upload(storagePath,file);if(storage.error)throw storage.error}
     const created=await db.from('lead_testing_report_uploads').insert({file_name:file.name,file_url:storagePath,file_type:extension,file_sha256:hash,content_sha256:contentHash,uploaded_by:auth.user?.id,district_or_organization:parsed.find(row=>row.schoolDistrict)?.schoolDistrict||null,processing_status:'ready_for_review',extracted_row_count:parsed.length,unresolved_row_count:parsed.length}).select('*').single();if(created.error)throw created.error;temporaryStoragePath='';
-    const review=parsed.map(row=>{const match=matchLeadReportRow(row,fixtures,campuses);return{...row,id:crypto.randomUUID(),reportUploadId:created.data.id,sourceFileName:file.name,match,selectedFixtureId:match.fixtureId,confirmed:false,excluded:false,imported:false}});
+    const review=parsed.map(row=>{const match=matchLeadReportRow(row,fixtures,campuses);const matchedFixture=fixtures.find(fixture=>fixture.id===match.fixtureId);return{...row,fixtureType:resolveMatchedFixtureType(row.fixtureType,matchedFixture),id:crypto.randomUUID(),reportUploadId:created.data.id,sourceFileName:file.name,match,selectedFixtureId:match.fixtureId,confirmed:false,excluded:false,imported:false}});
     const saved=await db.from('lead_testing_report_rows').insert(review.map(row=>rowToDb(row,created.data.id))).select('id,row_number');if(saved.error)throw saved.error;
     const ids=new Map((saved.data??[]).map((item:any)=>[item.row_number,item.id]));setRows(review.map(row=>({...row,id:ids.get(row.rowNumber)??row.id})));setBulkChoice(null);setFileName(file.name);localStorage.setItem(ACTIVE_REPORT_STORAGE_KEY,created.data.id);localStorage.setItem(`${REVIEW_SELECTION_INITIALIZED_PREFIX}${created.data.id}`,'1');toast.success(`${parsed.length} rows extracted. Review every match before importing.`);
   }catch(error){if(temporaryStoragePath)await supabase.storage.from('lead-testing-reports').remove([temporaryStoragePath]);toast.error(reportProcessingError(error),{duration:10000})}finally{setBusy(false)}}
-  async function changeRow(row:ReviewRow,patch:Partial<ReviewRow>,rematch=false){setBulkChoice(null);let next={...row,...patch,excluded:false};if(rematch){const match=matchLeadReportRow(next,fixtures,campuses);next={...next,match,selectedFixtureId:match.fixtureId,confirmed:false}}setRows(current=>current.map(item=>item.id===row.id?next:item));const updated=await db.from('lead_testing_report_rows').update({...rowToDb(next,row.reportUploadId),confirmed_fixture_id:next.confirmed?next.selectedFixtureId||null:null,user_confirmed:next.confirmed,match_status:next.confirmed?'manually_matched':next.match.status}).eq('id',row.id);if(updated.error)toast.error(errorMessage(updated.error))}
+  async function changeRow(row:ReviewRow,patch:Partial<ReviewRow>,rematch=false){setBulkChoice(null);let next={...row,...patch,excluded:false};if(rematch){const match=matchLeadReportRow(next,fixtures,campuses);next={...next,match,selectedFixtureId:match.fixtureId,confirmed:false}}const matchedFixture=fixtures.find(fixture=>fixture.id===next.selectedFixtureId);next={...next,fixtureType:resolveMatchedFixtureType(next.fixtureType,matchedFixture)};setRows(current=>current.map(item=>item.id===row.id?next:item));const updated=await db.from('lead_testing_report_rows').update({...rowToDb(next,row.reportUploadId),confirmed_fixture_id:next.confirmed?next.selectedFixtureId||null:null,user_confirmed:next.confirmed,match_status:next.confirmed?'manually_matched':next.match.status}).eq('id',row.id);if(updated.error)toast.error(errorMessage(updated.error))}
   async function includeAllRows(){
     if(!includable.length)return;
     setBusy(true);
     try{
       const includedIds=new Set(includable.map(row=>row.id));
-      const results=await Promise.all(includable.map(row=>db.from('lead_testing_report_rows').update({confirmed_fixture_id:row.selectedFixtureId,user_confirmed:true,match_status:'manually_matched'}).eq('id',row.id)));
+      const results=await Promise.all(includable.map(row=>{const matchedFixture=fixtures.find(fixture=>fixture.id===row.selectedFixtureId);return db.from('lead_testing_report_rows').update({fixture_type:resolveMatchedFixtureType(row.fixtureType,matchedFixture),confirmed_fixture_id:row.selectedFixtureId,user_confirmed:true,match_status:'manually_matched'}).eq('id',row.id)}));
       const failed=results.find(result=>result.error);
       if(failed?.error)throw failed.error;
-      setRows(current=>current.map(row=>includedIds.has(row.id)?{...row,confirmed:true,excluded:false}:row));
+      setRows(current=>current.map(row=>{const matchedFixture=fixtures.find(fixture=>fixture.id===row.selectedFixtureId);return includedIds.has(row.id)?{...row,fixtureType:resolveMatchedFixtureType(row.fixtureType,matchedFixture),confirmed:true,excluded:false}:row}));
       setBulkChoice('include');
       toast.success(`${includable.length} result${includable.length===1?'':'s'} included.`);
     }catch(error){toast.error(errorMessage(error),{duration:8000})}finally{setBusy(false)}
@@ -121,7 +121,7 @@ export function LeadReportUpload({onImported,reviewUnresolved=false}:{onImported
       const desired={sample_id:row.sampleId||null,sample_draw_date:row.sampleDate||null,result_value:row.resultValue,result_original_unit:row.resultUnit};
       const changed=existingRound.data.fixture_id!==row.selectedFixtureId||existingRound.data.sample_id!==desired.sample_id||existingRound.data.sample_draw_date!==desired.sample_draw_date||existingRound.data.result_value!==desired.result_value||existingRound.data.result_original_unit!==desired.result_original_unit;
       if(changed){if(existingRound.data.fixture_id!==row.selectedFixtureId)throw new Error(`Row ${row.rowNumber}: An imported result cannot be moved to a different fixture.`);const roundUpdate=await db.from('lead_testing_rounds').update({...desired,sample_drawn_at:row.sampleDate?`${row.sampleDate}T12:00:00`:null}).eq('id',row.importedTestingRoundId);if(roundUpdate.error)throw new Error(`Row ${row.rowNumber}: ${errorMessage(roundUpdate.error)}`);updated++}
-      const result=normalizeLeadResult(row.resultValue,row.resultUnit);const rowUpdate=await db.from('lead_testing_report_rows').update({normalized_result_ppb:result.ppb,user_confirmed:true,match_status:'imported'}).eq('id',row.id);if(rowUpdate.error)throw new Error(`Row ${row.rowNumber}: ${errorMessage(rowUpdate.error)}`);
+      const result=normalizeLeadResult(row.resultValue,row.resultUnit);const matchedFixture=fixtures.find(fixture=>fixture.id===row.selectedFixtureId);const rowUpdate=await db.from('lead_testing_report_rows').update({fixture_type:resolveMatchedFixtureType(row.fixtureType,matchedFixture),normalized_result_ppb:result.ppb,user_confirmed:true,match_status:'imported'}).eq('id',row.id);if(rowUpdate.error)throw new Error(`Row ${row.rowNumber}: ${errorMessage(rowUpdate.error)}`);
     }
     for(const row of rows.filter(item=>item.confirmed&&item.selectedFixtureId&&!item.excluded&&!item.imported)){
       const rowCheck=await db.from('lead_testing_report_rows').select('imported_testing_round_id').eq('id',row.id).single();if(rowCheck.error)throw new Error(`Row ${row.rowNumber}: ${errorMessage(rowCheck.error)}`);if(rowCheck.data?.imported_testing_round_id)throw new Error(`Row ${row.rowNumber} has already been imported.`);
@@ -155,6 +155,7 @@ function ReviewCard({row,fixtures,onChange,onCreate}:{row:ReviewRow;fixtures:Fix
   const [pendingFixtureId,setPendingFixtureId]=useState<string>();
   const suggested=fixtures.find(fixture=>fixture.id===row.selectedFixtureId);
   const pendingFixture=fixtures.find(fixture=>fixture.id===pendingFixtureId);
+  const fixtureType=resolveMatchedFixtureType(row.fixtureType,suggested);
   const result=useMemo(()=>{try{return normalizeLeadResult(row.resultValue,row.resultUnit)}catch{return null}},[row.resultValue,row.resultUnit]);
   const normalizedSearch=search.trim().toLowerCase();
   const choices=normalizedSearch?fixtures.filter(fixture=>[fixture.id,fixture.buildingName,fixture.floor,fixture.roomNumber,fixture.nearestRoom,fixture.category,fixture.brand,fixture.model].filter(Boolean).join(' ').toLowerCase().includes(normalizedSearch)).slice(0,100):[];
@@ -207,6 +208,7 @@ function ReviewCard({row,fixtures,onChange,onCreate}:{row:ReviewRow;fixtures:Fix
         <Cell label="School" value={row.school}/>
         <Cell label="Building" value={suggested?.buildingName||row.building}/>
         <Cell label="Fixture Description" value={row.fixtureDescription||row.fixtureType}/>
+        <Cell label="Fixture Type" value={fixtureType}/>
         <Cell label="Fixture Location" value={suggested?[formatFloorLabel(suggested.floor),suggested.nearestRoom||suggested.roomNumber].filter(Boolean).join(' · '):[row.floor&&formatFloorLabel(row.floor),row.room].filter(Boolean).join(' · ')}/>
         <Cell label="Lead Result" value={result?formatLeadMeasurement(row.resultValue,row.resultUnit,result.ppb):'Invalid result'}/>
       </div>
@@ -225,7 +227,7 @@ function ReviewCard({row,fixtures,onChange,onCreate}:{row:ReviewRow;fixtures:Fix
         {normalizedSearch&&<div className="max-h-52 overflow-y-auto rounded-xl border bg-background p-1">
           {choices.slice(0,10).map(fixture=><button type="button" key={fixture.id} onClick={()=>{setPendingFixtureId(fixture.id);setSearch('')}} className="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-secondary">
             <span className="font-medium">{fixture.buildingName} · Room {fixture.roomNumber}</span>
-            <span className="mt-0.5 block text-xs text-muted-foreground">{formatFloorLabel(fixture.floor)} · {label(fixture.category)}{fixture.brand?` · ${fixture.brand}`:''}{fixture.model?` ${fixture.model}`:''}</span>
+            <span className="mt-0.5 block text-xs text-muted-foreground">{formatFloorLabel(fixture.floor)} · {getFixtureCategoryLabel(fixture.category)}{fixture.brand?` · ${fixture.brand}`:''}{fixture.model?` ${fixture.model}`:''}</span>
           </button>)}
           {!choices.length&&<p className="px-3 py-4 text-center text-sm text-muted-foreground">No matching fixtures found.</p>}
         </div>}
@@ -233,7 +235,7 @@ function ReviewCard({row,fixtures,onChange,onCreate}:{row:ReviewRow;fixtures:Fix
         {pendingFixture&&<div className="rounded-xl border border-primary/30 bg-background p-3">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Match found</p>
           <p className="mt-1 text-sm font-semibold">{pendingFixture.buildingName} · Room {pendingFixture.roomNumber}</p>
-          <p className="text-xs text-muted-foreground">{formatFloorLabel(pendingFixture.floor)} · {label(pendingFixture.category)}</p>
+          <p className="text-xs text-muted-foreground">{formatFloorLabel(pendingFixture.floor)} · {getFixtureCategoryLabel(pendingFixture.category)}</p>
           <Button type="button" className="mt-3 w-full" size="sm" onClick={linkEntry}><Link2 className="mr-1.5 h-4 w-4"/>Link entry</Button>
         </div>}
 

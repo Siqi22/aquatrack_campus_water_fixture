@@ -16,7 +16,9 @@ Read the complete PDF semantically regardless of its visual layout, laboratory, 
 Return only actual sampled outlets, fixtures, taps, faucets, fountains, bottle fillers, or sinks. Ignore cover letters,
 definitions, threshold examples, health guidance, recommendations, and narrative numbers. Preserve visible sample IDs,
 dates, result strings, inequality signs, units, school, building, floor, room/location, fixture descriptions, and fixture
-types. Never invent a value. Use null when information is absent. Include only lead measurements. Always call
+types. Preserve the most specific fixture type shown in the source; never replace a visible type such as Faucet, Sink,
+Drinking Fountain, or Bottle Filler with the generic value Other. Use Other only when the source explicitly says Other.
+Never invent a value. Use null when information is absent. Include only lead measurements. Always call
 record_lead_testing_results exactly once with every lead result row in the document.
 
 Important layout rules:
