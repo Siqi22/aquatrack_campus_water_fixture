@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 const source = readFileSync('src/components/LeadReportUpload.tsx', 'utf8');
 
 describe('Lead report matching review hierarchy', () => {
-  it('uses explicit include and exclude selection while simplifying the unmatched path', () => {
+  it('uses explicit opt-in selection while simplifying the unmatched path', () => {
     expect(source).toContain('Search existing fixtures');
     expect(source).toContain('Create new fixture');
     expect(source).toContain("'Create new'");
@@ -23,6 +23,7 @@ describe('Lead report matching review hierarchy', () => {
     expect(source).toContain("<Checkbox checked={isIncluded}");
     expect(source).toContain('canInclude');
     expect(source).toContain("return'Included'");
+    expect(source).not.toContain("return'Excluded'");
     expect(source).not.toContain('Confirm match');
     expect(source).not.toContain('disabled>Included');
     expect(source).toContain("'Confirm creation'");
@@ -39,14 +40,19 @@ describe('Lead report matching review hierarchy', () => {
     expect(source).toContain("<Checkbox checked={bulkChoice==='include'}");
     expect(source).toContain("checked===true?includeAllRows():clearAllRows()");
     expect(source).toContain('Include All ({bulkEligible.length})');
-    expect(source).toContain('included and ready');
+    expect(source).toContain('selected for import');
+    expect(source).toContain('const canSubmit=rows.length>0');
+    expect(source).not.toContain('needsReview');
   });
 
-  it('keeps exclusion as a row-level action', () => {
+  it('treats unchecked rows as skipped only when the review is submitted', () => {
     expect(source).not.toContain('excludeAllRows');
     expect(source).not.toContain('Exclude All (');
-    expect(source).toContain("else onChange({excluded:true,confirmed:false})");
-    expect(source).toContain("match_status:next.excluded?'excluded':next.confirmed?'manually_matched':next.match.status");
+    expect(source).toContain("else onChange({excluded:false,confirmed:false})");
+    expect(source).toContain("match_status:next.confirmed?'manually_matched':next.match.status");
+    expect(source).toContain("const skippedIds=rows.filter(item=>!item.imported&&!item.confirmed)");
+    expect(source).toContain("match_status:'excluded'}).in('id',skippedIds)");
+    expect(source).toContain('No results are selected. Submit to skip all rows');
   });
 
   it('offers bulk inclusion without changing imported results', () => {
