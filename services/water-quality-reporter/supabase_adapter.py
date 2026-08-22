@@ -110,7 +110,7 @@ class SupabaseAdapter:
         rows = self.select("fixtures", {
             "select": (
                 "id,campus_id,building_id,floor,nearest_room,"
-                "category,brand,model,serial_number,current_result_ppb,"
+                "category,fixture_type_label,brand,model,serial_number,current_result_ppb,"
                 "current_lead_testing_status,current_required_action"
             ),
             "campus_id": f"in.({','.join(allowed)})",
@@ -187,7 +187,9 @@ class SupabaseFixtureRegistry:
                 building=row.get("building_name") or "Building",
                 floor=str(row.get("floor") or ""),
                 room=row.get("nearest_room") or "",
-                fixture_type=str(row.get("category") or "Fixture"),
+                fixture_type=str(
+                    row.get("fixture_type_label") or row.get("category") or "Fixture"
+                ),
                 notes=f"AquaTrack fixture {row['id']}",
             ))
         return output

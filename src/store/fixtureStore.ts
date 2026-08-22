@@ -135,6 +135,12 @@ export function getFixtureCategoryLabel(category: string): string {
   return fixtureCategoryMeta[normalizeFixtureCategory(category)].label;
 }
 
+export function getFixtureTypeLabel(
+  fixture: Pick<Fixture, "category" | "fixtureTypeLabel">,
+): string {
+  return fixture.fixtureTypeLabel?.trim() || getFixtureCategoryLabel(fixture.category);
+}
+
 export interface QualityRating {
   pressure: number;
   cleanliness: number;
@@ -157,6 +163,8 @@ export interface Fixture {
   filterType: string;
   installationDate?: string;
   category: FixtureCategory;
+  /** Specific user-facing type, e.g. Tap, Sink, or Kitchen Tap. */
+  fixtureTypeLabel?: string;
   qualityRating: QualityRating;
   observations?: string;
   issues?: string[];
@@ -266,8 +274,11 @@ function mapFixture(r: FixtureRow, buildingName: string): Fixture {
     lastMaintenanceDate: r.last_maintenance_date,
     filterType: r.filter_type ?? "",
     installationDate: r.installation_date ?? undefined,
-    // Survey / edit saves the picker choice to fixtures.category — that column is authoritative.
+    // Keep the broad enum category for grouping and a separate specific display type.
     category: normalizeFixtureCategory(r.category),
+    fixtureTypeLabel:
+      (r as FixtureRow & { fixture_type_label?: string | null }).fixture_type_label?.trim() ||
+      getFixtureCategoryLabel(String(r.category)),
     qualityRating: {
       pressure: r.pressure_rating ?? 3,
       cleanliness: r.cleanliness_rating ?? 3,
@@ -769,6 +780,8 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
         filter_type: f.filterType,
         // Fixture type from Add Asset step 2/3 picker (PorcelainFountain, MetalFountain, …)
         category: normalizeFixtureCategory(f.category),
+        fixture_type_label:
+          f.fixtureTypeLabel?.trim() || getFixtureCategoryLabel(f.category),
         pressure_rating: f.qualityRating.pressure,
         cleanliness_rating: f.qualityRating.cleanliness,
         observations: f.observations ?? null,
@@ -839,6 +852,8 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
         serial_number: f.serialNumber || null,
         filter_type: f.filterType || null,
         category: normalizeFixtureCategory(f.category),
+        fixture_type_label:
+          f.fixtureTypeLabel?.trim() || getFixtureCategoryLabel(f.category),
         pressure_rating: f.qualityRating.pressure,
         cleanliness_rating: f.qualityRating.cleanliness,
         observations: f.observations ?? null,
@@ -1191,6 +1206,8 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
         serial_number: f.serialNumber || null,
         filter_type: f.filterType || null,
         category: categoryFromOriginal,
+        fixture_type_label:
+          f.categoryLabel.trim() || getFixtureCategoryLabel(categoryFromOriginal),
         import_metadata: importMetadata,
         pressure_rating: f.pressure,
         cleanliness_rating: f.cleanliness,

@@ -37,6 +37,17 @@ UNIT_COSTS = {
     "Pot Filler":             600,
     "Sprayer/Hose":           400,
     "Other":                  600,
+    "Tap":                    600,
+    "Sink":                   600,
+    "Kitchen Tap":            600,
+    "Classroom Sink":         600,
+    "Laboratory Sink":        600,
+    "Filtered Tap":           600,
+    "Drinking Fountain":     1500,
+    "Wall Fountain":         1500,
+    "Porcelain Fountain":    1500,
+    "Metal Fountain":        1500,
+    "Bottle Filler":         1500,
 }
 
 CONTAMINATION_THRESHOLD_PPB = 5

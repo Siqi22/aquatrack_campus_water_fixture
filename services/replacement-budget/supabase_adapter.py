@@ -145,7 +145,7 @@ class SupabaseAdapter:
             "fixtures",
             {
                 "select": (
-                    "id,campus_id,building_id,floor,nearest_room,category,"
+                    "id,campus_id,building_id,floor,nearest_room,category,fixture_type_label,"
                     "serial_number,current_result_ppb"
                 ),
                 "campus_id": f"in.({','.join(school_ids)})",
@@ -195,8 +195,11 @@ class SupabaseAdapter:
                     "display_id": row.get("serial_number") or row["id"][:8],
                     "school_id": row["campus_id"],
                     "location": " · ".join(location_parts),
-                    "fixture_type": CATEGORY_TO_BUDGET_TYPE.get(
-                        str(row.get("category") or "Other"), "Other"
+                    "fixture_type": (
+                        str(row.get("fixture_type_label") or "").strip()
+                        or CATEGORY_TO_BUDGET_TYPE.get(
+                            str(row.get("category") or "Other"), "Other"
+                        )
                     ),
                     "lead_ppb": float(row["current_result_ppb"]),
                     "sample_date": sample_dates.get(row["id"]) or "—",

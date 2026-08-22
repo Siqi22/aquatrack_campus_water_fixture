@@ -1,7 +1,7 @@
 import {
   Fixture,
   getFixtureStatus,
-  getFixtureCategoryLabel,
+  getFixtureTypeLabel,
 } from "@/store/fixtureStore";
 import { FIELD_LABELS } from "@/lib/fieldLabels";
 
@@ -44,8 +44,8 @@ export const EXPORT_COLUMNS: ExportColumn[] = [
   },
   {
     key: "category",
-    label: "Fountain type",
-    get: (f) => getFixtureCategoryLabel(f.category),
+    label: "Fixture type",
+    get: (f) => getFixtureTypeLabel(f),
   },
   { key: "brand", label: FIELD_LABELS.companyName, get: (f) => f.brand },
   { key: "model", label: FIELD_LABELS.model, get: (f) => f.model },

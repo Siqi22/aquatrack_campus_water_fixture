@@ -166,7 +166,20 @@ def normalize_fixture_ids(
 
 
 def default_replacement(fixture: dict) -> dict[str, int | str]:
-    part = fixture["fixture_type"] if fixture["fixture_type"] in UNIT_COSTS else "Other"
+    label = str(fixture.get("fixture_type") or "").strip()
+    normalized = label.casefold()
+    if normalized in {
+        "tap", "sink", "kitchen tap", "classroom sink", "laboratory sink", "filtered tap",
+    }:
+        part = "Tap/Sink"
+    elif normalized in {
+        "drinking fountain", "wall fountain", "porcelain fountain", "metal fountain",
+    }:
+        part = "Water Fountain"
+    elif normalized in {"bottle filler", "bottle refill station"}:
+        part = "Bottle Refill Station"
+    else:
+        part = label if label in UNIT_COSTS else "Other"
     return {"part": part, "unit_cost": int(UNIT_COSTS.get(part, UNIT_COSTS["Other"]))}
 
 

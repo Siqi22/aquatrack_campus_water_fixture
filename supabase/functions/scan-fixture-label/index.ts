@@ -54,11 +54,12 @@ const SYSTEM_PROMPT = `You are an OCR + vision assistant for commercial drinking
 Read every character visible on the sticker/plate photo: manufacturer name, model name/number, serial number, and filter or cartridge product number.
 Transcribe text exactly as printed. If a field is missing or illegible, return an empty string — never guess serial numbers.
 
-Infer fountain type from the unit appearance and any printed text.
+Infer both the broad category and the most specific fixture type from the unit appearance and any printed text.
 Always call extract_fixture with your results.
 
 Category must be exactly one of: PorcelainFountain, MetalFountain, VendingMachine, BottleRefillStation, Other.
-Never use WallFountain — that legacy type does not exist.`;
+Never use WallFountain as the broad category — that legacy enum value does not exist.
+fixtureTypeLabel should be a concise specific type such as Tap, Sink, Kitchen Tap, Drinking Fountain, Wall Fountain, Filtered Tap, or Bottle Filler. Do not use Other as fixtureTypeLabel.`;
 
 const EXTRACT_TOOL_ANTHROPIC = {
   name: "extract_fixture",
@@ -74,9 +75,13 @@ const EXTRACT_TOOL_ANTHROPIC = {
         type: "string",
         enum: ["PorcelainFountain", "MetalFountain", "VendingMachine", "BottleRefillStation", "Other"],
       },
+      fixtureTypeLabel: {
+        type: "string",
+        description: "Specific user-facing fixture type; never Other",
+      },
       confidence: { type: "number", description: "0..1 confidence" },
     },
-    required: ["brand", "model", "serialNumber", "filterType", "category", "confidence"],
+    required: ["brand", "model", "serialNumber", "filterType", "category", "fixtureTypeLabel", "confidence"],
   },
 };
 

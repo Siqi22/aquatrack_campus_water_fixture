@@ -21,6 +21,12 @@ export function LeadTestingPanel({fixture}:{fixture:any}) {
   const action=requiredActionLabel(status,latest?.required_action??fixture.currentRequiredAction);
   const latestPpb=latest?.result_ppb??fixture.currentResultPpb;
   const urgent=(latestPpb??0)>15;
+  const remediationRequired=Boolean(latest&&(action==='Remediation Required'||action==='Immediately Restrict Access'));
+  const remediationNeedsStart=Boolean(remediation&&(
+    remediation.status==='planned'||
+    (remediation.status==='in_progress'&&!remediation.started_at)
+  ));
+  const remediationCanComplete=Boolean(remediation?.status==='in_progress'&&remediation.started_at);
   return <section className="space-y-4" id="lead-testing">
     <div className={`card-section overflow-hidden ${urgent?'border-destructive':''}`}>
       <div className="panel-header"><div className="flex items-center gap-2"><Beaker className="h-4 w-4"/><h2 className="font-semibold">Lead Testing</h2></div><span className="rounded-full border px-2 py-1 text-[10px] font-semibold">{overallWorkflowLabel(status)}</span></div>
@@ -39,8 +45,9 @@ export function LeadTestingPanel({fixture}:{fixture:any}) {
           {status!=='awaiting_retest'&&<SampleDialog fixtureId={fixture.id} lead={lead}/>}
           {latest&&!latest.result_value&&<ResultDialog round={latest} lead={lead}/>}
           {(urgent||action.includes('Restrict'))&&<RestrictionDialog fixtureId={fixture.id} lead={lead}/>}
-          {latest&&(action==='Remediation Required'||action==='Immediately Restrict Access')&&<RemediationDialog fixtureId={fixture.id} round={latest} lead={lead}/>}
-          {remediation&&['planned','in_progress'].includes(remediation.status)&&<Button size="sm" onClick={()=>lead.completeRemediation(remediation).then(()=>toast.success('Remediation completed; retesting required')).catch(showError)}>Complete remediation</Button>}
+          {remediationRequired&&!remediation&&latest&&<RemediationDialog fixtureId={fixture.id} round={latest} lead={lead}/>}
+          {remediationNeedsStart&&remediation&&<Button size="sm" variant="outline" onClick={()=>lead.startRemediation(remediation).then(()=>toast.success('Remediation started')).catch(showError)}><Wrench className="mr-1 h-4 w-4"/>Start remediation</Button>}
+          {remediationCanComplete&&remediation&&<Button size="sm" onClick={()=>lead.completeRemediation(remediation).then(()=>toast.success('Remediation completed; retesting required')).catch(showError)}>Complete remediation</Button>}
           {remediation&&remediation.status==='awaiting_retest'&&!remediation.follow_up_testing_round_id&&<SampleDialog fixtureId={fixture.id} lead={lead} defaultType="post_remediation_retest" remediationId={remediation.id} triggerLabel="Document post-remediation retest"/>}
         </div>
       </div>

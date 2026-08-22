@@ -7,6 +7,7 @@ export interface ScanFixtureLabelResult {
   serialNumber: string;
   filterType: string;
   category: FixtureCategory;
+  fixtureTypeLabel: string;
   confidence: number;
 }
 
@@ -67,6 +68,7 @@ function parseScanResponse(row: Record<string, unknown>): ScanFixtureLabelResult
     serialNumber: String(row.serialNumber ?? '').trim(),
     filterType: String(row.filterType ?? '').trim(),
     category: normalizeFixtureCategory(String(row.category ?? '')),
+    fixtureTypeLabel: String(row.fixtureTypeLabel ?? '').trim(),
     confidence: typeof row.confidence === 'number' ? row.confidence : 0,
   };
 }

@@ -116,6 +116,7 @@ export type Database = {
           created_at: string;
           created_by: string | null;
           filter_type: string | null;
+          fixture_type_label: string | null;
           floor: string;
           id: string;
           import_metadata: string | null;
@@ -147,6 +148,7 @@ export type Database = {
           created_at?: string;
           created_by?: string | null;
           filter_type?: string | null;
+          fixture_type_label?: string | null;
           floor: string;
           id?: string;
           import_metadata?: string | null;
@@ -178,6 +180,7 @@ export type Database = {
           created_at?: string;
           created_by?: string | null;
           filter_type?: string | null;
+          fixture_type_label?: string | null;
           floor?: string;
           id?: string;
           import_metadata?: string | null;

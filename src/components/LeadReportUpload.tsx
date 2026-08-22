@@ -7,7 +7,7 @@ import { parseSpreadsheetFile } from '@/lib/spreadsheet';
 import { matchLeadReportRow, parseLeadReportCSV, resolveMatchedFixtureType, type LeadFixtureMatch, type LeadReportRowDraft } from '@/lib/leadReportImport';
 import { extractLeadReportWithClaude } from '@/lib/claudeLeadReport';
 import { formatLeadMeasurement, normalizeLeadResult, label } from '@/lib/leadTesting';
-import { getFixtureCategoryLabel, normalizeFixtureCategory, useFixtureStore, type Fixture } from '@/store/fixtureStore';
+import { getFixtureTypeLabel, normalizeFixtureCategory, useFixtureStore, type Fixture } from '@/store/fixtureStore';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible,CollapsibleContent,CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -110,7 +110,7 @@ export function LeadReportUpload({onImported,reviewUnresolved=false}:{onImported
     if(!building)throw new Error('The building could not be created.');
     const location=(row.room||row.fixtureDescription||'Location pending').trim();
     const existingFixture=fixtures.find(item=>item.buildingId===building!.id&&normalizeFloorKey(item.floor)===floorKey&&same(item.nearestRoom||item.roomNumber,location));
-    const fixture=existingFixture??await addFixture({campusId:campus.id,buildingId:building.id,buildingName:building.name,floor:floorKey,roomNumber:location,nearestRoom:location,brand:'',model:'',serialNumber:row.sampleId?`REPORT-${row.sampleId}`:'',photoURL:'',modelPlatePhotoURL:'',lastMaintenanceDate:new Date().toISOString().slice(0,10),filterType:'',category:normalizeFixtureCategory(row.fixtureType||row.fixtureDescription),qualityRating:{pressure:3,cleanliness:3},observations:`Created from uploaded report ${row.sourceFileName}, row ${row.rowNumber}.`,locationConfirmed:false,savedByName:'Lead Report Import'});
+    const fixture=existingFixture??await addFixture({campusId:campus.id,buildingId:building.id,buildingName:building.name,floor:floorKey,roomNumber:location,nearestRoom:location,brand:'',model:'',serialNumber:row.sampleId?`REPORT-${row.sampleId}`:'',photoURL:'',modelPlatePhotoURL:'',lastMaintenanceDate:new Date().toISOString().slice(0,10),filterType:'',category:normalizeFixtureCategory(row.fixtureType||row.fixtureDescription),fixtureTypeLabel:row.fixtureType.trim()||row.fixtureDescription.trim()||'Fixture',qualityRating:{pressure:3,cleanliness:3},observations:`Created from uploaded report ${row.sourceFileName}, row ${row.rowNumber}.`,locationConfirmed:false,savedByName:'Lead Report Import'});
     if(!fixture)throw new Error('The fixture could not be created.');
     await changeRow(row,{selectedFixtureId:fixture.id,match:{fixtureId:fixture.id,status:'high_confidence_match',confidence:1,reasons:['Created from this report row'],alternatives:[]},confirmed:true,excluded:false});
     toast.success(existingFixture?'Existing fixture selected.':'School, building, and fixture data saved.');
@@ -158,7 +158,7 @@ function ReviewCard({row,fixtures,onChange,onCreate}:{row:ReviewRow;fixtures:Fix
   const fixtureType=resolveMatchedFixtureType(row.fixtureType,suggested);
   const result=useMemo(()=>{try{return normalizeLeadResult(row.resultValue,row.resultUnit)}catch{return null}},[row.resultValue,row.resultUnit]);
   const normalizedSearch=search.trim().toLowerCase();
-  const choices=normalizedSearch?fixtures.filter(fixture=>[fixture.id,fixture.buildingName,fixture.floor,fixture.roomNumber,fixture.nearestRoom,fixture.category,fixture.brand,fixture.model].filter(Boolean).join(' ').toLowerCase().includes(normalizedSearch)).slice(0,100):[];
+  const choices=normalizedSearch?fixtures.filter(fixture=>[fixture.id,fixture.buildingName,fixture.floor,fixture.roomNumber,fixture.nearestRoom,getFixtureTypeLabel(fixture),fixture.category,fixture.brand,fixture.model].filter(Boolean).join(' ').toLowerCase().includes(normalizedSearch)).slice(0,100):[];
   const unresolved=['multiple_matches','no_match'].includes(row.match.status)&&!row.confirmed;
   const showFixtureFinder=!row.imported&&!row.excluded&&(findingAnother||unresolved);
   const isIncluded=row.confirmed&&!row.excluded;
@@ -227,7 +227,7 @@ function ReviewCard({row,fixtures,onChange,onCreate}:{row:ReviewRow;fixtures:Fix
         {normalizedSearch&&<div className="max-h-52 overflow-y-auto rounded-xl border bg-background p-1">
           {choices.slice(0,10).map(fixture=><button type="button" key={fixture.id} onClick={()=>{setPendingFixtureId(fixture.id);setSearch('')}} className="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-secondary">
             <span className="font-medium">{fixture.buildingName} · Room {fixture.roomNumber}</span>
-            <span className="mt-0.5 block text-xs text-muted-foreground">{formatFloorLabel(fixture.floor)} · {getFixtureCategoryLabel(fixture.category)}{fixture.brand?` · ${fixture.brand}`:''}{fixture.model?` ${fixture.model}`:''}</span>
+            <span className="mt-0.5 block text-xs text-muted-foreground">{formatFloorLabel(fixture.floor)} · {getFixtureTypeLabel(fixture)}{fixture.brand?` · ${fixture.brand}`:''}{fixture.model?` ${fixture.model}`:''}</span>
           </button>)}
           {!choices.length&&<p className="px-3 py-4 text-center text-sm text-muted-foreground">No matching fixtures found.</p>}
         </div>}
@@ -235,7 +235,7 @@ function ReviewCard({row,fixtures,onChange,onCreate}:{row:ReviewRow;fixtures:Fix
         {pendingFixture&&<div className="rounded-xl border border-primary/30 bg-background p-3">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Match found</p>
           <p className="mt-1 text-sm font-semibold">{pendingFixture.buildingName} · Room {pendingFixture.roomNumber}</p>
-          <p className="text-xs text-muted-foreground">{formatFloorLabel(pendingFixture.floor)} · {getFixtureCategoryLabel(pendingFixture.category)}</p>
+          <p className="text-xs text-muted-foreground">{formatFloorLabel(pendingFixture.floor)} · {getFixtureTypeLabel(pendingFixture)}</p>
           <Button type="button" className="mt-3 w-full" size="sm" onClick={linkEntry}><Link2 className="mr-1.5 h-4 w-4"/>Link entry</Button>
         </div>}
 

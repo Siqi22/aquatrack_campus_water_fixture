@@ -17,4 +17,5 @@ describe('existing fixture matching',()=>{
   it('returns no match rather than creating a fixture',()=>{const[row]=parseLeadReportCSV('School,Building,Floor,Room,Result\nUnknown,Elsewhere,9,999,4.9');expect(matchLeadReportRow(row,[fixture('fixture-a','205')],[campus]).status).toBe('no_match')});
   it('uses the matched database fixture type instead of a generic report type',()=>{expect(resolveMatchedFixtureType('Other',{...fixture('fixture-a','205'),category:'MetalFountain'})).toBe('Metal fountain')});
   it('keeps a specific report type when the database category is generic',()=>{expect(resolveMatchedFixtureType('Classroom sink',{...fixture('fixture-a','205'),category:'Other'})).toBe('Classroom sink')});
+  it('uses the specific database type even when the broad category is Other',()=>{expect(resolveMatchedFixtureType('Other',{...fixture('fixture-a','205'),category:'Other',fixtureTypeLabel:'Kitchen Tap'})).toBe('Kitchen Tap')});
 });

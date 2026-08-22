@@ -5,7 +5,7 @@ import {
   fixtureCategoryMeta,
   FIXTURE_CATEGORIES,
   normalizeFixtureCategory,
-  getFixtureCategoryLabel,
+  getFixtureTypeLabel,
 } from '@/store/fixtureStore';
 import type { Fixture, FixtureCategory } from '@/store/fixtureStore';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -54,6 +54,7 @@ export default function FixtureDetail() {
   const [filterType, setFilterType] = useState('');
   const [installationDate, setInstallationDate] = useState('');
   const [category, setCategory] = useState<FixtureCategory>('Other');
+  const [fixtureTypeLabel, setFixtureTypeLabel] = useState('');
   const [pressure, setPressure] = useState(2);
   const [cleanliness, setCleanliness] = useState(2);
   const [observations, setObservations] = useState('');
@@ -83,6 +84,7 @@ export default function FixtureDetail() {
     setFilterType(source.filterType);
     setInstallationDate(source.installationDate ?? '');
     setCategory(normalizeFixtureCategory(source.category));
+    setFixtureTypeLabel(getFixtureTypeLabel(source));
     setPressure(source.qualityRating.pressure);
     setCleanliness(source.qualityRating.cleanliness);
     setObservations(source.observations || '');
@@ -134,6 +136,10 @@ export default function FixtureDetail() {
       toast.error('Campus, building, floor, and room (min 2 chars) are required.');
       return;
     }
+    if (!fixtureTypeLabel.trim()) {
+      toast.error('Enter a specific fixture type.');
+      return;
+    }
 
     setSaving(true);
     try {
@@ -161,6 +167,7 @@ export default function FixtureDetail() {
         filterType,
         installationDate: installationDate || undefined,
         category,
+        fixtureTypeLabel: fixtureTypeLabel.trim(),
         qualityRating: { pressure, cleanliness },
         observations: observations.trim() || undefined,
         issues: issues.length ? issues : undefined,
@@ -230,7 +237,7 @@ export default function FixtureDetail() {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <p className="line-clamp-1 break-words text-sm font-semibold text-foreground">
-              {editing ? fixtureCategoryMeta[category].label : getFixtureCategoryLabel(fixture.category)}
+              {editing ? fixtureTypeLabel || fixtureCategoryMeta[category].label : getFixtureTypeLabel(fixture)}
             </p>
             {fixtureIdentity ? (
               <p className="mt-1 line-clamp-1 break-all text-xs text-muted-foreground" title={fixtureIdentity}>
@@ -457,10 +464,14 @@ export default function FixtureDetail() {
                 onChange={setInstallationDate}
               />
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Fountain type</label>
+                <label className="text-xs font-medium text-muted-foreground">Fixture category</label>
                 <select
                   value={category}
-                  onChange={(e) => setCategory(e.target.value as FixtureCategory)}
+                  onChange={(e) => {
+                    const next = e.target.value as FixtureCategory;
+                    setCategory(next);
+                    if (next !== 'Other') setFixtureTypeLabel(fixtureCategoryMeta[next].label);
+                  }}
                   className="mt-1 w-full field-input"
                 >
                   {FIXTURE_CATEGORIES.map((id) => (
@@ -470,6 +481,7 @@ export default function FixtureDetail() {
                   ))}
                 </select>
               </div>
+              <Field label="Specific fixture type" value={fixtureTypeLabel} onChange={setFixtureTypeLabel} />
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-medium text-muted-foreground">Water pressure</label>
@@ -523,7 +535,7 @@ export default function FixtureDetail() {
                 <InfoTile label={FIELD_LABELS.productNumber} value={fixture.filterType || '—'} />
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <InfoTile label="Fountain type" value={getFixtureCategoryLabel(fixture.category)} />
+                <InfoTile label="Fixture type" value={getFixtureTypeLabel(fixture)} />
                 <InfoTile label="Nearest landmark" value={fixture.nearestRoom || fixture.roomNumber || '—'} />
                 <InfoTile label="Installation date" value={fixture.installationDate || '—'} />
               </div>

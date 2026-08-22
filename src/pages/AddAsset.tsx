@@ -6,6 +6,7 @@ import {
   fixtureCategoryMeta,
   FIXTURE_CATEGORIES,
   normalizeFixtureCategory,
+  getFixtureCategoryLabel,
 } from '@/store/fixtureStore';
 import type { FixtureCategory } from '@/store/fixtureStore';
 import { Camera, ScanLine, CheckCircle2, Building2, ChevronLeft, ChevronRight, ImagePlus, PlusCircle, ListChecks, Search, Map, MessageSquareWarning, University, Info, X, FileSpreadsheet, Maximize2 } from 'lucide-react';
@@ -71,12 +72,13 @@ export default function AddAsset() {
   const [scanned, setScanned] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
-  const [scanResult, setScanResult] = useState<{ brand: string; model: string; serialNumber: string; filterType: string; category: string; confidence: number } | null>(null);
+  const [scanResult, setScanResult] = useState<{ brand: string; model: string; serialNumber: string; filterType: string; category: string; fixtureTypeLabel: string; confidence: number } | null>(null);
   const [noLabel, setNoLabel] = useState(false);
   const [noLabelReason, setNoLabelReason] = useState('');
   const [noLabelReasonOther, setNoLabelReasonOther] = useState('');
   const [nearestRoom, setNearestRoom] = useState('');
   const [category, setCategory] = useState<FixtureCategory | null>(null);
+  const [fixtureTypeLabel, setFixtureTypeLabel] = useState('');
   const [categoryReferenceOpen, setCategoryReferenceOpen] = useState(false);
   const [pressure, setPressure] = useState(2);
   const [cleanliness, setCleanliness] = useState(2);
@@ -237,6 +239,7 @@ export default function AddAsset() {
       setSerialNumber(result.serialNumber);
       setFilterType(result.filterType);
       setCategory((prev) => prev ?? result.category);
+      setFixtureTypeLabel((prev) => prev || result.fixtureTypeLabel || getFixtureCategoryLabel(result.category));
       setScanned(true);
       const missing: string[] = [];
       if (!result.brand) missing.push('brand');
@@ -268,6 +271,10 @@ export default function AddAsset() {
     }
     if (!category) {
       toast.error('Select a fixture type before saving.');
+      return;
+    }
+    if (!fixtureTypeLabel.trim()) {
+      toast.error('Enter a specific fixture type before saving.');
       return;
     }
     if (!roomLooksValid) {
@@ -317,6 +324,7 @@ export default function AddAsset() {
         lastMaintenanceDate: new Date().toISOString().split('T')[0],
         filterType,
         category,
+        fixtureTypeLabel: fixtureTypeLabel.trim(),
         qualityRating: { pressure, cleanliness },
         observations: finalObs,
         issues: issues.length ? issues : undefined,
@@ -346,6 +354,7 @@ export default function AddAsset() {
   if (!floor) step5Missing.push('Floor');
   if (!roomLooksValid) step5Missing.push('Room (min 2 chars)');
   if (!category) step5Missing.push('Fixture type');
+  if (!fixtureTypeLabel.trim()) step5Missing.push('Specific fixture type');
   if (noLabel && !noLabelReason) step5Missing.push('No-label reason');
   if (noLabel && noLabelReason === 'Other' && !noLabelReasonOther.trim()) step5Missing.push('"Other" reason text');
   const step5Ready = step5Missing.length === 0;
@@ -356,7 +365,7 @@ export default function AddAsset() {
 
   const canProceed: Record<number, boolean> = {
     1: !!selectedCampusId && !!selectedBuildingId && !!floor.trim() && roomLooksValid && !floorLocked,
-    2: !!category,
+    2: !!category && !!fixtureTypeLabel.trim(),
     3: true,
     4: locationConfirmed && step5Ready,
   };
@@ -860,13 +869,36 @@ export default function AddAsset() {
                   <button
                     key={id}
                     type="button"
-                    onClick={() => setCategory(id)}
+                    onClick={() => {
+                      setCategory(id);
+                      if (id !== 'Other' || !fixtureTypeLabel.trim()) {
+                        setFixtureTypeLabel(id === 'Other' ? '' : fixtureCategoryMeta[id].label);
+                      }
+                    }}
                     className={`rounded-lg border px-2 py-2 text-left text-xs transition-colors ${active ? 'border-primary/30 bg-primary/10 text-foreground' : 'bg-card text-muted-foreground hover:bg-secondary/30'}`}
                   >
                     {fixtureCategoryMeta[id].label}
                   </button>
                 );
               })}
+            </div>
+            <div className="mt-3">
+              <label className="text-xs font-medium text-muted-foreground" htmlFor="specific-fixture-type">
+                Specific fixture type
+              </label>
+              <input
+                id="specific-fixture-type"
+                list="fixture-type-suggestions"
+                value={fixtureTypeLabel}
+                onChange={(event) => setFixtureTypeLabel(event.target.value)}
+                placeholder="Tap, Sink, Kitchen Tap…"
+                className="mt-1 w-full field-input"
+              />
+              <datalist id="fixture-type-suggestions">
+                {['Tap', 'Sink', 'Kitchen Tap', 'Classroom Sink', 'Laboratory Sink', 'Drinking Fountain', 'Wall Fountain', 'Filtered Tap'].map((label) => (
+                  <option key={label} value={label} />
+                ))}
+              </datalist>
             </div>
           </div>
 
@@ -1231,7 +1263,7 @@ export default function AddAsset() {
                 onClick={() => {
                   // Stay in onboard mode for another fixture on the same floor
                   setPhoto(null); setPlatePhoto(null); setBrand(''); setModel(''); setSerialNumber('');
-                  setFilterType(''); setScanned(false); setScanError(null); setScanResult(null); setCategory(null);
+                  setFilterType(''); setScanned(false); setScanError(null); setScanResult(null); setCategory(null); setFixtureTypeLabel('');
                   setObservations(''); setIssues([]); setNearestRoom('');
                   setNoLabel(false); setNoLabelReason(''); setNoLabelReasonOther(''); setNearestFixtureId(''); setLocationConfirmed(false);
                   setStep(1);

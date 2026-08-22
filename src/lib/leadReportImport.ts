@@ -1,7 +1,7 @@
 import { parseCSVText } from '@/lib/importCSV';
 import { rowsToCSV } from '@/lib/spreadsheet';
 import type { Campus, Fixture } from '@/store/fixtureStore';
-import { getFixtureCategoryLabel } from '@/store/fixtureStore';
+import { getFixtureTypeLabel } from '@/store/fixtureStore';
 import { normalizeFloorKey } from '@/lib/floorUtils';
 
 export interface LeadReportRowDraft {
@@ -82,12 +82,12 @@ function normalizeDohFixtureType(value:string){const normalized=value.toLowerCas
 export function normalizeLocation(value:string){
   return value.replace(/([a-z])([A-Z])/g,'$1 $2').toLowerCase().trim().replace(/[.,#]/g,' ').replace(/\b(rm|room)\b/g,'room').replace(/\bbubbler\b/g,'drinking fountain').replace(/\btap\b/g,'faucet').replace(/\bbottle\s*fill(?:er)?\b/g,'bottle filler').replace(/\bwater\s*fountain\b/g,'drinking fountain').replace(/\s+/g,' ');
 }
-export function resolveMatchedFixtureType(reportedType:string,fixture?:Fixture){const databaseType=fixture?getFixtureCategoryLabel(fixture.category):'';if(databaseType&&databaseType.toLowerCase()!=='other')return databaseType;const reported=reportedType.trim();return reported&&reported.toLowerCase()!=='other'?reported:databaseType||reported}
+export function resolveMatchedFixtureType(reportedType:string,fixture?:Fixture){const databaseType=fixture?getFixtureTypeLabel(fixture):'';if(databaseType&&databaseType.toLowerCase()!=='other')return databaseType;const reported=reportedType.trim();return reported&&reported.toLowerCase()!=='other'?reported:databaseType||reported}
 export function matchLeadReportRow(row:LeadReportRowDraft,fixtures:Fixture[],campuses:Campus[]):LeadFixtureMatch{
   const scored=fixtures.map(fixture=>{const campus=campuses.find(item=>item.id===fixture.campusId);let score=0;const reasons:string[]=[];
     const compare=(reported:string,actual:string|undefined,weight:number,reason:string)=>{if(reported&&actual&&normalizeLocation(reported)===normalizeLocation(actual)){score+=weight;reasons.push(reason)}};
     compare(row.schoolDistrict,campus?.schoolDistrict,.15,'School district matches');compare(row.school,campus?.school||campus?.name,.2,'School matches');compare(row.building,fixture.buildingName,.2,'Building matches');if(row.floor&&fixture.floor&&normalizeFloorKey(row.floor)===normalizeFloorKey(fixture.floor)){score+=.15;reasons.push('Floor matches')}compare(row.room,fixture.nearestRoom||fixture.roomNumber,.2,'Room matches');
-    const identity=[fixture.category,fixture.brand,fixture.model].filter(Boolean).join(' ');compare(row.fixtureType,fixture.category,.1,'Fixture type matches');
+    const specificType=getFixtureTypeLabel(fixture);const identity=[specificType,fixture.category,fixture.brand,fixture.model].filter(Boolean).join(' ');compare(row.fixtureType,specificType,.1,'Fixture type matches');
     if(row.fixtureDescription&&normalizeLocation(identity).includes(normalizeLocation(row.fixtureDescription))){score+=.1;reasons.push('Fixture description matches')}
     return{fixtureId:fixture.id,score:Math.min(score,1),reasons};
   }).filter(item=>item.score>=.45).sort((a,b)=>b.score-a.score);
