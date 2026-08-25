@@ -1716,23 +1716,42 @@ a.budget-step-link:hover {
 
 .budget-workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 20rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: start;
-  gap: 1rem;
+  gap: 0;
 }
 
 .budget-workspace-main {
+  grid-column: 1 / span 3;
   min-width: 0;
   display: grid;
   gap: 1rem;
+  padding-right: 1rem;
 }
 
 .replacement-table {
-  min-width: 50rem;
+  min-width: 0;
+  table-layout: fixed;
 }
 
+.replacement-table th:first-child,
 .replacement-table td:first-child {
   width: 38%;
+}
+
+.replacement-table th:nth-child(2),
+.replacement-table td:nth-child(2) {
+  width: 14%;
+}
+
+.replacement-table th:nth-child(3),
+.replacement-table td:nth-child(3) {
+  width: 30%;
+}
+
+.replacement-table th:nth-child(4),
+.replacement-table td:nth-child(4) {
+  width: 18%;
 }
 
 .replacement-table td:first-child strong,
@@ -1750,7 +1769,7 @@ a.budget-step-link:hover {
 
 .replacement-table select {
   width: 100%;
-  min-width: 11rem;
+  min-width: 0;
   padding: 0.5rem 1.8rem 0.5rem 0.6rem;
   border: 1px solid hsl(var(--border));
   border-radius: 0.6rem;
@@ -1760,7 +1779,7 @@ a.budget-step-link:hover {
 }
 
 .currency-input {
-  width: 8.5rem;
+  width: min(8.5rem, 100%);
   display: inline-flex;
   align-items: center;
   overflow: hidden;
@@ -1793,6 +1812,7 @@ a.budget-step-link:hover {
 }
 
 .budget-summary-card {
+  grid-column: 4;
   position: sticky;
   top: 5rem;
   padding: 1rem;
@@ -1891,6 +1911,12 @@ a.budget-step-link:hover {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.75rem;
   padding: 1rem;
+}
+
+.vendor-budget-panel .budget-panel-header {
+  min-height: 0;
+  padding-bottom: 0;
+  border-bottom: 0;
 }
 
 .vendor-budget-card {
@@ -2114,12 +2140,31 @@ a.budget-step-link:hover {
     grid-template-columns: 1fr;
   }
 
+  .budget-workspace-main,
+  .budget-summary-card {
+    grid-column: auto;
+  }
+
+  .budget-workspace-main {
+    padding-right: 0;
+  }
+
   .budget-summary-card {
     position: static;
   }
 
   .vendor-budget-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .replacement-table-wrap {
+    overflow-x: auto;
+  }
+
+  .replacement-table {
+    min-width: 42rem;
   }
 }
 

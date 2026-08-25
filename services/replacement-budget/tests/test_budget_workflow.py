@@ -133,6 +133,8 @@ class BudgetWorkflowTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Vendors nearby", response.data)
         self.assertNotIn(b"Placeholder vendors", response.data)
+        self.assertNotIn(b"Reference contacts", response.data)
+        self.assertNotIn(b"Vendor names and contacts", response.data)
         self.assertIn(b"ClearFlow School Plumbing", response.data)
         self.assertNotIn(b"preferred_vendor_id", response.data)
         self.assertIn(b'value="Water Fountain"', response.data)
