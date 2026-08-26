@@ -1,30 +1,16 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import {
-  useFixtureStore,
-  fixtureCategoryMeta,
-  FIXTURE_CATEGORIES,
-  normalizeFixtureCategory,
-  getFixtureTypeLabel,
-} from '@/store/fixtureStore';
-import type { Fixture, FixtureCategory } from '@/store/fixtureStore';
+import { useFixtureStore } from '@/store/fixtureStore';
+import type { Fixture } from '@/store/fixtureStore';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { SimpleRating, ratingLabel } from '@/components/SimpleRating';
-import { FIELD_LABELS, ISSUE_OPTIONS, issueLabel } from '@/lib/fieldLabels';
-import { uploadFixturePhoto } from '@/lib/uploadPhoto';
+import { FIELD_LABELS } from '@/lib/fieldLabels';
 import {
   MapPin,
   Edit3,
   Save,
   X,
-  ExternalLink,
-  Image as ImageIcon,
-  Hash,
-  Download,
   Building2,
   GraduationCap,
-  Camera,
-  ImagePlus,
   Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -48,22 +34,6 @@ export default function FixtureDetail() {
   const [floor, setFloor] = useState('');
   const [roomNumber, setRoomNumber] = useState('');
   const [nearestRoom, setNearestRoom] = useState('');
-  const [brand, setBrand] = useState('');
-  const [model, setModel] = useState('');
-  const [serialNumber, setSerialNumber] = useState('');
-  const [filterType, setFilterType] = useState('');
-  const [installationDate, setInstallationDate] = useState('');
-  const [category, setCategory] = useState<FixtureCategory>('Other');
-  const [fixtureTypeLabel, setFixtureTypeLabel] = useState('');
-  const [pressure, setPressure] = useState(2);
-  const [cleanliness, setCleanliness] = useState(2);
-  const [observations, setObservations] = useState('');
-  const [issues, setIssues] = useState<string[]>([]);
-  const [photoURL, setPhotoURL] = useState('');
-  const [modelPlatePhotoURL, setModelPlatePhotoURL] = useState('');
-
-  const photoInputRef = useRef<HTMLInputElement | null>(null);
-  const platePhotoInputRef = useRef<HTMLInputElement | null>(null);
 
   const campusBuildings = useMemo(
     () => (campusId ? getBuildingsByCampus(campusId) : []),
@@ -78,19 +48,6 @@ export default function FixtureDetail() {
     setFloor(source.floor);
     setRoomNumber(source.roomNumber);
     setNearestRoom(source.nearestRoom || source.roomNumber);
-    setBrand(source.brand);
-    setModel(source.model);
-    setSerialNumber(source.serialNumber);
-    setFilterType(source.filterType);
-    setInstallationDate(source.installationDate ?? '');
-    setCategory(normalizeFixtureCategory(source.category));
-    setFixtureTypeLabel(getFixtureTypeLabel(source));
-    setPressure(source.qualityRating.pressure);
-    setCleanliness(source.qualityRating.cleanliness);
-    setObservations(source.observations || '');
-    setIssues(source.issues ?? []);
-    setPhotoURL(source.photoURL);
-    setModelPlatePhotoURL(source.modelPlatePhotoURL);
   }
 
   useEffect(() => {
@@ -116,15 +73,6 @@ export default function FixtureDetail() {
     );
   }
 
-  function handleFileUpload(file: File, setter: (value: string) => void) {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === 'string' ? reader.result : '';
-      setter(result);
-    };
-    reader.readAsDataURL(file);
-  }
-
   function handleCancelEdit() {
     resetFormFromFixture(fixture);
     setEditing(false);
@@ -136,24 +84,8 @@ export default function FixtureDetail() {
       toast.error('Campus, building, floor, and room (min 2 chars) are required.');
       return;
     }
-    if (!fixtureTypeLabel.trim()) {
-      toast.error('Enter a specific fixture type.');
-      return;
-    }
-
     setSaving(true);
     try {
-      const [nextPhotoURL, nextPlateURL] = await Promise.all([
-        photoURL.startsWith('data:') ? uploadFixturePhoto(photoURL, 'general') : Promise.resolve(photoURL),
-        modelPlatePhotoURL.startsWith('data:')
-          ? uploadFixturePhoto(modelPlatePhotoURL, 'plate')
-          : Promise.resolve(modelPlatePhotoURL),
-      ]);
-
-      const photosProvided: string[] = [];
-      if (nextPhotoURL) photosProvided.push('general');
-      if (nextPlateURL) photosProvided.push('plate');
-
       await updateFixture({
         ...fixture,
         campusId,
@@ -161,19 +93,6 @@ export default function FixtureDetail() {
         floor: floor.trim(),
         roomNumber: trimmedRoom,
         nearestRoom: trimmedRoom,
-        brand,
-        model,
-        serialNumber,
-        filterType,
-        installationDate: installationDate || undefined,
-        category,
-        fixtureTypeLabel: fixtureTypeLabel.trim(),
-        qualityRating: { pressure, cleanliness },
-        observations: observations.trim() || undefined,
-        issues: issues.length ? issues : undefined,
-        photoURL: nextPhotoURL,
-        modelPlatePhotoURL: nextPlateURL,
-        photosProvided,
         locationConfirmed: true,
       });
       setEditing(false);
@@ -186,16 +105,10 @@ export default function FixtureDetail() {
     }
   }
 
-  const displayPhotoURL = editing ? photoURL : fixture.photoURL;
-  const displayPlateURL = editing ? modelPlatePhotoURL : fixture.modelPlatePhotoURL;
   const displayCampus = editing ? campuses.find((c) => c.id === campusId) : campus;
   const displayBuilding = editing ? buildings.find((b) => b.id === buildingId) : building;
   const displayFloor = editing ? floor : fixture.floor;
   const displayRoom = editing ? nearestRoom || roomNumber : fixture.nearestRoom || fixture.roomNumber;
-  const fixtureIdentity = editing
-    ? [brand, model].filter(Boolean).join(' · ')
-    : [fixture.brand, fixture.model].filter(Boolean).join(' · ');
-
   return (
     <div className="page-shell pb-8">
       <PageHeader
@@ -233,122 +146,7 @@ export default function FixtureDetail() {
         }
       />
 
-      <div className="card-soft p-4 mb-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="line-clamp-1 break-words text-sm font-semibold text-foreground">
-              {editing ? fixtureTypeLabel || fixtureCategoryMeta[category].label : getFixtureTypeLabel(fixture)}
-            </p>
-            {fixtureIdentity ? (
-              <p className="mt-1 line-clamp-1 break-all text-xs text-muted-foreground" title={fixtureIdentity}>
-                {fixtureIdentity}
-              </p>
-            ) : null}
-          </div>
-          <div className="flex max-w-[46%] shrink-0 flex-col items-end gap-2 sm:max-w-none sm:flex-row sm:flex-wrap sm:justify-end">
-            <span className="inline-flex max-w-full items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold text-secondary-foreground">
-              <MapPin className="h-3 w-3 shrink-0" />
-              <span className="truncate">F{displayFloor} · Rm {displayRoom}</span>
-            </span>
-            <span className="inline-flex max-w-full items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold text-secondary-foreground">
-              <Hash className="h-3 w-3 shrink-0" />
-              <span className="truncate">{fixture.id}</span>
-            </span>
-          </div>
-        </div>
-
-        <div className="mt-3 grid grid-cols-1 gap-2">
-          <div className="rounded-xl border bg-card/70 p-3">
-            <p className="text-[10px] font-medium text-muted-foreground">Condition</p>
-            <div className="mt-2 space-y-1.5 text-[11px]">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-muted-foreground">Pressure</span>
-                <span className="font-semibold text-foreground">
-                  {ratingLabel(editing ? pressure : fixture.qualityRating.pressure)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-muted-foreground">Cleanliness</span>
-                <span className="font-semibold text-foreground">
-                  {ratingLabel(editing ? cleanliness : fixture.qualityRating.cleanliness)}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div className="grid grid-cols-1 gap-3 mb-4">
-        <div className="card-section mb-4">
-          <div className="panel-header">
-            <div className="flex items-center gap-2">
-              <ImageIcon className="h-4 w-4 text-muted-foreground" />
-              <h2 className="text-sm font-semibold text-foreground">Photos</h2>
-            </div>
-          </div>
-
-          <div className="panel-body">
-            {editing ? (
-              <>
-                <input
-                  ref={photoInputRef}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleFileUpload(file, setPhotoURL);
-                    e.currentTarget.value = '';
-                  }}
-                />
-                <input
-                  ref={platePhotoInputRef}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleFileUpload(file, setModelPlatePhotoURL);
-                    e.currentTarget.value = '';
-                  }}
-                />
-                <div className="grid grid-cols-2 gap-3">
-                  <PhotoEditor
-                    label={FIELD_LABELS.generalPhoto}
-                    url={photoURL}
-                    emptyIcon={Camera}
-                    onUpload={() => photoInputRef.current?.click()}
-                    onRemove={() => setPhotoURL('')}
-                  />
-                  <PhotoEditor
-                    label={FIELD_LABELS.modelLabel}
-                    url={modelPlatePhotoURL}
-                    emptyIcon={ImagePlus}
-                    onUpload={() => platePhotoInputRef.current?.click()}
-                    onRemove={() => setModelPlatePhotoURL('')}
-                  />
-                </div>
-              </>
-            ) : displayPhotoURL || displayPlateURL ? (
-              <div className="grid grid-cols-2 gap-3">
-                <PhotoCard label="General" url={displayPhotoURL} filename={`${fixture.id}-general.jpg`} />
-                <PhotoCard
-                  label={FIELD_LABELS.modelLabel}
-                  url={displayPlateURL}
-                  filename={`${fixture.id}-plate.jpg`}
-                />
-              </div>
-            ) : (
-              <div className="rounded-xl border bg-secondary/30 p-4 text-center text-muted-foreground">
-                <p className="text-sm font-medium">No photos attached</p>
-                <p className="mt-1 text-[11px]">Tap Edit to upload fixture photos.</p>
-              </div>
-            )}
-          </div>
-        </div>
-
         <div className="card-section mb-4">
           <div className="panel-header">
             <div className="flex items-center gap-2">
@@ -443,128 +241,6 @@ export default function FixtureDetail() {
         </div>
       </div>
 
-      <div className="rounded-2xl border bg-card p-4 mb-4">
-        <div className="mb-3">
-          <h2 className="text-sm font-semibold text-foreground">Fixture Details</h2>
-        </div>
-
-        <div className="space-y-3">
-          {editing ? (
-            <>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label={FIELD_LABELS.companyName} value={brand} onChange={setBrand} />
-                <Field label={FIELD_LABELS.model} value={model} onChange={setModel} />
-                <Field label={FIELD_LABELS.serialNumber} value={serialNumber} onChange={setSerialNumber} />
-                <Field label={FIELD_LABELS.productNumber} value={filterType} onChange={setFilterType} />
-              </div>
-              <Field
-                label="Installation date"
-                type="date"
-                value={installationDate}
-                onChange={setInstallationDate}
-              />
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Fixture category</label>
-                <select
-                  value={category}
-                  onChange={(e) => {
-                    const next = e.target.value as FixtureCategory;
-                    setCategory(next);
-                    if (next !== 'Other') setFixtureTypeLabel(fixtureCategoryMeta[next].label);
-                  }}
-                  className="mt-1 w-full field-input"
-                >
-                  {FIXTURE_CATEGORIES.map((id) => (
-                    <option key={id} value={id}>
-                      {fixtureCategoryMeta[id].label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <Field label="Specific fixture type" value={fixtureTypeLabel} onChange={setFixtureTypeLabel} />
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground">Water pressure</label>
-                  <SimpleRating compact value={pressure} onChange={setPressure} />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground">Cleanliness</label>
-                  <SimpleRating compact value={cleanliness} onChange={setCleanliness} />
-                </div>
-              </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Quick issues</label>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {ISSUE_OPTIONS.map(({ id: issueId, label }) => {
-                    const active = issues.includes(issueId);
-                    return (
-                      <button
-                        key={issueId}
-                        type="button"
-                        onClick={() =>
-                          setIssues((prev) =>
-                            active ? prev.filter((item) => item !== issueId) : [...prev, issueId],
-                          )
-                        }
-                        className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
-                          active ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Observations</label>
-                <textarea
-                  value={observations}
-                  onChange={(e) => setObservations(e.target.value)}
-                  className="mt-1 w-full field-textarea"
-                  placeholder="e.g. rusted fixture, low pressure, noisy..."
-                />
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="grid grid-cols-2 gap-3">
-                <InfoTile label={FIELD_LABELS.companyName} value={fixture.brand || '—'} />
-                <InfoTile label={FIELD_LABELS.model} value={fixture.model || '—'} />
-                <InfoTile label={FIELD_LABELS.serialNumber} value={fixture.serialNumber || '—'} />
-                <InfoTile label={FIELD_LABELS.productNumber} value={fixture.filterType || '—'} />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <InfoTile label="Fixture type" value={getFixtureTypeLabel(fixture)} />
-                <InfoTile label="Nearest landmark" value={fixture.nearestRoom || fixture.roomNumber || '—'} />
-                <InfoTile label="Installation date" value={fixture.installationDate || '—'} />
-              </div>
-              {fixture.issues?.length ? (
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground">Issues</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {fixture.issues.map((issue) => (
-                      <span
-                        key={issue}
-                        className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold text-secondary-foreground"
-                      >
-                        {issueLabel(issue)}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-              {fixture.observations ? (
-                <div className="rounded-xl border bg-secondary/20 p-3">
-                  <p className="text-xs font-medium text-muted-foreground">Observations</p>
-                  <p className="mt-1 text-sm text-foreground whitespace-pre-wrap">{fixture.observations}</p>
-                </div>
-              ) : null}
-            </>
-          )}
-        </div>
-      </div>
-
       {!editing ? <LeadTestingPanel fixture={fixture} /> : null}
     </div>
   );
@@ -613,108 +289,6 @@ function Field({
         disabled={disabled}
         className="mt-1 w-full field-input"
       />
-    </div>
-  );
-}
-
-function InfoTile({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="info-tile">
-      <p className="info-tile-label">{label}</p>
-      <p className="info-tile-value" title={value}>
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function PhotoEditor({
-  label,
-  url,
-  emptyIcon: EmptyIcon,
-  onUpload,
-  onRemove,
-}: {
-  label: string;
-  url: string;
-  emptyIcon: typeof Camera;
-  onUpload: () => void;
-  onRemove: () => void;
-}) {
-  return (
-    <div className="rounded-xl border-2 border-dashed p-3">
-      {url ? (
-        <>
-          <img src={url} alt={label} className="h-24 w-full rounded-lg object-cover" />
-          <div className="mt-2 flex gap-2">
-            <button
-              type="button"
-              onClick={onUpload}
-              className="flex-1 rounded-md bg-secondary px-2 py-1 text-[11px] font-semibold text-secondary-foreground"
-            >
-              Replace
-            </button>
-            <button
-              type="button"
-              onClick={onRemove}
-              className="rounded-md bg-secondary px-2 py-1 text-[11px] font-semibold text-secondary-foreground"
-            >
-              Remove
-            </button>
-          </div>
-        </>
-      ) : (
-        <button
-          type="button"
-          onClick={onUpload}
-          className="flex w-full flex-col items-center gap-1.5 py-3 text-muted-foreground"
-        >
-          <EmptyIcon className="h-6 w-6" />
-          <span className="text-xs font-medium">{label}</span>
-        </button>
-      )}
-    </div>
-  );
-}
-
-function PhotoCard({ label, url, filename }: { label: string; url: string; filename: string }) {
-  if (!url) {
-    return (
-      <div className="h-40 rounded-xl border bg-secondary/30 flex flex-col items-center justify-center text-muted-foreground text-xs gap-1">
-        <ImageIcon className="h-5 w-5 opacity-50" />
-        <span>No {label.toLowerCase()}</span>
-      </div>
-    );
-  }
-  return (
-    <div className="rounded-xl border overflow-hidden bg-card">
-      <a href={url} target="_blank" rel="noreferrer" className="block">
-        <img src={url} alt={label} className="h-32 w-full object-cover" loading="lazy" />
-      </a>
-      <div className="flex items-center justify-between gap-2 p-2 border-t">
-        <span className="text-[11px] font-medium text-foreground truncate">{label}</span>
-        <div className="flex gap-1">
-          <a
-            href={url}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-1 text-[10px] font-semibold text-secondary-foreground"
-            title="Open"
-          >
-            <ExternalLink className="h-3 w-3" />
-          </a>
-          <a
-            href={url}
-            download={filename}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 rounded-full bg-foreground px-2 py-1 text-[10px] font-semibold text-background"
-            title="Download"
-          >
-            <Download className="h-3 w-3" />
-          </a>
-        </div>
-      </div>
     </div>
   );
 }
