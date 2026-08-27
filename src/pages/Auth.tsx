@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useOrganization } from "@/contexts/OrganizationContext";
 import { Droplets } from "lucide-react";
 import { toast } from "sonner";
 
@@ -11,7 +10,6 @@ type Mode = "signin" | "signup";
 export default function Auth() {
   const navigate = useNavigate();
   const { session, loading: authLoading } = useAuth();
-  const { organizationName } = useOrganization();
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -71,7 +69,7 @@ export default function Auth() {
           </div>
           <h1 className="text-2xl font-bold text-foreground">AquaTrack</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {organizationName} water fixture inventory
+            Manage school water fixtures, lead testing, and remediation.
           </p>
         </div>
 
@@ -142,10 +140,6 @@ export default function Auth() {
           </form>
 
         </div>
-
-        <p className="mt-4 text-center text-xs text-muted-foreground">
-          Signed-in teammates share one fixture inventory workspace.
-        </p>
       </div>
     </div>
   );
