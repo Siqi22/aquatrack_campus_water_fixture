@@ -5,16 +5,14 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { useFixtureStore } from '@/store/fixtureStore';
-import { resolveWorkspaceSchoolDistrict } from '@/lib/schoolDistrict';
 
 const DEFAULT_REPORTER_URL = 'https://aquatrack-water-quality-reporter.vercel.app';
 
 export default function Communication() {
   const { session } = useAuth();
   const { organizationName } = useOrganization();
-  const campuses = useFixtureStore((state) => state.campuses);
   const inventoryLoaded = useFixtureStore((state) => state.loaded);
-  const districtName = resolveWorkspaceSchoolDistrict(campuses, organizationName);
+  const districtName = organizationName;
   const [error, setError] = useState('');
 
   function openReporter() {

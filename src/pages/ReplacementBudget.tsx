@@ -6,16 +6,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { useFixtureStore } from '@/store/fixtureStore';
-import { resolveWorkspaceSchoolDistrict } from '@/lib/schoolDistrict';
 
 const DEFAULT_BUDGET_URL = 'https://aquatrack-replacement-budget.vercel.app';
 
 export default function ReplacementBudget() {
   const { session } = useAuth();
   const { organizationName } = useOrganization();
-  const campuses = useFixtureStore((state) => state.campuses);
   const inventoryLoaded = useFixtureStore((state) => state.loaded);
-  const districtName = resolveWorkspaceSchoolDistrict(campuses, organizationName);
+  const districtName = organizationName;
   const [error, setError] = useState('');
   const autoLaunchStarted = useRef(false);
 

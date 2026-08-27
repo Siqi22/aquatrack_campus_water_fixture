@@ -113,7 +113,7 @@ def inject_aquatrack_navigation():
             organization_name = ""
     return {
         "aquatrack_url": AQUATRACK_URL,
-        "organization_name": organization_name or "North Valley School District",
+        "organization_name": organization_name or "School District",
         "user_email": user.get("email") or session.get("user_email", "Signed-in user"),
     }
 
@@ -194,11 +194,13 @@ def auth_session():
     user = supabase.verify_user(token)
     if not user:
         return {"error": "Invalid or expired AquaTrack session"}, 401
+    district = supabase.current_district(token)
+    if not district:
+        return {"error": "This account is not assigned to a school district"}, 403
     session["user_id"] = user.get("id")
     session["user_email"] = user.get("email", "")
-    district = str(payload.get("district", "")).strip()
-    if district:
-        session["organization_name"] = district[:200]
+    session["district_id"] = district["district_id"]
+    session["organization_name"] = district["district_name"]
     response = make_response({"ok": True})
     response.set_cookie(
         "wqr_access_token",

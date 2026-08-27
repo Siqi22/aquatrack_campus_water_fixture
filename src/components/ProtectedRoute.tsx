@@ -2,6 +2,7 @@ import { ReactNode, useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFixtureStore } from '@/store/fixtureStore';
+import { useOrganization } from '@/contexts/OrganizationContext';
 import { toast } from 'sonner';
 
 interface Props {
@@ -10,14 +11,15 @@ interface Props {
 
 export function ProtectedRoute({ children }: Props) {
   const { session, loading: authLoading } = useAuth();
-  const { loaded, loadError, loadAll } = useFixtureStore();
+  const { loaded, loadError } = useFixtureStore();
+  const { loading: districtLoading, accessError, districtId, reloadDistrict } = useOrganization();
   const location = useLocation();
 
   useEffect(() => {
     if (loadError) toast.error(`Could not load the workspace: ${loadError}`);
   }, [loadError]);
 
-  if (authLoading || (session && !loaded)) {
+  if (authLoading || (session && districtLoading)) {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
         Loading…
@@ -29,13 +31,37 @@ export function ProtectedRoute({ children }: Props) {
     return <Navigate to="/auth" replace state={{ from: location }} />;
   }
 
+  if (accessError || !districtId) {
+    return (
+      <div className="app-surface flex min-h-screen items-center justify-center px-5">
+        <div className="card-soft w-full max-w-md p-6 text-center">
+          <h1 className="text-base font-semibold text-foreground">School district access required</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {accessError || 'Your account has not been assigned to a school district.'}
+          </p>
+          <button type="button" className="btn-primary mt-4 w-full" onClick={() => void reloadDistrict()}>
+            Check access again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!loaded) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
+        Loading…
+      </div>
+    );
+  }
+
   if (loadError) {
     return (
       <div className="app-surface flex min-h-screen items-center justify-center px-5">
         <div className="card-soft w-full max-w-sm p-5 text-center">
           <h1 className="text-base font-semibold text-foreground">Workspace could not load</h1>
           <p className="mt-2 text-sm text-muted-foreground">{loadError}</p>
-          <button type="button" className="btn-primary mt-4 w-full" onClick={() => void loadAll()}>
+          <button type="button" className="btn-primary mt-4 w-full" onClick={() => void reloadDistrict()}>
             Try again
           </button>
         </div>

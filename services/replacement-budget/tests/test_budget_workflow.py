@@ -91,7 +91,14 @@ class BudgetWorkflowTests(unittest.TestCase):
                 ["school-a", "school-c"],
             )
 
-        with patch.object(supabase, "verify_user", return_value={"id": "user-1"}):
+        with patch.object(supabase, "verify_user", return_value={"id": "user-1"}), patch.object(
+            supabase,
+            "current_district",
+            return_value={
+                "district_id": "district-1",
+                "district_name": "North Valley School District",
+            },
+        ):
             response = self.client.post(
                 "/auth/session",
                 json={"access_token": "valid-token"},

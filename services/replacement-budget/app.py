@@ -168,11 +168,13 @@ def auth_session():
     user = supabase.verify_user(token)
     if not user:
         return {"error": "Invalid or expired AquaTrack session"}, 401
+    district = supabase.current_district(token)
+    if not district:
+        return {"error": "This account is not assigned to a school district"}, 403
     session["user_id"] = user.get("id")
     session["user_email"] = user.get("email", "")
-    district = str(payload.get("district", "")).strip()
-    if district:
-        session["organization_name"] = district[:200]
+    session["district_id"] = district["district_id"]
+    session["organization_name"] = district["district_name"]
     # Opening the tool from AquaTrack starts a fresh budget. Navigation within
     # the budget service continues to preserve the in-progress selection.
     session.pop("budget_state", None)

@@ -40,8 +40,8 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <OrganizationProvider>
-          <AuthProvider>
+        <AuthProvider>
+          <OrganizationProvider>
           <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route path="/logout" element={<Logout />} />
@@ -68,8 +68,8 @@ const App = () => (
               }
             />
           </Routes>
-          </AuthProvider>
-        </OrganizationProvider>
+          </OrganizationProvider>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

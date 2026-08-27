@@ -12,18 +12,6 @@ from flask import request
 from wqr.models import Fixture
 
 
-DEFAULT_SCHOOL_DISTRICT = "North Valley School District"
-UNKNOWN_DISTRICTS = {
-    "", "unknown", "unknown district", "unknown school district",
-    "not recorded", "district not recorded", "school district",
-}
-
-
-def _district_name(value: str | None) -> str:
-    district = (value or "").strip()
-    return DEFAULT_SCHOOL_DISTRICT if district.casefold() in UNKNOWN_DISTRICTS else district
-
-
 class SupabaseAdapter:
     def __init__(self):
         self.url = os.environ.get("SUPABASE_URL", "").rstrip("/")
@@ -51,15 +39,28 @@ class SupabaseAdapter:
         )
         return response.json() if response.ok else None
 
-    def select(self, table: str, params: dict[str, str]) -> list[dict]:
+    def select(
+        self,
+        table: str,
+        params: dict[str, str],
+        token: str | None = None,
+    ) -> list[dict]:
         response = requests.get(
             f"{self.url}/rest/v1/{table}",
-            headers={**self.headers(), "Accept": "application/json"},
+            headers={**self.headers(token), "Accept": "application/json"},
             params=params,
             timeout=30,
         )
         response.raise_for_status()
         return response.json()
+
+    def current_district(self, token: str | None = None) -> dict | None:
+        rows = self.select(
+            "rpc/current_user_district",
+            {},
+            token=token,
+        )
+        return rows[0] if rows else None
 
     def insert(self, table: str, row: dict) -> dict | None:
         response = requests.post(
@@ -82,7 +83,7 @@ class SupabaseAdapter:
             "organization_mode": "eq.school_district",
             "order": "school.asc",
         })
-        return [{**row, "school_district": _district_name(row.get("school_district"))} for row in rows]
+        return rows
 
     def school(self, campus_id: str) -> dict | None:
         rows = self.select("campuses", {
@@ -91,7 +92,7 @@ class SupabaseAdapter:
             "organization_mode": "eq.school_district",
             "limit": "1",
         })
-        return {**rows[0], "school_district": _district_name(rows[0].get("school_district"))} if rows else None
+        return rows[0] if rows else None
 
     def fixtures(self, campus_id: str | None = None) -> list[dict]:
         campuses = self.schools()

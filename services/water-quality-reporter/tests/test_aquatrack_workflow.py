@@ -32,6 +32,12 @@ class FakeSupabase:
     def verify_user(self, _token):
         return {"id": "test-user"}
 
+    def current_district(self, _token=None):
+        return {
+            "district_id": "district-1",
+            "district_name": "Example District",
+        }
+
     def schools(self):
         return [
             {

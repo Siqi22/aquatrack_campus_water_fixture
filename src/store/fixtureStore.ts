@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { supabase } from "@/integrations/supabase/client";
-import { DEFAULT_SCHOOL_DISTRICT, normalizeSchoolDistrict } from "@/lib/schoolDistrict";
+import { normalizeSchoolDistrict } from "@/lib/schoolDistrict";
 import type { Database } from "@/integrations/supabase/types";
 import type {
   ImportAnalysis,
@@ -197,6 +197,7 @@ export interface Building {
 
 export interface Campus {
   id: string;
+  districtId?: string;
   name: string;
   schoolDistrict?: string;
   school: string;
@@ -239,7 +240,7 @@ type FixtureRow = Database["public"]["Tables"]["fixtures"]["Row"];
 type FloorProgressRow = Database["public"]["Tables"]["floor_progress"]["Row"];
 
 function mapCampus(r: CampusRow): Campus {
-  return { id: r.id, name: r.name, schoolDistrict: normalizeSchoolDistrict(r.school_district), school: r.school, address: r.address ?? "" };
+  return { id: r.id, districtId: r.district_id ?? undefined, name: r.name, schoolDistrict: normalizeSchoolDistrict(r.school_district), school: r.school, address: r.address ?? "" };
 }
 function mapBuilding(r: BuildingRow): Building {
   return {
@@ -426,11 +427,17 @@ interface FixtureStore {
   loaded: boolean;
   loadError: string | null;
   organizationMode: "uw" | "school_district";
+  districtId: string | null;
+  districtName: string;
   campuses: Campus[];
   buildings: Building[];
   fixtures: Fixture[];
   floorProgress: BuildingFloorProgress[];
-  loadAll: (organizationMode?: "uw" | "school_district") => Promise<void>;
+  loadAll: (
+    organizationMode?: "uw" | "school_district",
+    districtId?: string,
+    districtName?: string,
+  ) => Promise<void>;
   reset: () => void;
   addCampus: (
     campus: Omit<Campus, "id"> & { id?: string },
@@ -475,6 +482,8 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
   loaded: false,
   loadError: null,
   organizationMode: "uw",
+  districtId: null,
+  districtName: "School District",
   campuses: [],
   buildings: [],
   fixtures: [],
@@ -488,21 +497,27 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
       buildings: [],
       fixtures: [],
       floorProgress: [],
+      districtId: null,
+      districtName: "School District",
     }),
 
-  loadAll: async (requestedMode) => {
+  loadAll: async (requestedMode, requestedDistrictId, requestedDistrictName) => {
     if (get().loading) return;
     const organizationMode = requestedMode ?? get().organizationMode;
-    set({ loading: true, loaded: false, loadError: null, organizationMode });
+    const districtId = requestedDistrictId ?? get().districtId;
+    const districtName = requestedDistrictName ?? get().districtName;
+    if (organizationMode === "school_district" && !districtId) {
+      set({ loaded: true, loadError: "No school district is assigned to this account." });
+      return;
+    }
+    set({ loading: true, loaded: false, loadError: null, organizationMode, districtId, districtName });
     try {
-      const { data: userResp } = await supabase.auth.getUser();
-      const userId = userResp?.user?.id ?? null;
-
       const [campusesRes, buildingsRes, fixturesRes, fpRes] = await Promise.all([
           supabase
             .from("campuses")
             .select("*")
             .eq("organization_mode", organizationMode)
+            .eq("district_id", districtId)
             .order("created_at", { ascending: true }),
           supabase
             .from("buildings")
@@ -634,23 +649,6 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
         floorProgress,
       );
 
-      // First-run seed: if the shared workspace has no campuses, seed a starter campus.
-      if (campuses.length === 0 && userId) {
-        const { data: seed } = await supabase
-          .from("campuses")
-          .insert({
-            name: organizationMode === "school_district" ? "My School" : "Main Campus",
-            school_district: organizationMode === "school_district" ? DEFAULT_SCHOOL_DISTRICT : "",
-            school: organizationMode === "school_district" ? "My School" : "University of Washington",
-            organization_mode: organizationMode,
-            address: "",
-            created_by: userId,
-          })
-          .select("*")
-          .single();
-        if (seed) campuses.push(mapCampus(seed));
-      }
-
       set({
         campuses,
         buildings,
@@ -679,8 +677,11 @@ export const useFixtureStore = create<FixtureStore>((set, get) => ({
       .insert({
         name: campus.name,
         school_district: get().organizationMode === "school_district"
-          ? normalizeSchoolDistrict(campus.schoolDistrict)
+          ? get().districtName
           : campus.schoolDistrict ?? null,
+        district_id: get().organizationMode === "school_district"
+          ? get().districtId
+          : null,
         organization_mode: get().organizationMode,
         school: campus.school,
         address: campus.address,

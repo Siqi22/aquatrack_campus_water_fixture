@@ -22,18 +22,6 @@ CATEGORY_TO_BUDGET_TYPE = {
     "Other": "Other",
 }
 
-DEFAULT_SCHOOL_DISTRICT = "North Valley School District"
-UNKNOWN_DISTRICTS = {
-    "", "unknown", "unknown district", "unknown school district",
-    "not recorded", "district not recorded", "school district",
-}
-
-
-def _district_name(value: str | None) -> str:
-    district = (value or "").strip()
-    return DEFAULT_SCHOOL_DISTRICT if district.casefold() in UNKNOWN_DISTRICTS else district
-
-
 def _school_type(name: str) -> str:
     normalized = name.casefold()
     if "elementary" in normalized or "primary" in normalized:
@@ -80,15 +68,28 @@ class SupabaseAdapter:
             logging.warning("Supabase user verification request failed: %s", type(error).__name__)
             return None
 
-    def select(self, table: str, params: dict[str, str]) -> list[dict]:
+    def select(
+        self,
+        table: str,
+        params: dict[str, str],
+        token: str | None = None,
+    ) -> list[dict]:
         response = requests.get(
             f"{self.url}/rest/v1/{table}",
-            headers={**self.headers(), "Accept": "application/json"},
+            headers={**self.headers(token), "Accept": "application/json"},
             params=params,
             timeout=30,
         )
         response.raise_for_status()
         return response.json()
+
+    def current_district(self, token: str | None = None) -> dict | None:
+        rows = self.select(
+            "rpc/current_user_district",
+            {},
+            token=token,
+        )
+        return rows[0] if rows else None
 
     def schools(self) -> list[dict]:
         rows = self.select(
@@ -105,7 +106,7 @@ class SupabaseAdapter:
                 "name": row.get("school") or row.get("name") or "School",
                 "type": _school_type(row.get("school") or row.get("name") or ""),
                 "address": row.get("address") or "Address not recorded",
-                "district_name": _district_name(row.get("school_district")),
+                "district_name": (row.get("school_district") or "School District").strip(),
             }
             for row in rows
         ]

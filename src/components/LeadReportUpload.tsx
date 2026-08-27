@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { leadReportRowBelongsToWorkspace } from '@/lib/leadReportScope';
 import { normalizeSchoolDistrict } from '@/lib/schoolDistrict';
 import { formatFloorLabel, normalizeFloorKey } from '@/lib/floorUtils';
+import { useOrganization } from '@/contexts/OrganizationContext';
 
 interface ReviewRow extends LeadReportRowDraft { id:string; reportUploadId:string; sourceFileName:string; match:LeadFixtureMatch; selectedFixtureId?:string; confirmed:boolean; excluded:boolean; imported:boolean; importedTestingRoundId?:string }
 const db=supabase as any;
@@ -22,8 +23,9 @@ const ACTIVE_REPORT_STORAGE_KEY='aquatrack.activeLeadReportId';
 const REVIEW_SELECTION_INITIALIZED_PREFIX='aquatrack.leadReviewSelectionInitialized.';
 
 export function LeadReportUpload({onImported,reviewUnresolved=false}:{onImported?:()=>void|Promise<void>;reviewUnresolved?:boolean}){
+  const {organizationName}=useOrganization();
   const {fixtures,campuses,buildings,addCampus,addBuilding,addFixture,loadAll}=useFixtureStore();const[rows,setRows]=useState<ReviewRow[]>([]);const[fileName,setFileName]=useState('');const[busy,setBusy]=useState(false);const[reviewLoaded,setReviewLoaded]=useState(!reviewUnresolved);const[bulkChoice,setBulkChoice]=useState<'include'|null>(null);const restoreAttempted=useRef(false);
-  const fixtureIds=useMemo(()=>new Set(fixtures.map(fixture=>fixture.id)),[fixtures]);const districtName=campuses.find(campus=>campus.schoolDistrict)?.schoolDistrict??'';const schoolNames=useMemo(()=>new Set(campuses.map(campus=>(campus.school||campus.name).trim().toLowerCase())),[campuses]);
+  const fixtureIds=useMemo(()=>new Set(fixtures.map(fixture=>fixture.id)),[fixtures]);const districtName=organizationName;const schoolNames=useMemo(()=>new Set(campuses.map(campus=>(campus.school||campus.name).trim().toLowerCase())),[campuses]);
   const ready=rows.filter(row=>row.confirmed&&!row.excluded&&!row.imported).length;
   const skipped=rows.filter(row=>!row.confirmed&&!row.imported).length;
   const includable=rows.filter(row=>row.selectedFixtureId&&!row.confirmed&&!row.imported);
@@ -62,7 +64,7 @@ export function LeadReportUpload({onImported,reviewUnresolved=false}:{onImported
     }else{
       parsed=(await parseSpreadsheetFile(file)).sheets.flatMap(sheet=>parseLeadReportCSV(sheet.csv));
     }
-    if(!parsed.length)throw new Error('No lead-result rows were extracted.');parsed.forEach(row=>{row.schoolDistrict=normalizeSchoolDistrict(row.schoolDistrict);normalizeLeadResult(row.resultValue,row.resultUnit)});
+    if(!parsed.length)throw new Error('No lead-result rows were extracted.');parsed.forEach(row=>{row.schoolDistrict=normalizeSchoolDistrict(row.schoolDistrict||districtName);normalizeLeadResult(row.resultValue,row.resultUnit)});
     const contentHash=await sha256Text(canonicalReportContent(parsed));
     const duplicate=await db.from('lead_testing_report_uploads').select('id,file_name').eq('content_sha256',contentHash).is('deleted_at',null).maybeSingle();
     if(duplicate.error)throw duplicate.error;if(duplicate.data){if(storagePath)await supabase.storage.from('lead-testing-reports').remove([storagePath]);temporaryStoragePath='';await openExistingReport(duplicate.data,true);return}
@@ -101,7 +103,7 @@ export function LeadReportUpload({onImported,reviewUnresolved=false}:{onImported
     const schoolName=row.school.trim();if(!schoolName)throw new Error('Enter the school name before creating this fixture.');
     const same=(left:string|undefined,right:string)=>normalizeFingerprint(left??'')===normalizeFingerprint(right);
     let campus=campuses.find(item=>same(item.school||item.name,schoolName));
-    if(!campus){campus=await addCampus({name:schoolName,school:schoolName,schoolDistrict:normalizeSchoolDistrict(row.schoolDistrict||campuses.find(item=>item.schoolDistrict)?.schoolDistrict),address:''})??undefined}
+    if(!campus){campus=await addCampus({name:schoolName,school:schoolName,schoolDistrict:districtName,address:''})??undefined}
     if(!campus)throw new Error('The school could not be created.');
     const buildingName=row.building.trim()||'Main Building';
     const floorKey=normalizeFloorKey(row.floor||'1')||'1';

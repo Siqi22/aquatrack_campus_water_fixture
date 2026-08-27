@@ -69,6 +69,7 @@ export type Database = {
           address: string | null;
           created_at: string;
           created_by: string | null;
+          district_id: string | null;
           id: string;
           latitude: number | null;
           longitude: number | null;
@@ -82,6 +83,7 @@ export type Database = {
           address?: string | null;
           created_at?: string;
           created_by?: string | null;
+          district_id?: string | null;
           id?: string;
           latitude?: number | null;
           longitude?: number | null;
@@ -95,6 +97,7 @@ export type Database = {
           address?: string | null;
           created_at?: string;
           created_by?: string | null;
+          district_id?: string | null;
           id?: string;
           latitude?: number | null;
           longitude?: number | null;
@@ -104,7 +107,15 @@ export type Database = {
           school_district?: string | null;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "campuses_district_id_fkey";
+            columns: ["district_id"];
+            isOneToOne: false;
+            referencedRelation: "school_districts";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       fixtures: {
         Row: {
@@ -323,6 +334,14 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      current_user_district: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          district_id: string;
+          district_name: string;
+          member_role: string;
+        }[];
+      };
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"];
