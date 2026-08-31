@@ -96,18 +96,12 @@
   </label>
 {% endfor %}
 <input type="hidden" name="sampling_dates" value="{{ sampling_date_range }}">
-<div class="row">
-  <div>
-    <label>Report style</label>
-    <input type="hidden" name="report_style" value="wa_school">
-    <p class="building-choice"><strong>School/district report</strong></p>
-  </div>
-  <div>
-    <label for="organization">District / organization</label>
-    <input type="text" name="organization" id="organization" value="{{ initial_organization }}">
-    <label for="school_name">School / building name for report</label>
-    <input type="text" name="school_name" id="school_name" value="{{ report_school_name }}">
-  </div>
+<input type="hidden" name="report_style" value="wa_school">
+<div>
+  <label for="organization">District / organization</label>
+  <input type="text" name="organization" id="organization" value="{{ initial_organization }}">
+  <label for="school_name">School / building name for report</label>
+  <input type="text" name="school_name" id="school_name" value="{{ report_school_name }}">
 </div>
 </div>
 </fieldset>

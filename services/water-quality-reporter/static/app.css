@@ -945,7 +945,8 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
   z-index: 20;
   display: flex;
   justify-content: flex-end;
-  margin-top: 1rem;
+  margin-top: 1.75rem;
+  margin-bottom: 1rem;
   padding: 0.65rem;
   border: 1px solid hsl(var(--border));
   border-radius: 1rem;

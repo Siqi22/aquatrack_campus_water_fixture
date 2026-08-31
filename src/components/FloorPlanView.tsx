@@ -223,7 +223,6 @@ export function FloorPlanView({ buildingId, floor, buildingName, campusId, leadF
                 <CheckCircle2 className="h-4 w-4 text-status-good" />
                 <p className="text-sm font-semibold text-foreground">Floor complete</p>
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">Survey finished — fixtures below are read-only for review.</p>
             </div>
           ) : null}
           <div className="divide-y">
